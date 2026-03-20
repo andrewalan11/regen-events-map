@@ -4,6 +4,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Events & Gatherings 2026 — Map</title>
+
+<!-- Favicon (SVG inline) -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%231a1a2e'/><circle cx='50' cy='50' r='35' fill='%232a9d8f'/><text x='50' y='68' font-size='50' text-anchor='middle' font-family='sans-serif'>🌍</text></svg>" type="image/svg+xml">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%231a1a2e'/><text x='50' y='68' font-size='55' text-anchor='middle'>🌍</text></svg>">
+
+<!-- Open Graph / Social sharing -->
+<meta property="og:title" content="Regen Events Map 2026">
+<meta property="og:description" content="Interactive map of 58+ regenerative gatherings, ecovillage festivals, bioregional congresses, and community events worldwide. Star your favorites, plan your route.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://andrewalan11.github.io/regen-events-map">
+<meta property="og:image" content="https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1200&h=630&fit=crop">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Regen Events Map 2026">
+<meta name="twitter:description" content="Interactive map of 58+ regenerative gatherings worldwide. Star events, see who's going, plan your route.">
+<meta name="twitter:image" content="https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1200&h=630&fit=crop">
+
+<meta name="description" content="Interactive map of regenerative gatherings, ecovillage festivals, bioregional congresses, and community events for 2026. Powered by Supabase.">
+<meta name="theme-color" content="#1a1a2e">
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
@@ -182,7 +205,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <h1>Events & Gatherings 2026</h1>
   <div class="search-box"><input type="text" id="searchInput" placeholder="Search events..." oninput="onSearch()"></div>
   <div class="top-btns">
-    <button class="btn btn-add" onclick="openAddModal()">+ Add Event</button>
+    <button class="btn btn-add" onclick="openAddModal()">+ Suggest Event</button>
     <button class="btn" id="typesBtn" onclick="togglePanel('types')" style="background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55">🏷️ Types</button>
     <button class="btn btn-favs" id="favsBtn" onclick="togglePanel('favs')">Starred (0)</button>
     <button class="btn btn-issues" id="issuesBtn" onclick="togglePanel('issues')" style="display:none">Issues (0)</button>
@@ -205,38 +228,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <!-- User Name Modal (for stars) -->
 <div class="user-modal-overlay" id="userNameModal">
   <div class="user-modal">
-    <h3>What's your name?</h3>
-    <p>We'll remember it for your resonance beacons (stars)</p>
-    <input type="text" id="userNameInput" placeholder="Your name" onkeypress="if(event.key==='Enter') confirmUserName()">
+    <h3 style="margin-bottom:8px">Resonance Beacons ✨</h3>
+    <p style="font-size:12px;color:#aaa;line-height:1.5;margin-bottom:12px">When you star an event, it becomes a <strong style="color:#e9c46a">resonance beacon</strong> — a signal to the community that you're interested. Others can see how many people resonate with each gathering, and who they are. This helps the community self-organize and find each other.</p>
+    <p style="font-size:12px;color:#888;margin-bottom:10px">Enter your name so others know who's interested, or skip to star anonymously.</p>
+    <input type="text" id="userNameInput" placeholder="Your name (e.g. Andrew)" onkeypress="if(event.key==='Enter') confirmUserName()">
     <div class="buttons">
-      <button class="save" onclick="confirmUserName()">Save & Continue</button>
+      <button class="save" onclick="confirmUserName()">Save & Star</button>
+      <button class="cancel" onclick="skipUserName()" style="background:#2a9d8f33;color:#2a9d8f;border-color:#2a9d8f55">Skip — Star Anonymously</button>
       <button class="cancel" onclick="cancelUserName()">Cancel</button>
     </div>
   </div>
 </div>
 
-<!-- Add Event Modal -->
+<!-- Suggest Event Modal -->
 <div class="modal-overlay" id="addModal">
   <div class="modal">
-    <h2>Add New Event</h2>
-    <label>Event Name *</label><input id="ae-name" placeholder="e.g. Solarpunk Festival">
-    <div class="row">
-      <div><label>Dates *</label><input id="ae-dates" placeholder="e.g. Jun 15–20"></div>
-      <div><label>Month *</label><select id="ae-month"><option>Apr</option><option>May</option><option>Jun</option><option>Jul</option><option>Aug</option><option>Sep</option><option>Oct</option><option>Nov</option><option>Dec</option></select></div>
-    </div>
-    <label>Location *</label><input id="ae-loc" placeholder="e.g. Barcelona, Spain">
-    <label>Venue</label><input id="ae-venue" placeholder="e.g. CCCB, Montalegre 5, Barcelona">
-    <div class="row">
-      <div><label>Latitude</label><input id="ae-lat" type="number" step="any" placeholder="41.383"></div>
-      <div><label>Longitude</label><input id="ae-lng" type="number" step="any" placeholder="2.171"></div>
-    </div>
-    <label>Description</label><textarea id="ae-desc" placeholder="Brief description..."></textarea>
-    <label>Tags (comma-separated)</label><input id="ae-tags" placeholder="e.g. ecovillage, festival">
-    <label>Website URL</label><input id="ae-url" placeholder="e.g. solarpunkfest.org">
-    <label>Image URL</label><input id="ae-img" placeholder="https://...">
+    <h2>Suggest an Event</h2>
+    <p style="font-size:12px;color:#aaa;line-height:1.5;margin-bottom:14px">Know of a regenerative gathering, ecovillage festival, or community event that should be on this map? Drop a link below and we'll add it.</p>
+    <label>Link to the event *</label>
+    <input id="ae-url" placeholder="https://example.com/amazing-gathering-2026" style="margin-bottom:10px">
+    <label>Your name (optional)</label>
+    <input id="ae-name" placeholder="So we can credit you" style="margin-bottom:10px">
+    <label>Any notes? (optional)</label>
+    <textarea id="ae-desc" placeholder="e.g. 'This is in July in Portugal, permaculture focused'" style="height:50px;margin-bottom:10px"></textarea>
     <div class="mbtn">
       <button class="cancel" onclick="closeAddModal()">Cancel</button>
-      <button class="save" onclick="addEvent()">Add Event</button>
+      <button class="save" onclick="suggestEvent()">Submit Suggestion</button>
     </div>
   </div>
 </div>
@@ -384,6 +401,14 @@ function confirmUserName() {
     return;
   }
   userName = name;
+  saveUserName();
+  document.getElementById('userNameModal').classList.remove('show');
+  if (currentStarCallback) currentStarCallback();
+  currentStarCallback = null;
+}
+
+function skipUserName() {
+  userName = 'Anonymous';
   saveUserName();
   document.getElementById('userNameModal').classList.remove('show');
   if (currentStarCallback) currentStarCallback();
@@ -1051,55 +1076,35 @@ function closeAddModal() {
   document.getElementById('addModal').classList.remove('open');
 }
 
-function addEvent() {
-  const name = document.getElementById('ae-name').value.trim();
-  const dates = document.getElementById('ae-dates').value.trim();
-  const month = document.getElementById('ae-month').value;
-  const loc = document.getElementById('ae-loc').value.trim();
-  const venue = document.getElementById('ae-venue').value.trim();
-  const lat = parseFloat(document.getElementById('ae-lat').value);
-  const lng = parseFloat(document.getElementById('ae-lng').value);
-  const desc = document.getElementById('ae-desc').value.trim();
-  const tags = document.getElementById('ae-tags').value.split(',').map(s => s.trim()).filter(Boolean);
+function suggestEvent() {
   const url = document.getElementById('ae-url').value.trim();
-  const img = document.getElementById('ae-img').value.trim();
-  
-  if (!name || !dates || !loc) {
-    toast('Name, dates, and location are required.', '#e63946');
+  const suggestedBy = document.getElementById('ae-name').value.trim();
+  const notes = document.getElementById('ae-desc').value.trim();
+
+  if (!url) {
+    toast('Please paste a link to the event.', '#e63946');
     return;
   }
-  if (isNaN(lat) || isNaN(lng)) {
-    toast('Please enter valid lat/lng coordinates.', '#e63946');
-    return;
-  }
-  
-  const newEvent = {
-    name,
-    dates,
-    month,
-    lat,
-    lng,
-    location: loc,
-    description: desc || '',
-    tags: tags.length > 0 ? tags : null
+
+  // Store as an issue/suggestion (uses the issues table)
+  const suggestion = {
+    event_id: null,
+    event_name: 'EVENT SUGGESTION',
+    issue_text: `URL: ${url}${suggestedBy ? ' | Suggested by: ' + suggestedBy : ''}${notes ? ' | Notes: ' + notes : ''}`,
+    created_by: suggestedBy || userName || 'anonymous'
   };
-  if (venue) newEvent.venue = venue;
-  if (url) newEvent.url = url;
-  if (img) newEvent.image_url = img;
-  newEvent.created_by = userName || 'community';
-  
+
   sb
-    .from('events')
-    .insert([newEvent])
+    .from('issues')
+    .insert([suggestion])
     .then(() => {
       closeAddModal();
-      initData();
-      toast(`"${name}" added!`);
-      ['ae-name', 'ae-dates', 'ae-loc', 'ae-venue', 'ae-lat', 'ae-lng', 'ae-desc', 'ae-tags', 'ae-url', 'ae-img'].forEach(id => {
-        document.getElementById(id).value = '';
-      });
+      toast('Thanks! Your suggestion has been submitted. We\'ll review and add it to the map.');
+      document.getElementById('ae-url').value = '';
+      document.getElementById('ae-name').value = '';
+      document.getElementById('ae-desc').value = '';
     })
-    .catch(e => toast('Error adding event: ' + e.message, '#e63946'));
+    .catch(e => toast('Error submitting: ' + e.message, '#e63946'));
 }
 
 // === FETCH DATA FROM SUPABASE ===
