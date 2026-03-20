@@ -205,6 +205,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <h1>Events & Gatherings 2026</h1>
   <div class="search-box"><input type="text" id="searchInput" placeholder="Search events..." oninput="onSearch()"></div>
   <div class="top-btns">
+    <button class="btn" onclick="togglePanel('about')" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">ℹ️ About</button>
     <button class="btn btn-add" onclick="openAddModal()">+ Suggest Event</button>
     <button class="btn" id="typesBtn" onclick="togglePanel('types')" style="background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55">🏷️ Types</button>
     <button class="btn btn-favs" id="favsBtn" onclick="togglePanel('favs')">Starred (0)</button>
@@ -274,6 +275,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="sp-list" id="issuesList"></div>
   <button class="sp-btn" onclick="copyIssues()" style="background:#e6394633;color:#e63946;border-color:#e6394655">Copy issues for Claude</button>
   <button class="sp-btn" onclick="clearIssues()" style="background:#33333322;color:#666;border-color:#44444455;margin-top:4px">Clear all</button>
+</div>
+
+<!-- About Panel -->
+<div class="side-panel" id="aboutPanel" style="z-index:2001;">
+  <div class="sp-header"><h2 style="color:#2a9d8f">About This Map</h2><button class="sp-close" onclick="togglePanel('about')">&times;</button></div>
+  <div style="padding:18px;font-size:12px;color:#bbb;line-height:1.7;overflow-y:auto;flex:1">
+    <p style="font-size:14px;color:#fff;font-weight:600;margin-bottom:12px">Regen Events Map 2026</p>
+    <p>A community-curated map of regenerative gatherings, ecovillage festivals, bioregional congresses, permaculture convergences, and adjacent events happening around the world in 2026.</p>
+    <p style="margin-top:12px">This project emerged from the regenerative economy ecosystem — connecting communities working on bioregionalism, decentralized governance, community coordination, regenerative finance, and systems change.</p>
+
+    <p style="font-size:13px;color:#e9c46a;font-weight:600;margin-top:20px;margin-bottom:6px">✨ Resonance Beacons</p>
+    <p>When you star an event, it becomes a "resonance beacon" — a signal visible to the whole community showing interest in that gathering. You can see how many people resonate with each event and who they are. This helps the community self-organize and find each other on the road.</p>
+
+    <p style="font-size:13px;color:#2a9d8f;font-weight:600;margin-top:20px;margin-bottom:6px">🔒 Privacy & Identity</p>
+    <p>We don't track you. There are no accounts, no cookies, no analytics. Your "ignored" events list is stored only in your browser's local storage — nobody else can see it, and it disappears if you clear your browser data.</p>
+    <p style="margin-top:6px">If you star an event, you can choose to share your name or star anonymously. Names are stored in our database so others can see who's interested, but there's no email, no login, no personal data beyond the name you choose to give.</p>
+
+    <p style="font-size:13px;color:#6bbe45;font-weight:600;margin-top:20px;margin-bottom:6px">➕ Adding Events</p>
+    <p>Anyone can suggest an event by clicking "+ Suggest Event" and dropping a link. Suggestions go into a review queue — a human checks them and adds the full details to the map. You can also contribute via our Telegram group where a bot collects shared event links automatically.</p>
+
+    <p style="font-size:13px;color:#e89530;font-weight:600;margin-top:20px;margin-bottom:6px">🛠️ How It's Built</p>
+    <p>Open source. Single HTML file hosted on GitHub Pages. Event data stored in Supabase (open-source PostgreSQL). Map tiles by OpenStreetMap + CARTO. No frameworks, no build step, no vendor lock-in.</p>
+    <p style="margin-top:6px"><a href="https://github.com/andrewalan11/regen-events-map" target="_blank" style="color:#2a9d8f">View source on GitHub</a></p>
+
+    <p style="font-size:13px;color:#d4652a;font-weight:600;margin-top:20px;margin-bottom:6px">🐛 Found a Bug?</p>
+    <p>Click any event and use the "Report" button to flag wrong dates, broken links, or missing info. Reports go directly to our review queue.</p>
+
+    <p style="margin-top:20px;padding-top:12px;border-top:1px solid #333;color:#666;font-size:10px">Built with care by Andrew and Claude. Part of the regenerative economy ecosystem including BetterWorld, NAO, and UPgame.</p>
+  </div>
 </div>
 
 <!-- Types Filter Panel -->
@@ -797,7 +827,7 @@ function setAllTypes(on) {
 
 // === SIDE PANELS ===
 function togglePanel(panel) {
-  const panels = { favs: 'favsPanel', issues: 'issuesPanel', types: 'typesPanel' };
+  const panels = { favs: 'favsPanel', issues: 'issuesPanel', types: 'typesPanel', about: 'aboutPanel' };
   const el = document.getElementById(panels[panel]);
   if (!el) return;
   
@@ -1086,16 +1116,16 @@ function suggestEvent() {
     return;
   }
 
-  // Store as an issue/suggestion (uses the issues table)
+  // Store in suggestions table
   const suggestion = {
-    event_id: null,
-    event_name: 'EVENT SUGGESTION',
-    issue_text: `URL: ${url}${suggestedBy ? ' | Suggested by: ' + suggestedBy : ''}${notes ? ' | Notes: ' + notes : ''}`,
-    created_by: suggestedBy || userName || 'anonymous'
+    url: url,
+    submitted_by: suggestedBy || userName || 'anonymous',
+    source: 'web',
+    notes: notes || null
   };
 
   sb
-    .from('issues')
+    .from('suggestions')
     .insert([suggestion])
     .then(() => {
       closeAddModal();
