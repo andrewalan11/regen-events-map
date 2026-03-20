@@ -462,12 +462,15 @@ function mkIcon(color, isIgn, isStar, ev) {
   const fill = isIgn ? '#555' : color;
   const em = gi(ev);
   const lb = ev.name.length > 16 ? ev.name.slice(0, 14) + '...' : ev.name;
+  const starData = starCounts.get(ev.id);
+  const sc = starData ? starData.count : 0;
+  const countBadge = sc > 0 ? `<div style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;background:#e9c46a;color:#1a1a2e;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #1a1a2e;pointer-events:none;z-index:2">${sc}</div>` : '';
   const ring = isStar ? `<div style="position:absolute;top:-7px;left:-7px;width:50px;height:50px;border-radius:50%;border:2px solid #e9c46a;box-shadow:0 0 10px 2px rgba(233,196,106,.4);pointer-events:none"></div>` : '';
   const bdr = isStar ? '2.5px solid #e9c46a' : '2px solid rgba(255,255,255,.6)';
   const glow = isStar ? 'box-shadow:0 2px 8px rgba(0,0,0,.4),0 0 14px 3px rgba(233,196,106,.35);' : 'box-shadow:0 2px 8px rgba(0,0,0,.4);';
   return L.divIcon({
     className: 'cm',
-    html: `<div style="position:relative;opacity:${op};text-align:center">${ring}<div style="width:36px;height:36px;border-radius:50%;background:${fill};border:${bdr};display:flex;align-items:center;justify-content:center;font-size:16px;${glow}cursor:pointer;position:relative;z-index:1">${em}</div><div style="font-size:8px;color:${isStar ? '#e9c46a' : '#ccc'};text-shadow:0 1px 3px #000,0 0 6px #000;margin-top:1px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;${isStar ? 'font-weight:600' : ''}">${lb}</div></div>`,
+    html: `<div style="position:relative;opacity:${op};text-align:center">${ring}<div style="width:36px;height:36px;border-radius:50%;background:${fill};border:${bdr};display:flex;align-items:center;justify-content:center;font-size:16px;${glow}cursor:pointer;position:relative;z-index:1">${em}</div>${countBadge}<div style="font-size:8px;color:${isStar ? '#e9c46a' : '#ccc'};text-shadow:0 1px 3px #000,0 0 6px #000;margin-top:1px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;${isStar ? 'font-weight:600' : ''}">${lb}</div></div>`,
     iconSize: [90, 58],
     iconAnchor: [45, 38],
     popupAnchor: [0, -40]
@@ -491,9 +494,14 @@ function popupHtml(ev, idx) {
   const starData = starCounts.get(ev.id);
   const starCount = starData ? starData.count : 0;
   const stargazers = starData && starData.stargazers ? starData.stargazers.join(', ') : '';
-  const starList = starCount > 0 ? `<div class="star-list">⭐ ${starCount} interested: ${stargazers}</div>` : '';
-  
-  return `${img}<div class="pi">${badge}<h3>${ev.name}</h3><div class="dates">${ev.dates}</div><div class="loc">${ev.location}</div>${venue}<div class="desc">${ev.description}</div>${tags}${url ? '<br>' + url : ''}${starList}<div class="pa"><button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ Interested' : '☆ Interested'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '✓ Ignored' : '— Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
+  const beaconBanner = starCount > 0
+    ? `<div style="margin:8px 0;padding:8px 12px;background:#e9c46a11;border:1px solid #e9c46a33;border-radius:8px">
+        <div style="font-size:12px;color:#e9c46a;font-weight:600">✨ ${starCount} ${starCount === 1 ? 'person resonates' : 'people resonate'}</div>
+        ${stargazers ? `<div style="font-size:10px;color:#aaa;margin-top:3px">${stargazers}</div>` : ''}
+      </div>`
+    : '';
+
+  return `${img}<div class="pi">${badge}<h3>${ev.name}</h3><div class="dates">${ev.dates}</div><div class="loc">${ev.location}</div>${venue}<div class="desc">${ev.description}</div>${beaconBanner}${tags}${url ? '<br>' + url : ''}<div class="pa"><button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ I resonate' : '☆ I resonate'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '✓ Ignored' : '— Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
 }
 
 function tipHtml(ev) {
