@@ -270,8 +270,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <script>
+// === ERROR DISPLAY ===
+window.onerror = function(msg, url, line, col, err) {
+  document.getElementById('map').innerHTML = '<div style="color:#e63946;padding:40px;font-family:monospace"><h2>JS Error</h2><p>'+msg+'</p><p>Line: '+line+', Col: '+col+'</p><pre>'+(err?.stack||'')+'</pre></div>';
+  return false;
+};
+window.addEventListener('unhandledrejection', function(e) {
+  document.getElementById('map').innerHTML += '<div style="color:#e9c46a;padding:20px;font-family:monospace"><h3>Async Error</h3><p>'+e.reason?.message+'</p><pre>'+(e.reason?.stack||'')+'</pre></div>';
+});
+
 // === SUPABASE INIT ===
-const supabase = window.supabase.createClient(
+const sb = window.supabase.createClient(
   'https://aurftdjjghtzeofqzezx.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1cmZ0ZGpqZ2h0emVvZnF6ZXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5OTA4MzUsImV4cCI6MjA4OTU2NjgzNX0.PeOisRNczOCYOgyiKL8lNDA0ZNiwhzBhqQWDYx6DtMo'
 );
@@ -590,7 +599,7 @@ function toggleStar(idx) {
 
 async function starEvent(eventId) {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from('stars')
       .insert([{ event_id: eventId, user_name: userName }])
       .select();
@@ -612,7 +621,7 @@ async function starEvent(eventId) {
 
 async function unstarEvent(eventId) {
   try {
-    const { error } = await supabase
+    const { error } = await sb
       .from('stars')
       .delete()
       .eq('event_id', eventId)
@@ -658,7 +667,7 @@ function reportIssue(idx) {
   };
   
   // Save to Supabase
-  supabase
+  sb
     .from('issues')
     .insert([issueObj])
     .then(() => {
@@ -1079,7 +1088,7 @@ function addEvent() {
   if (img) newEvent.image_url = img;
   newEvent.created_by = userName || 'community';
   
-  supabase
+  sb
     .from('events')
     .insert([newEvent])
     .then(() => {
@@ -1096,7 +1105,7 @@ function addEvent() {
 // === FETCH DATA FROM SUPABASE ===
 async function fetchEvents() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from('events')
       .select('*')
       .order('month')
@@ -1118,7 +1127,7 @@ async function fetchEvents() {
 
 async function fetchStarCounts() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from('event_star_counts')
       .select('event_id, star_count, stargazers');
     
