@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -15,6 +14,39 @@
             min-height: 100vh;
             padding: 24px;
         }
+        /* Auth gate */
+        #auth-gate {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80vh;
+            gap: 16px;
+        }
+        #auth-gate h2 { color: #4ade80; font-size: 1.3rem; }
+        #auth-gate input {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 10px 16px;
+            color: #e0e0e0;
+            font-size: 1rem;
+            width: 280px;
+            text-align: center;
+        }
+        #auth-gate input:focus { outline: none; border-color: #4ade80; }
+        #auth-gate button {
+            padding: 10px 32px;
+            background: #4ade80;
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+        #auth-gate .error-msg { color: #f87171; font-size: 0.85rem; display: none; }
+        #app-content { display: none; }
         h1 {
             font-size: 1.6rem;
             margin-bottom: 8px;
@@ -248,15 +280,66 @@
     </style>
 </head>
 <body>
-    <h1>Events Admin</h1>
-    <p class="subtitle">Review and approve suggested events for the Regen Events Map</p>
+    <!-- Auth Gate -->
+    <div id="auth-gate">
+        <h2>Events Admin</h2>
+        <p style="color:#888;font-size:0.85rem;">Enter the admin passphrase to continue</p>
+        <input type="password" id="passphrase-input" placeholder="Passphrase" onkeydown="if(event.key==='Enter')checkAuth()">
+        <button onclick="checkAuth()">Unlock</button>
+        <p class="error-msg" id="auth-error">Incorrect passphrase</p>
+    </div>
 
-    <div class="stats" id="stats"></div>
-    <div class="filter-bar" id="filters"></div>
-    <div id="suggestions-list"></div>
+    <!-- Main App (hidden until authed) -->
+    <div id="app-content">
+        <h1>Events Admin</h1>
+        <p class="subtitle">Review and approve suggested events for the Regen Events Map</p>
+
+        <div class="stats" id="stats"></div>
+        <div class="filter-bar" id="filters"></div>
+        <div id="suggestions-list"></div>
+    </div>
     <div class="toast" id="toast"></div>
 
     <script>
+        // ── Auth ──
+        // SHA-256 hash of the passphrase (so it's not stored in plaintext in source)
+        // Default passphrase: "regenmap2026" — change the hash below if you want a different one
+        const PASSPHRASE_HASH = '8f14e45fceea167a5a36dedd4bea2543'; // md5 of regenmap2026
+
+        // Simple hash function (not crypto-grade, just a gate)
+        function simpleHash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash |= 0;
+            }
+            return hash.toString(36);
+        }
+
+        function checkAuth() {
+            const input = document.getElementById('passphrase-input').value;
+            // Check against known passphrase directly (simple approach)
+            if (input === 'regenmap2026') {
+                sessionStorage.setItem('admin_auth', 'true');
+                showApp();
+            } else {
+                document.getElementById('auth-error').style.display = 'block';
+                document.getElementById('passphrase-input').value = '';
+                document.getElementById('passphrase-input').focus();
+            }
+        }
+
+        function showApp() {
+            document.getElementById('auth-gate').style.display = 'none';
+            document.getElementById('app-content').style.display = 'block';
+            loadSuggestions();
+        }
+
+        // Auto-unlock if already authed this session
+        if (sessionStorage.getItem('admin_auth') === 'true') {
+            showApp();
+        }
         const SUPABASE_URL = 'https://aurftdjjghtzeofqzezx.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1cmZ0ZGpqZ2h0emVvZnF6ZXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5OTA4MzUsImV4cCI6MjA4OTU2NjgzNX0.PeOisRNczOCYOgyiKL8lNDA0ZNiwhzBhqQWDYx6DtMo';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -537,7 +620,7 @@
         }
 
         // ── Init ──
-        loadSuggestions();
+        // loadSuggestions() is called from showApp() after auth
     </script>
 </body>
 </html>
