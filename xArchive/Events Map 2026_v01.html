@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events Map 2026</title>
+    
+    <!-- Leaflet.js -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Leaflet MarkerCluster -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 340px;
+            bottom: 0;
+            z-index: 1;
+        }
+        
+        .timeline-sidebar {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 340px;
+            height: 100%;
+            background: #252525;
+            border-left: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+        
+        .timeline-header {
+            padding: 12px;
+            border-bottom: 1px solid #444;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .timeline-search {
+            padding: 8px 12px;
+            border-bottom: 1px solid #444;
+        }
+        
+        .timeline-search input {
+            width: 100%;
+            padding: 6px 8px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 12px;
+        }
+        
+        .timeline-search input::placeholder {
+            color: #888;
+        }
+        
+        .timeline-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        .timeline-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .timeline-scroll::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        
+        .timeline-scroll::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 3px;
+        }
+        
+        .month-header {
+            position: sticky;
+            top: 0;
+            padding: 8px 12px;
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #1a1a1a;
+            border-bottom: 1px solid #444;
+            z-index: 5;
+        }
+        
+        .timeline-event {
+            padding: 10px 12px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .timeline-event:hover {
+            background: #2a2a2a;
+        }
+        
+        .timeline-event-icon {
+            display: inline-block;
+            margin-right: 6px;
+            font-size: 16px;
+        }
+        
+        .timeline-event-name {
+            font-weight: 600;
+            font-size: 12px;
+            display: block;
+            margin-bottom: 3px;
+            color: #fff;
+        }
+        
+        .timeline-event.starred .timeline-event-name {
+            color: #ffd700;
+            font-weight: 700;
+        }
+        
+        .timeline-event-meta {
+            font-size: 11px;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+        
+        .timeline-event-location {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 6px;
+        }
+        
+        .timeline-event-buttons {
+            display: flex;
+            gap: 6px;
+        }
+        
+        .timeline-event-buttons button {
+            padding: 3px 6px;
+            font-size: 10px;
+            border: 1px solid #555;
+            background: #1a1a1a;
+            color: #aaa;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .timeline-event-buttons button:hover {
+            border-color: #777;
+            color: #fff;
+        }
+        
+        .timeline-event-buttons button.star.active {
+            background: #ffd700;
+            color: #1a1a1a;
+            border-color: #ffd700;
+        }
+        
+        .timeline-event-buttons button.ignore.active {
+            background: #555;
+            color: #fff;
+            border-color: #555;
+        }
+        
+        .top-controls {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            right: 364px;
+            z-index: 20;
+        }
+        
+        .search-bar {
+            width: 100%;
+            max-width: 400px;
+            padding: 8px 12px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+        
+        .search-bar::placeholder {
+            color: #666;
+        }
+        
+        .month-filter {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            max-width: 300px;
+        }
+        
+        .month-pill {
+            padding: 5px 12px;
+            border: 1px solid #555;
+            background: #1a1a1a;
+            color: #aaa;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        
+        .month-pill:hover {
+            border-color: #777;
+        }
+        
+        .month-pill.active {
+            color: #fff;
+            border-color: currentColor;
+        }
+        
+        .bottom-controls {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            right: 364px;
+            display: flex;
+            gap: 8px;
+            z-index: 20;
+        }
+        
+        .btn {
+            padding: 8px 14px;
+            background: #2a2a2a;
+            border: 1px solid #555;
+            color: #fff;
+            border-radius: 5px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            border-color: #777;
+            background: #333;
+        }
+        
+        .starred-panel, .issues-panel {
+            position: absolute;
+            bottom: 12px;
+            width: 300px;
+            max-height: 200px;
+            background: #2a2a2a;
+            border: 1px solid #555;
+            border-radius: 6px;
+            overflow-y: auto;
+            font-size: 12px;
+            z-index: 20;
+        }
+        
+        .starred-panel {
+            right: 364px;
+            bottom: 80px;
+        }
+        
+        .issues-panel {
+            right: 364px;
+            bottom: 310px;
+        }
+        
+        .panel-title {
+            font-weight: 600;
+            padding: 8px 12px;
+            border-bottom: 1px solid #555;
+            position: sticky;
+            top: 0;
+            background: #1a1a1a;
+        }
+        
+        .panel-item {
+            padding: 8px 12px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .panel-item:hover {
+            background: #333;
+        }
+        
+        .leaflet-popup-content {
+            color: #333 !important;
+            font-size: 13px !important;
+        }
+        
+        .popup-image {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            margin-bottom: 8px;
+            border-radius: 4px;
+        }
+        
+        .popup-title {
+            font-weight: 700;
+            margin-bottom: 4px;
+            font-size: 14px !important;
+        }
+        
+        .popup-dates {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 6px;
+        }
+        
+        .popup-location {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 6px;
+        }
+        
+        .popup-desc {
+            font-size: 12px;
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+        
+        .popup-url {
+            font-size: 11px;
+            color: #0066cc;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+        
+        .popup-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+        
+        .popup-tag {
+            background: #e8e8e8;
+            color: #333;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 500;
+        }
+        
+        .popup-buttons {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        
+        .popup-buttons button {
+            flex: 1;
+            padding: 6px;
+            font-size: 11px;
+            border: 1px solid #ccc;
+            background: #fff;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .popup-buttons button:hover {
+            background: #f0f0f0;
+        }
+        
+        .popup-buttons button.active {
+            background: #ffd700;
+            border-color: #ffd700;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .popup-buttons button.ignore {
+            background: #888;
+            color: #fff;
+            border-color: #888;
+        }
+        
+        .popup-buttons button.ignore.active {
+            background: #555;
+            border-color: #555;
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: #2a2a2a;
+            border: 1px solid #555;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        
+        .modal-body {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .form-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #aaa;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            padding: 8px;
+            background: #1a1a1a;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 12px;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            justify-content: flex-end;
+        }
+        
+        .modal-footer button {
+            padding: 8px 16px;
+            border: 1px solid #555;
+            background: #1a1a1a;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .modal-footer button:hover {
+            background: #333;
+            border-color: #777;
+        }
+        
+        .modal-footer button.primary {
+            background: #4a9e4a;
+            border-color: #4a9e4a;
+        }
+        
+        .modal-footer button.primary:hover {
+            background: #5aae5a;
+            border-color: #5aae5a;
+        }
+        
+        /* Marker styles */
+        .event-marker {
+            width: 44px;
+            height: 44px;
+            background: #2a2a2a;
+            border: 2px solid #555;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        
+        .event-marker:hover {
+            transform: scale(1.1);
+            border-color: #777;
+        }
+        
+        .event-marker.starred {
+            box-shadow: 0 0 0 6px #ffd700, 0 0 0 10px #d4af37, 0 0 10px rgba(255,215,0,0.5);
+            border-color: #ffd700;
+        }
+        
+        .marker-label {
+            position: absolute;
+            bottom: -20px;
+            white-space: nowrap;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            pointer-events: none;
+        }
+        
+        .marker-label.starred {
+            color: #ffd700;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="timeline-sidebar">
+        <div class="timeline-header">Timeline 2026</div>
+        <div class="timeline-search">
+            <input type="text" id="timelineSearch" placeholder="Search events...">
+        </div>
+        <div class="timeline-scroll" id="timelineScroll"></div>
+    </div>
+    
+    <div class="top-controls">
+        <input type="text" id="searchBar" class="search-bar" placeholder="Search events...">
+        <div class="month-filter" id="monthFilter"></div>
+    </div>
+    
+    <div class="bottom-controls">
+        <button class="btn" id="addEventBtn">+ Add Event</button>
+        <button class="btn" id="exportBtn">Export</button>
+        <button class="btn" id="importBtn">Import</button>
+    </div>
+    
+    <div class="modal" id="addEventModal">
+        <div class="modal-content">
+            <div class="modal-header">Add Event</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="eventName">
+                </div>
+                <div class="form-group">
+                    <label>Dates</label>
+                    <input type="text" id="eventDates" placeholder="e.g., Jun 13–21">
+                </div>
+                <div class="form-group">
+                    <label>Month</label>
+                    <select id="eventMonth">
+                        <option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option>
+                        <option>May</option><option>Jun</option><option>Jul</option><option>Aug</option>
+                        <option>Sep</option><option>Oct</option><option>Nov</option><option>Dec</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Latitude</label>
+                    <input type="number" id="eventLat" step="0.0001">
+                </div>
+                <div class="form-group">
+                    <label>Longitude</label>
+                    <input type="number" id="eventLng" step="0.0001">
+                </div>
+                <div class="form-group">
+                    <label>Location</label>
+                    <input type="text" id="eventLocation">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="eventDesc"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>URL</label>
+                    <input type="text" id="eventUrl">
+                </div>
+                <div class="form-group">
+                    <label>Tags (comma-separated)</label>
+                    <input type="text" id="eventTags">
+                </div>
+                <div class="form-group">
+                    <label>Image URL</label>
+                    <input type="text" id="eventImg">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelBtn">Cancel</button>
+                <button id="saveBtn" class="primary">Save</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="starred-panel" id="starredPanel" style="display:none;">
+        <div class="panel-title">⭐ Starred</div>
+        <div id="starredList"></div>
+    </div>
+    
+    <div class="issues-panel" id="issuesPanel" style="display:none;">
+        <div class="panel-title">⚠️ Issues</div>
+        <div id="issuesList"></div>
+    </div>
+    
+    <script>
+        // Event data
+        const monthColors = {
+            'Mar': '#4a9e4a', 'Apr': '#6bbe45', 'May': '#a8d430', 'Jun': '#d4c520',
+            'Jul': '#e8b518', 'Aug': '#e89530', 'Sep': '#d4652a', 'Oct': '#b5422a',
+            'Nov': '#7a3b2e', 'Dec': '#4a6a8a'
+        };
+        
+        const emojiMap = {
+            'ecovillage': '🛖', 'permaculture': '🌱', 'bioregional': '🌍', 'climate': '☁️',
+            'systems change': '🦋', 'web3': '⛓️', 'governance': '🏛️', 'regen ag': '🌾',
+            'festival': '🎪', 'commons': '🤝', 'transformation': '✨', 'UPgame': '🔮',
+            'primitive skills': '🏹', 'craft': '🧶', 'healing': '💚', 'rewilding': '🐺',
+            'gathering': '🧠', 'retreat': '🧘', 'impact': '💡', 'futures': '🔭',
+            'cultural': '🎭', 'hacker camp': '💻', 'burning man': '🔥', 'wellbeing': '🌸',
+            'food systems': '🍎', 'AI': '🤖', 'entrepreneurship': '🚀', 'regen': '♻️',
+            'regen economics': '💰'
+        };
+        
+        let events = [
+            {name:"Burning Man", dates:"Aug 24–Sep 1", month:"Aug", lat:40.787, lng:-119.207, location:"Black Rock Desert, Nevada, USA", desc:"Art, community, self-expression, and self-reliance.", url:"burningman.org", tags:["burning man","transformation","community"], img:"https://images.unsplash.com/photo-1533900298318-6b8da08a523e?w=640&h=280&fit=crop"},
+            {name:"Envision", dates:"Apr 24–27", month:"Apr", lat:9.9, lng:-84.101, location:"Costa Rica", desc:"Music, technology, and art festival in nature.", url:"envisioncore.com", tags:["festival","art","community"], img:"https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=640&h=280&fit=crop"},
+            {name:"Boom Festival", dates:"Aug 5–12", month:"Aug", lat:37.862, lng:-7.606, location:"Idanha-a-Nova, Portugal", desc:"Transformational music and art festival.", url:"boomfestival.org", tags:["festival","transformation","community"], img:"https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=640&h=280&fit=crop"},
+            {name:"Lightning in a Bottle", dates:"May 22–26", month:"May", lat:34.956, lng:-119.351, location:"Oak Canyon Park, California, USA", desc:"Music, art, and community gathering.", url:"lightninginaboottle.com", tags:["festival","art","community"], img:"https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=640&h=280&fit=crop"},
+            {name:"Coachella", dates:"Apr 11–13, 18–20", month:"Apr", lat:33.684, lng:-116.243, location:"Indio, California, USA", desc:"Music and arts festival.", url:"coachella.com", tags:["festival","music","art"], img:"https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=640&h=280&fit=crop"},
+            {name:"ZuBerlin 2026", dates:"Jun 13–21", month:"Jun", lat:52.52, lng:13.405, location:"Berlin (Futura Garden)", desc:"Immersive residency bridging humanity and technology. Decentralized systems, cryptography, future society. Part of Berlin Blockchain Week.", url:"zuberlin.city", tags:["web3","futures"], img:"https://images.unsplash.com/photo-1560969184-10fe8719e047?w=640&h=280&fit=crop"},
+            {name:"4th Collaborative Finance Gathering (CoFi)", dates:"Jun 20–28", month:"Jun", lat:47.698, lng:15.775, location:"Commons Hub, Hirschwang an der Rax, Austria", desc:"Collaborative finance, commons economics, community currencies. 4th edition.", url:"collaborative-finance.net", tags:["commons"], img:"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=640&h=280&fit=crop"},
+            {name:"2nd ReGen Kids Gathering", dates:"Mar 27–Apr 1", month:"Apr", lat:36.9, lng:-4.19, location:"Iki-Gaia Eco-village, Periana (Málaga), Spain", desc:"International regenerative education gathering. Regen educators, ecovillage founders, homeschooling families.", url:"semillamontealegre.es", tags:["ecovillage","gathering"], img:"https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=640&h=280&fit=crop"},
+            {name:"LiberPulco 2026", dates:"Aug 14–17", month:"Aug", lat:45.67, lng:18.98, location:"Apatin, Serbia (ARK Liberland Village)", desc:"Visionaries, innovators, freedom lovers. Talks, workshops, excursion to Liberland by boat. VIII edition.", url:"anarchapulco.com", tags:["governance"], img:"https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=640&h=280&fit=crop"}
+        ];
+        
+        let state = {
+            starred: [],
+            ignored: [],
+            issues: [],
+            userAdded: []
+        };
+        
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        let activeMonths = new Set();
+        let map, markerClusterGroup, markersMap = {};
+        
+        // Init
+        function init() {
+            loadState();
+            initMap();
+            renderMonthFilter();
+            updateTimeline();
+            setupEventListeners();
+        }
+        
+        // LocalStorage
+        function saveState() {
+            localStorage.setItem('eventsMapState', JSON.stringify(state));
+        }
+        
+        function loadState() {
+            const saved = localStorage.getItem('eventsMapState');
+            if (saved) {
+                const loaded = JSON.parse(saved);
+                state = {
+                    starred: loaded.starred || [],
+                    ignored: loaded.ignored || [],
+                    issues: loaded.issues || [],
+                    userAdded: loaded.userAdded || []
+                };
+                events = [...events, ...state.userAdded];
+            }
+        }
+        
+        // Map init
+        function initMap() {
+            map = L.map('map', {
+                center: [20, 0],
+                zoom: 3,
+                tiles: {
+                    attribution: '&copy; OpenStreetMap contributors &copy; CartoDB',
+                    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                }
+            });
+            
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors &copy; CartoDB',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(map);
+            
+            markerClusterGroup = L.markerClusterGroup({
+                disableClusteringAtZoom: 8,
+                maxClusterRadius: 80
+            });
+            
+            map.addLayer(markerClusterGroup);
+            renderMarkers();
+        }
+        
+        // Render markers
+        function renderMarkers() {
+            markerClusterGroup.clearLayers();
+            markersMap = {};
+            
+            events.forEach(event => {
+                if (!shouldShowEvent(event)) return;
+                
+                const firstTag = event.tags[0] || 'gathering';
+                const emoji = emojiMap[firstTag] || '📍';
+                
+                const isStarred = state.starred.includes(event.name);
+                const isIgnored = state.ignored.includes(event.name);
+                
+                const html = `<div class="event-marker ${isStarred ? 'starred' : ''}">${emoji}</div>`;
+                const marker = L.marker([event.lat, event.lng], {
+                    icon: L.divIcon({
+                        html: html + `<div class="marker-label ${isStarred ? 'starred' : ''}">${event.name.substring(0, 15)}</div>`,
+                        className: '',
+                        iconSize: [44, 64],
+                        iconAnchor: [22, 44]
+                    })
+                });
+                
+                // Hover tooltip
+                const tooltipContent = `<strong>${event.name}</strong><br>${event.dates}<br><img src="${event.img}" style="width:200px;height:140px;object-fit:cover;border-radius:4px;margin-top:4px;">`;
+                marker.bindTooltip(tooltipContent, { direction: 'top' });
+                
+                // Click popup
+                const popupContent = createPopupContent(event);
+                marker.bindPopup(popupContent, { maxWidth: 280 });
+                
+                // Handle popup open/close for tooltip
+                marker.on('popupopen', function() {
+                    marker.closeTooltip();
+                });
+                
+                marker.on('popupclose', function() {
+                    marker.bindTooltip(tooltipContent, { direction: 'top' });
+                });
+                
+                markerClusterGroup.addLayer(marker);
+                markersMap[event.name] = marker;
+            });
+        }
+        
+        function createPopupContent(event) {
+            const isStarred = state.starred.includes(event.name);
+            const isIgnored = state.ignored.includes(event.name);
+            const hasIssue = state.issues.find(i => i.event === event.name);
+            
+            return `
+                <div style="width:280px;">
+                    ${event.img ? `<img src="${event.img}" class="popup-image">` : ''}
+                    <div class="popup-title">${event.name}</div>
+                    <div class="popup-dates">${event.dates}</div>
+                    <div class="popup-location"><strong>📍</strong> ${event.location}</div>
+                    <div class="popup-desc">${event.desc}</div>
+                    ${event.url ? `<div class="popup-url"><a href="https://${event.url}" target="_blank" style="color:#0066cc;">${event.url}</a></div>` : ''}
+                    <div class="popup-tags">
+                        ${event.tags.map(tag => `<span class="popup-tag">${tag}</span>`).join('')}
+                    </div>
+                    <div class="popup-buttons">
+                        <button class="star ${isStarred ? 'active' : ''}" onclick="toggleStar('${event.name}')">⭐ Star</button>
+                        <button class="ignore ${isIgnored ? 'active' : ''}" onclick="toggleIgnore('${event.name}')">⊘ Ignore</button>
+                        <button onclick="reportEvent('${event.name}')">🚩 Report</button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Month filter
+        function renderMonthFilter() {
+            const container = document.getElementById('monthFilter');
+            months.forEach(month => {
+                const pill = document.createElement('div');
+                pill.className = 'month-pill';
+                pill.textContent = month;
+                pill.style.borderColor = monthColors[month] || '#555';
+                pill.onclick = () => toggleMonth(month, pill);
+                container.appendChild(pill);
+            });
+        }
+        
+        function toggleMonth(month, element) {
+            if (activeMonths.has(month)) {
+                activeMonths.delete(month);
+                element.classList.remove('active');
+            } else {
+                activeMonths.add(month);
+                element.classList.add('active');
+            }
+            updateTimeline();
+            renderMarkers();
+        }
+        
+        function shouldShowEvent(event) {
+            if (activeMonths.size > 0 && !activeMonths.has(event.month)) return false;
+            if (state.ignored.includes(event.name)) return false;
+            return true;
+        }
+        
+        // Timeline
+        function updateTimeline() {
+            const container = document.getElementById('timelineScroll');
+            container.innerHTML = '';
+            
+            const filtered = events.filter(shouldShowEvent);
+            const grouped = {};
+            
+            filtered.forEach(event => {
+                if (!grouped[event.month]) grouped[event.month] = [];
+                grouped[event.month].push(event);
+            });
+            
+            months.forEach(month => {
+                if (!grouped[month]) return;
+                
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'month-header';
+                headerDiv.style.backgroundColor = monthColors[month] || '#333';
+                headerDiv.textContent = month;
+                container.appendChild(headerDiv);
+                
+                grouped[month].forEach(event => {
+                    const firstTag = event.tags[0] || 'gathering';
+                    const emoji = emojiMap[firstTag] || '📍';
+                    const isStarred = state.starred.includes(event.name);
+                    
+                    const eventDiv = document.createElement('div');
+                    eventDiv.className = `timeline-event ${isStarred ? 'starred' : ''}`;
+                    eventDiv.innerHTML = `
+                        <div class="timeline-event-name"><span class="timeline-event-icon">${emoji}</span>${event.name}</div>
+                        <div class="timeline-event-meta">${event.dates}</div>
+                        <div class="timeline-event-location">${event.location.substring(0, 40)}</div>
+                        <div class="timeline-event-buttons">
+                            <button class="star ${isStarred ? 'active' : ''}" onclick="toggleStar('${event.name}')">⭐</button>
+                            <button class="ignore ${state.ignored.includes(event.name) ? 'active' : ''}" onclick="toggleIgnore('${event.name}')">⊘</button>
+                        </div>
+                    `;
+                    
+                    eventDiv.onclick = () => {
+                        const marker = markersMap[event.name];
+                        if (marker) {
+                            map.flyTo([event.lat, event.lng], 10);
+                            marker.openPopup();
+                        }
+                    };
+                    
+                    container.appendChild(eventDiv);
+                });
+            });
+        }
+        
+        // Actions
+        function toggleStar(eventName) {
+            const idx = state.starred.indexOf(eventName);
+            if (idx > -1) {
+                state.starred.splice(idx, 1);
+            } else {
+                state.starred.push(eventName);
+            }
+            saveState();
+            updateTimeline();
+            renderMarkers();
+            updateStarredPanel();
+        }
+        
+        function toggleIgnore(eventName) {
+            const idx = state.ignored.indexOf(eventName);
+            if (idx > -1) {
+                state.ignored.splice(idx, 1);
+            } else {
+                state.ignored.push(eventName);
+            }
+            saveState();
+            updateTimeline();
+            renderMarkers();
+        }
+        
+        function reportEvent(eventName) {
+            const issue = state.issues.find(i => i.event === eventName);
+            if (!issue) {
+                const report = prompt('Report issue:');
+                if (report) {
+                    state.issues.push({event: eventName, report: report});
+                    saveState();
+                    updateIssuesPanel();
+                }
+            }
+        }
+        
+        function updateStarredPanel() {
+            const panel = document.getElementById('starredPanel');
+            const list = document.getElementById('starredList');
+            
+            const starred = events.filter(e => state.starred.includes(e.name));
+            if (starred.length === 0) {
+                panel.style.display = 'none';
+                return;
+            }
+            
+            panel.style.display = 'block';
+            list.innerHTML = starred.map(e => `
+                <div class="panel-item" onclick="flyToEvent('${e.name}')">${e.name}</div>
+            `).join('');
+        }
+        
+        function updateIssuesPanel() {
+            const panel = document.getElementById('issuesPanel');
+            const list = document.getElementById('issuesList');
+            
+            if (state.issues.length === 0) {
+                panel.style.display = 'none';
+                return;
+            }
+            
+            panel.style.display = 'block';
+            list.innerHTML = state.issues.map(i => `
+                <div class="panel-item" onclick="flyToEvent('${i.event}')">${i.event}<div style="font-size:10px;color:#aaa;">${i.report}</div></div>
+            `).join('');
+        }
+        
+        function flyToEvent(eventName) {
+            const event = events.find(e => e.name === eventName);
+            if (event && markersMap[eventName]) {
+                map.flyTo([event.lat, event.lng], 10);
+                markersMap[eventName].openPopup();
+            }
+        }
+        
+        // Modal
+        function setupEventListeners() {
+            document.getElementById('addEventBtn').onclick = () => {
+                document.getElementById('addEventModal').classList.add('active');
+            };
+            
+            document.getElementById('cancelBtn').onclick = () => {
+                document.getElementById('addEventModal').classList.remove('active');
+            };
+            
+            document.getElementById('saveBtn').onclick = () => {
+                const newEvent = {
+                    name: document.getElementById('eventName').value,
+                    dates: document.getElementById('eventDates').value,
+                    month: document.getElementById('eventMonth').value,
+                    lat: parseFloat(document.getElementById('eventLat').value),
+                    lng: parseFloat(document.getElementById('eventLng').value),
+                    location: document.getElementById('eventLocation').value,
+                    desc: document.getElementById('eventDesc').value,
+                    url: document.getElementById('eventUrl').value,
+                    tags: document.getElementById('eventTags').value.split(',').map(t => t.trim()),
+                    img: document.getElementById('eventImg').value
+                };
+                
+                if (newEvent.name && newEvent.lat && newEvent.lng) {
+                    events.push(newEvent);
+                    state.userAdded.push(newEvent);
+                    saveState();
+                    updateTimeline();
+                    renderMarkers();
+                    document.getElementById('addEventModal').classList.remove('active');
+                    // Reset form
+                    document.getElementById('addEventModal').querySelectorAll('input, textarea, select').forEach(el => el.value = '');
+                }
+            };
+            
+            document.getElementById('exportBtn').onclick = () => {
+                const data = {events, state};
+                const json = JSON.stringify(data, null, 2);
+                const blob = new Blob([json], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'events-map-state.json';
+                a.click();
+            };
+            
+            document.getElementById('importBtn').onclick = () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'application/json';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            if (data.events) events = data.events;
+                            if (data.state) state = data.state;
+                            saveState();
+                            updateTimeline();
+                            renderMarkers();
+                            updateStarredPanel();
+                            updateIssuesPanel();
+                        } catch (e) {
+                            alert('Invalid import file');
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+                input.click();
+            };
+            
+            document.getElementById('searchBar').oninput = (e) => {
+                const query = e.target.value.toLowerCase();
+                // Filter logic would go here
+            };
+            
+            updateStarredPanel();
+            updateIssuesPanel();
+        }
+        
+        // Start
+        init();
+    </script>
+</body>
+</html>

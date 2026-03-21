@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Events & Gatherings 2026 — Map</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a1a2e;color:#e0e0e0;overflow:hidden;height:100vh}
+.top-bar{padding:8px 16px;background:#16213e;border-bottom:1px solid #0f3460;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.top-bar h1{font-size:16px;color:#e0e0e0;font-weight:600;white-space:nowrap}
+.search-box{flex:1;min-width:180px;max-width:320px;position:relative}
+.search-box input{width:100%;padding:5px 10px 5px 28px;border-radius:14px;border:1px solid #333;background:#0f0f2a;color:#e0e0e0;font-size:12px;outline:none}
+.search-box input:focus{border-color:#2a9d8f}
+.search-box::before{content:'🔍';position:absolute;left:8px;top:5px;font-size:11px}
+.top-btns{display:flex;gap:4px;align-items:center;margin-left:auto}
+.btn{font-size:10px;padding:4px 10px;border-radius:8px;cursor:pointer;border:1px solid #444;background:#333;color:#ccc;white-space:nowrap}
+.btn:hover{background:#444}
+.btn-add{background:#2a9d8f33;color:#2a9d8f;border-color:#2a9d8f55}
+.btn-add:hover{background:#2a9d8f55}
+.btn-favs{background:#e9c46a22;color:#e9c46a;border-color:#e9c46a55}
+.btn-favs.active{background:#e9c46a;color:#1a1a2e;font-weight:600}
+.btn-issues{background:#e6394622;color:#e63946;border-color:#e6394655}
+
+.filters{display:flex;flex-wrap:wrap;gap:3px;padding:6px 16px;background:#16213e;border-bottom:1px solid #0f3460;align-items:center}
+.filters .fl{font-size:10px;color:#888;margin-right:4px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.filters label{font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none}
+.filters label:hover{opacity:.85}
+.filters label input{display:none}
+.m-mar{background:#4a9e4a;color:#fff}.m-mar.off{background:transparent;color:#4a9e4a;border-color:#4a9e4a}
+.m-apr{background:#6bbe45;color:#1a1a2e}.m-apr.off{background:transparent;color:#6bbe45;border-color:#6bbe45}
+.m-may{background:#a8d430;color:#1a1a2e}.m-may.off{background:transparent;color:#a8d430;border-color:#a8d430}
+.m-jun{background:#d4c520;color:#1a1a2e}.m-jun.off{background:transparent;color:#d4c520;border-color:#d4c520}
+.m-jul{background:#e8b518;color:#1a1a2e}.m-jul.off{background:transparent;color:#e8b518;border-color:#e8b518}
+.m-aug{background:#e89530;color:#1a1a2e}.m-aug.off{background:transparent;color:#e89530;border-color:#e89530}
+.m-sep{background:#d4652a;color:#fff}.m-sep.off{background:transparent;color:#d4652a;border-color:#d4652a}
+.m-oct{background:#b5422a;color:#fff}.m-oct.off{background:transparent;color:#b5422a;border-color:#b5422a}
+.m-nov{background:#7a3b2e;color:#fff}.m-nov.off{background:transparent;color:#7a3b2e;border-color:#7a3b2e}
+.m-dec{background:#4a6a8a;color:#fff}.m-dec.off{background:transparent;color:#4a6a8a;border-color:#4a6a8a}
+
+.main{display:flex;height:calc(100vh - 82px)}
+#map{flex:1;min-width:0}
+
+/* Timeline sidebar */
+.timeline{width:340px;background:#12122a;border-left:1px solid #0f3460;display:flex;flex-direction:column;flex-shrink:0}
+.tl-header{padding:10px 14px;border-bottom:1px solid #0f3460;font-size:12px;color:#888;display:flex;justify-content:space-between;align-items:center}
+.tl-header span{font-weight:600;color:#ccc}
+.tl-scroll{flex:1;overflow-y:auto;padding:0}
+.tl-month{padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;position:sticky;top:0;z-index:10;backdrop-filter:blur(8px)}
+.tl-event{padding:10px 14px;border-bottom:1px solid #ffffff08;cursor:pointer;transition:background .15s;display:flex;gap:10px;align-items:flex-start}
+.tl-event:hover{background:#1a1a3a}
+.tl-event.starred-ev{background:#e9c46a08;border-left:3px solid #e9c46a}
+.tl-event.ignored-ev{opacity:.35}
+.tl-event.highlighted{background:#2a9d8f22;border-left:3px solid #2a9d8f}
+.tl-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.tl-info{flex:1;min-width:0}
+.tl-name{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-dates{font-size:10px;color:#e9c46a;margin-top:1px}
+.tl-loc{font-size:10px;color:#777;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-stars{font-size:9px;color:#e9c46a;margin-top:2px}
+.tl-actions{display:flex;gap:4px;flex-shrink:0;align-self:center}
+.tl-actions button{background:none;border:none;cursor:pointer;font-size:14px;opacity:.4;transition:opacity .15s;padding:2px}
+.tl-actions button:hover{opacity:1}
+.tl-actions button.active-star{opacity:1;filter:none}
+.tl-empty{padding:30px 14px;text-align:center;color:#555;font-size:12px}
+
+/* Popup */
+.leaflet-popup-content-wrapper{background:#1e1e3a;color:#e0e0e0;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,.6)}
+.leaflet-popup-tip{background:#1e1e3a}
+.leaflet-popup-content{margin:0;max-width:360px;line-height:1.5;padding:0}
+.leaflet-popup-content .pi{padding:12px 16px}
+.leaflet-popup-content .pi img{width:100%;height:110px;object-fit:cover;border-radius:6px;margin-bottom:8px}
+.leaflet-popup-content h3{margin:0 0 3px;font-size:14px;color:#fff}
+.leaflet-popup-content .dates{font-size:12px;color:#e9c46a;font-weight:600;margin-bottom:4px}
+.leaflet-popup-content .loc{font-size:11px;color:#aaa;margin-bottom:4px}
+.leaflet-popup-content .venue{font-size:10px;color:#888;margin-bottom:6px}
+.leaflet-popup-content .desc{font-size:11px;color:#bbb;margin-bottom:6px}
+.leaflet-popup-content .tag{display:inline-block;font-size:9px;padding:1px 6px;border-radius:6px;margin-right:3px;margin-bottom:3px}
+.leaflet-popup-content a{color:#2a9d8f;text-decoration:none;font-size:11px}
+.leaflet-popup-content a:hover{text-decoration:underline}
+.leaflet-popup-close-button{color:#888!important}
+.pa{display:flex;gap:5px;margin-top:8px;padding-top:7px;border-top:1px solid #333;flex-wrap:wrap}
+.pa button{font-size:10px;padding:3px 10px;border-radius:5px;cursor:pointer;border:1px solid #444;transition:all .15s}
+.pa .bs{background:#e9c46a22;color:#e9c46a;border-color:#e9c46a55}
+.pa .bs:hover{background:#e9c46a44}
+.pa .bs.on{background:#e9c46a;color:#1a1a2e;font-weight:600}
+.pa .bi{background:#33333322;color:#888;border-color:#44444455}
+.pa .bi:hover{background:#44444444}
+.pa .bi.on{background:#555;color:#333}
+.pa .br{background:#33333322;color:#777;border-color:#44444455;margin-left:auto;font-size:9px}
+.star-list{font-size:9px;color:#e9c46a;margin-top:4px;padding-top:4px;border-top:1px solid #333}
+
+/* Tooltip */
+.leaflet-tooltip.et{background:#1e1e3a;color:#e0e0e0;border:1px solid #333;border-radius:10px;padding:0;font-size:12px;box-shadow:0 6px 24px rgba(0,0,0,.6);max-width:300px;white-space:normal;line-height:1.4;overflow:hidden}
+.et .ti{width:300px;height:120px;object-fit:cover;display:block}
+.et .tp{width:300px;height:60px;display:flex;align-items:center;justify-content:center;font-size:24px}
+.et .tb{padding:8px 12px 10px}
+.et .tn{font-weight:700;color:#fff;font-size:13px}
+.et .td{color:#e9c46a;font-weight:600;font-size:11px;margin-top:1px}
+.et .tds{color:#bbb;margin-top:4px;font-size:10px;line-height:1.4}
+.et .tt{margin-top:4px}
+.et .ttg{display:inline-block;font-size:8px;padding:1px 5px;border-radius:5px;margin-right:2px;background:#ffffff11;color:#999;border:1px solid #ffffff15}
+
+/* Cluster */
+.marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background:rgba(26,26,46,.7)!important}
+.marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{background:#2a9d8f!important;color:#fff!important;font-size:12px!important;font-weight:600}
+
+/* Loading spinner */
+.spinner{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:3000}
+.spinner.show{display:block}
+.spinner-circle{width:48px;height:48px;border:4px solid #333;border-top:4px solid #2a9d8f;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto;margin-bottom:12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner-text{font-size:12px;color:#888}
+
+/* Add event modal */
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:2000;display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#16213e;border-radius:12px;padding:24px;width:420px;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.modal h2{font-size:16px;color:#fff;margin-bottom:16px}
+.modal label{display:block;font-size:11px;color:#888;margin-bottom:3px;margin-top:10px}
+.modal input,.modal textarea,.modal select{width:100%;padding:6px 10px;border-radius:6px;border:1px solid #333;background:#0f0f2a;color:#e0e0e0;font-size:12px;outline:none;font-family:inherit}
+.modal textarea{height:60px;resize:vertical}
+.modal input:focus,.modal textarea:focus{border-color:#2a9d8f}
+.modal .row{display:flex;gap:8px}
+.modal .row>*{flex:1}
+.modal .mbtn{margin-top:16px;display:flex;gap:8px;justify-content:flex-end}
+.modal .mbtn button{padding:6px 16px;border-radius:6px;cursor:pointer;font-size:12px;border:1px solid #444}
+.modal .mbtn .save{background:#2a9d8f;color:#fff;border-color:#2a9d8f}
+.modal .mbtn .cancel{background:#333;color:#ccc}
+.modal .error{color:#e63946;font-size:11px;margin-top:4px}
+
+/* User name modal */
+.user-modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:2500;display:none;align-items:center;justify-content:center}
+.user-modal-overlay.show{display:flex}
+.user-modal{background:#16213e;border-radius:12px;padding:30px;width:380px;box-shadow:0 8px 32px rgba(0,0,0,.5);text-align:center}
+.user-modal h3{font-size:15px;color:#fff;margin-bottom:12px}
+.user-modal p{font-size:12px;color:#999;margin-bottom:16px}
+.user-modal input{width:100%;padding:8px 12px;border-radius:6px;border:1px solid #333;background:#0f0f2a;color:#e0e0e0;font-size:13px;outline:none;margin-bottom:16px}
+.user-modal input:focus{border-color:#2a9d8f}
+.user-modal .buttons{display:flex;gap:8px;justify-content:center}
+.user-modal button{padding:8px 20px;border-radius:6px;cursor:pointer;font-size:12px;border:1px solid #444;font-weight:600}
+.user-modal .save{background:#2a9d8f;color:#fff;border-color:#2a9d8f}
+.user-modal .cancel{background:#333;color:#ccc}
+
+/* Toast notifications */
+.toast{position:fixed;bottom:20px;left:20px;background:#333;color:#fff;padding:10px 16px;border-radius:6px;font-size:12px;z-index:4000;animation:slideIn .3s ease}
+@keyframes slideIn{from{transform:translateX(-200px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* Panels */
+.side-panel{position:fixed;top:0;right:-400px;width:400px;height:100vh;background:#16213e;border-left:1px solid #0f3460;z-index:2001;transition:right .3s ease;overflow-y:auto;display:flex;flex-direction:column}
+.side-panel.open{right:0}
+.sp-header{padding:14px 18px;border-bottom:1px solid #0f3460;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.sp-header h2{font-size:15px}
+.sp-close{background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px 8px}
+.sp-close:hover{color:#fff}
+.sp-list{flex:1;overflow-y:auto;padding:6px 0}
+.sp-empty{padding:40px 18px;text-align:center;color:#555;font-size:12px}
+.sp-item{padding:10px 18px;border-bottom:1px solid #0f346033;cursor:pointer;transition:background .15s}
+.sp-item:hover{background:#1a1a3a}
+.sp-item .sin{font-size:12px;font-weight:600;color:#fff}
+.sp-item .sid{font-size:10px;color:#e9c46a;margin-top:1px}
+.sp-item .sil{font-size:10px;color:#777;margin-top:1px}
+.sp-item .sir{float:right;background:none;border:none;color:#555;cursor:pointer;font-size:13px}
+.sp-item .sir:hover{color:#e63946}
+.sp-btn{margin:10px 18px;padding:7px;border-radius:6px;cursor:pointer;font-size:11px;text-align:center;flex-shrink:0;border:1px solid}
+</style>
+</head>
+<body>
+
+<div class="spinner" id="spinner">
+  <div class="spinner-circle"></div>
+  <div class="spinner-text">Loading events...</div>
+</div>
+
+<div class="top-bar">
+  <h1>Events & Gatherings 2026</h1>
+  <div class="search-box"><input type="text" id="searchInput" placeholder="Search events..." oninput="onSearch()"></div>
+  <div class="top-btns">
+    <button class="btn btn-add" onclick="openAddModal()">+ Add Event</button>
+    <button class="btn" id="typesBtn" onclick="togglePanel('types')" style="background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55">🏷️ Types</button>
+    <button class="btn btn-favs" id="favsBtn" onclick="togglePanel('favs')">Starred (0)</button>
+    <button class="btn btn-issues" id="issuesBtn" onclick="togglePanel('issues')" style="display:none">Issues (0)</button>
+  </div>
+</div>
+<div class="filters" id="filterBar">
+  <span class="fl">Months:</span>
+  <button class="btn" onclick="toggleAll(true)" style="font-size:9px;padding:2px 6px">All</button>
+  <button class="btn" onclick="toggleAll(false)" style="font-size:9px;padding:2px 6px">None</button>
+</div>
+
+<div class="main">
+  <div id="map"></div>
+  <div class="timeline">
+    <div class="tl-header"><span>Timeline</span><span id="tlCount"></span></div>
+    <div class="tl-scroll" id="tlScroll"></div>
+  </div>
+</div>
+
+<!-- User Name Modal (for stars) -->
+<div class="user-modal-overlay" id="userNameModal">
+  <div class="user-modal">
+    <h3>What's your name?</h3>
+    <p>We'll remember it for your resonance beacons (stars)</p>
+    <input type="text" id="userNameInput" placeholder="Your name" onkeypress="if(event.key==='Enter') confirmUserName()">
+    <div class="buttons">
+      <button class="save" onclick="confirmUserName()">Save & Continue</button>
+      <button class="cancel" onclick="cancelUserName()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Event Modal -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <h2>Add New Event</h2>
+    <label>Event Name *</label><input id="ae-name" placeholder="e.g. Solarpunk Festival">
+    <div class="row">
+      <div><label>Dates *</label><input id="ae-dates" placeholder="e.g. Jun 15–20"></div>
+      <div><label>Month *</label><select id="ae-month"><option>Apr</option><option>May</option><option>Jun</option><option>Jul</option><option>Aug</option><option>Sep</option><option>Oct</option><option>Nov</option><option>Dec</option></select></div>
+    </div>
+    <label>Location *</label><input id="ae-loc" placeholder="e.g. Barcelona, Spain">
+    <label>Venue</label><input id="ae-venue" placeholder="e.g. CCCB, Montalegre 5, Barcelona">
+    <div class="row">
+      <div><label>Latitude</label><input id="ae-lat" type="number" step="any" placeholder="41.383"></div>
+      <div><label>Longitude</label><input id="ae-lng" type="number" step="any" placeholder="2.171"></div>
+    </div>
+    <label>Description</label><textarea id="ae-desc" placeholder="Brief description..."></textarea>
+    <label>Tags (comma-separated)</label><input id="ae-tags" placeholder="e.g. ecovillage, festival">
+    <label>Website URL</label><input id="ae-url" placeholder="e.g. solarpunkfest.org">
+    <label>Image URL</label><input id="ae-img" placeholder="https://...">
+    <div class="mbtn">
+      <button class="cancel" onclick="closeAddModal()">Cancel</button>
+      <button class="save" onclick="addEvent()">Add Event</button>
+    </div>
+  </div>
+</div>
+
+<!-- Starred Panel -->
+<div class="side-panel" id="favsPanel">
+  <div class="sp-header"><h2 style="color:#e9c46a">Your Starred Events</h2><button class="sp-close" onclick="togglePanel('favs')">&times;</button></div>
+  <div class="sp-list" id="favsList"></div>
+  <button class="sp-btn" onclick="copyFavsList()" style="background:#2a9d8f33;color:#2a9d8f;border-color:#2a9d8f55">Copy list to clipboard</button>
+  <button class="sp-btn" onclick="exportICS()" style="background:#6bbe4533;color:#6bbe45;border-color:#6bbe4555;margin-top:4px">📅 Export .ics calendar file</button>
+  <button class="sp-btn" onclick="openRoutePage()" style="background:#457b9d33;color:#457b9d;border-color:#457b9d55;margin-top:4px">🗺️ View route itinerary + Google Maps</button>
+  <button class="sp-btn" onclick="exportKML()" style="background:#e8951833;color:#e89518;border-color:#e8951855;margin-top:4px">📍 Export KML for Google My Maps</button>
+</div>
+
+<!-- Issues Panel -->
+<div class="side-panel" id="issuesPanel">
+  <div class="sp-header"><h2 style="color:#e63946">Bug Reports</h2><button class="sp-close" onclick="togglePanel('issues')">&times;</button></div>
+  <div class="sp-list" id="issuesList"></div>
+  <button class="sp-btn" onclick="copyIssues()" style="background:#e6394633;color:#e63946;border-color:#e6394655">Copy issues for Claude</button>
+  <button class="sp-btn" onclick="clearIssues()" style="background:#33333322;color:#666;border-color:#44444455;margin-top:4px">Clear all</button>
+</div>
+
+<!-- Types Filter Panel -->
+<div class="side-panel" id="typesPanel" style="z-index:2001;">
+  <div class="sp-header"><h2 style="color:#2a9d8f">Event Types</h2><button class="sp-close" onclick="togglePanel('types')">&times;</button></div>
+  <div style="padding:8px 18px;border-bottom:1px solid #0f346033;display:flex;gap:6px">
+    <button class="btn" onclick="setAllTypes(true)" style="font-size:10px;padding:3px 8px">All on</button>
+    <button class="btn" onclick="setAllTypes(false)" style="font-size:10px;padding:3px 8px">All off</button>
+  </div>
+  <div class="sp-list" id="typesList" style="padding:8px 0"></div>
+</div>
+
+<script>
+// === SUPABASE INIT ===
+const supabase = window.supabase.createClient(
+  'https://aurftdjjghtzeofqzezx.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1cmZ0ZGpqZ2h0emVvZnF6ZXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5OTA4MzUsImV4cCI6MjA4OTU2NjgzNX0.PeOisRNczOCYOgyiKL8lNDA0ZNiwhzBhqQWDYx6DtMo'
+);
+
+// === COLORS & ICONS ===
+const MC = {'Mar':'#4a9e4a','Apr':'#6bbe45','May':'#a8d430','Jun':'#d4c520','Jul':'#e8b518','Aug':'#e89530','Sep':'#d4652a','Oct':'#b5422a','Nov':'#7a3b2e','Dec':'#4a6a8a'};
+const TI = {'ecovillage':'🛖','permaculture':'🌱','bioregional':'🌍','climate':'☁️','systems change':'🦋','web3':'⛓️','governance':'🏛️','regen ag':'🌾','festival':'🎪','commons':'🤝','transformation':'✨','UPgame':'🔮','primitive skills':'🏹','craft':'🧶','healing':'💚','rewilding':'🐺','gathering':'🧠','retreat':'🧘','impact':'💡','futures':'🔭','cultural':'🎭','hacker camp':'💻','burning man':'🔥','wellbeing':'🌸','food systems':'🍎','AI':'🤖','entrepreneurship':'🚀','regen':'♻️','regen economics':'💰'};
+function gi(ev){for(const t of(ev.tags||[])){if(TI[t])return TI[t]}return'📍'}
+
+// === EVENT DATA & STATE ===
+let events = [];
+let starCounts = new Map(); // event_id -> {count, stargazers: []}
+let userStars = new Set(); // event_ids that user has starred (filter by userName)
+const ignored = new Set();
+const issues = [];
+const MO = ['Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const activeMonths = new Set(MO);
+let ALL_TAGS = [];
+const activeTags = new Set();
+let searchQuery = '';
+let clusterGroup;
+let userName = '';
+let currentStarIndex = -1; // which event the user is trying to star
+let currentStarCallback = null; // callback after user enters name
+
+// === LOCAL STORAGE ===
+const LS_KEY = 'events-map-2026-state';
+const USER_KEY = 'events-map-userName';
+
+function loadUserName() {
+  userName = localStorage.getItem(USER_KEY) || '';
+  syncUserStars();
+}
+
+function saveUserName() {
+  localStorage.setItem(USER_KEY, userName);
+}
+
+function syncUserStars() {
+  // Filter starCounts to only those starred by this user
+  userStars.clear();
+  starCounts.forEach((data, eventId) => {
+    if (data.stargazers && data.stargazers.includes(userName)) {
+      userStars.add(eventId);
+    }
+  });
+}
+
+function persist() {
+  try {
+    const s = { ignoredNames: [...ignored].map(i => events[i]?.name).filter(Boolean), issues };
+    localStorage.setItem(LS_KEY, JSON.stringify(s));
+  } catch(e) {}
+}
+
+function restore() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    const nm = new Map();
+    events.forEach((e, i) => nm.set(e.name, i));
+    if (s.ignoredNames) s.ignoredNames.forEach(n => {
+      const i = nm.get(n);
+      if (i !== undefined) ignored.add(i);
+    });
+    if (s.issues) s.issues.forEach(iss => issues.push(iss));
+  } catch(e) {}
+}
+
+// === TOAST ===
+function toast(msg, color = '#2a9d8f') {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  t.style.backgroundColor = color;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// === LOADING SPINNER ===
+function showSpinner() {
+  document.getElementById('spinner').classList.add('show');
+}
+function hideSpinner() {
+  document.getElementById('spinner').classList.remove('show');
+}
+
+// === USER NAME MODAL ===
+function promptUserName(callback) {
+  currentStarCallback = callback;
+  document.getElementById('userNameInput').value = '';
+  document.getElementById('userNameModal').classList.add('show');
+  document.getElementById('userNameInput').focus();
+}
+
+function confirmUserName() {
+  const name = document.getElementById('userNameInput').value.trim();
+  if (!name) {
+    toast('Please enter your name', '#e63946');
+    return;
+  }
+  userName = name;
+  saveUserName();
+  document.getElementById('userNameModal').classList.remove('show');
+  if (currentStarCallback) currentStarCallback();
+  currentStarCallback = null;
+}
+
+function cancelUserName() {
+  document.getElementById('userNameModal').classList.remove('show');
+  currentStarCallback = null;
+}
+
+// === MAP ===
+const map = L.map('map', { zoomControl: true }).setView([30, 0], 3);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OSM &copy; CARTO',
+  maxZoom: 19
+}).addTo(map);
+
+function mkIcon(color, isIgn, isStar, ev) {
+  const op = isIgn ? 0.25 : 1;
+  const fill = isIgn ? '#555' : color;
+  const em = gi(ev);
+  const lb = ev.name.length > 16 ? ev.name.slice(0, 14) + '...' : ev.name;
+  const ring = isStar ? `<div style="position:absolute;top:-7px;left:-7px;width:50px;height:50px;border-radius:50%;border:2px solid #e9c46a;box-shadow:0 0 10px 2px rgba(233,196,106,.4);pointer-events:none"></div>` : '';
+  const bdr = isStar ? '2.5px solid #e9c46a' : '2px solid rgba(255,255,255,.6)';
+  const glow = isStar ? 'box-shadow:0 2px 8px rgba(0,0,0,.4),0 0 14px 3px rgba(233,196,106,.35);' : 'box-shadow:0 2px 8px rgba(0,0,0,.4);';
+  return L.divIcon({
+    className: 'cm',
+    html: `<div style="position:relative;opacity:${op};text-align:center">${ring}<div style="width:36px;height:36px;border-radius:50%;background:${fill};border:${bdr};display:flex;align-items:center;justify-content:center;font-size:16px;${glow}cursor:pointer;position:relative;z-index:1">${em}</div><div style="font-size:8px;color:${isStar ? '#e9c46a' : '#ccc'};text-shadow:0 1px 3px #000,0 0 6px #000;margin-top:1px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;${isStar ? 'font-weight:600' : ''}">${lb}</div></div>`,
+    iconSize: [90, 58],
+    iconAnchor: [45, 38],
+    popupAnchor: [0, -40]
+  });
+}
+
+function popupHtml(ev, idx) {
+  const c = MC[ev.month] || '#888';
+  const img = ev.image_url ? `<img src="${ev.image_url}" alt="" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:8px" onerror="this.style.display='none'">` : '';
+  const tags = (ev.tags || []).map(t => {
+    const ic = TI[t] || '';
+    return `<span class="tag" style="background:${c}44;color:${c};border:1px solid ${c}66">${ic} ${t}</span>`;
+  }).join('');
+  const url = ev.url ? `<a href="https://${ev.url}" target="_blank">${ev.url}</a>` : '';
+  const venue = ev.venue ? `<div class="venue">📍 ${ev.venue} <a href="https://www.google.com/maps/search/${encodeURIComponent(ev.venue)}" target="_blank" style="font-size:9px;color:#457b9d">map</a></div>` : '';
+  const isStar = userStars.has(ev.id);
+  const isIgn = ignored.has(idx);
+  const badge = `<span style="display:inline-block;font-size:9px;padding:2px 7px;border-radius:8px;background:${c};color:#fff;font-weight:600;margin-bottom:4px">${ev.month} 2026</span>`;
+  
+  // Star count and stargazers
+  const starData = starCounts.get(ev.id);
+  const starCount = starData ? starData.count : 0;
+  const stargazers = starData && starData.stargazers ? starData.stargazers.join(', ') : '';
+  const starList = starCount > 0 ? `<div class="star-list">⭐ ${starCount} interested: ${stargazers}</div>` : '';
+  
+  return `${img}<div class="pi">${badge}<h3>${ev.name}</h3><div class="dates">${ev.dates}</div><div class="loc">${ev.location}</div>${venue}<div class="desc">${ev.description}</div>${tags}${url ? '<br>' + url : ''}${starList}<div class="pa"><button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ Interested' : '☆ Interested'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '✓ Ignored' : '— Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
+}
+
+function tipHtml(ev) {
+  const c = MC[ev.month] || '#888';
+  const img = ev.image_url ? `<img class="ti" src="${ev.image_url}" alt="" onerror="this.style.display='none'">` : `<div class="tp" style="background:linear-gradient(135deg,${c}44,${c}22)">${gi(ev)}</div>`;
+  const tags = (ev.tags || []).map(t => `<span class="ttg">${TI[t] || ''} ${t}</span>`).join('');
+  
+  // Show star count in tooltip
+  const starData = starCounts.get(ev.id);
+  const starCount = starData ? starData.count : 0;
+  const starDisplay = starCount > 0 ? `<div style="margin-top:4px;font-size:9px;color:#e9c46a;font-weight:600">⭐ ${starCount} interested</div>` : '';
+  
+  return `${img}<div class="tb"><div class="tn">${ev.name}</div><div class="td">${ev.dates} · ${ev.location}</div><div class="tds">${ev.description}</div><div class="tt">${tags}</div>${starDisplay}</div>`;
+}
+
+function getVisible() {
+  return events.map((ev, i) => ({ ev, i })).filter(({ ev }) => {
+    if (!activeMonths.has(ev.month)) return false;
+    const evTags = ev.tags || [];
+    if (evTags.length > 0 && !evTags.some(t => activeTags.has(t))) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const haystack = `${ev.name} ${ev.location} ${ev.description} ${evTags.join(' ')} ${ev.venue || ''}`.toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function render() {
+  if (clusterGroup) map.removeLayer(clusterGroup);
+  clusterGroup = L.markerClusterGroup({
+    maxClusterRadius: 35,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    disableClusteringAtZoom: 8
+  });
+  
+  const visible = getVisible();
+  visible.forEach(({ ev, i }) => {
+    const c = MC[ev.month] || '#888';
+    const icon = mkIcon(c, ignored.has(i), userStars.has(ev.id), ev);
+    const marker = L.marker([ev.lat, ev.lng], { icon })
+      .bindPopup(popupHtml(ev, i), { maxWidth: 360, minWidth: 260 })
+      .bindTooltip(tipHtml(ev), { className: 'et', direction: 'top', offset: [0, -40] });
+    marker._evIdx = i;
+    marker._evId = ev.id;
+    marker.on('popupopen', function() { this.unbindTooltip(); });
+    marker.on('popupclose', function() { this.bindTooltip(tipHtml(ev), { className: 'et', direction: 'top', offset: [0, -40] }); });
+    clusterGroup.addLayer(marker);
+  });
+  
+  map.addLayer(clusterGroup);
+  renderTimeline(visible);
+  updateBtns();
+}
+
+// === TIMELINE ===
+function renderTimeline(visible) {
+  const scroll = document.getElementById('tlScroll');
+  scroll.innerHTML = '';
+  document.getElementById('tlCount').textContent = visible.length;
+  
+  const byMonth = {};
+  visible.forEach(({ ev }) => {
+    const m = ev.month;
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(ev);
+  });
+  
+  MO.forEach(m => {
+    if (!byMonth[m]) return;
+    const header = document.createElement('div');
+    header.className = 'tl-month';
+    header.style.background = MC[m];
+    header.style.color = m.match(/Jun|May|Apr|Jul|Aug|Sep/) ? '#1a1a2e' : '#fff';
+    header.textContent = m;
+    scroll.appendChild(header);
+    
+    byMonth[m].sort((a, b) => {
+      const da = parseInt(a.dates.match(/\d+/)?.[0] || 0);
+      const db = parseInt(b.dates.match(/\d+/)?.[0] || 0);
+      return da - db;
+    });
+    
+    byMonth[m].forEach(ev => {
+      const isStar = userStars.has(ev.id);
+      const isIgn = ignored.has(events.indexOf(ev));
+      const c = MC[m];
+      
+      const item = document.createElement('div');
+      item.className = `tl-event ${isStar ? 'starred-ev' : ''} ${isIgn ? 'ignored-ev' : ''}`;
+      
+      const starData = starCounts.get(ev.id);
+      const starCount = starData ? starData.count : 0;
+      const starText = starCount > 0 ? `<div class="tl-stars">⭐ ${starCount} interested</div>` : '';
+      
+      item.innerHTML = `
+        <div class="tl-icon" style="background:${c};color:#1a1a2e">${gi(ev)}</div>
+        <div class="tl-info">
+          <div class="tl-name">${ev.name} ${starCount > 0 ? `(${starCount})` : ''}</div>
+          <div class="tl-dates">${ev.dates}</div>
+          <div class="tl-loc">${ev.location}</div>
+          ${starText}
+        </div>
+      `;
+      
+      item.addEventListener('click', () => {
+        const idx = events.indexOf(ev);
+        map.setView([ev.lat, ev.lng], 8);
+        clusterGroup.getLayers().forEach(m => {
+          if (m._evId === ev.id) m.openPopup();
+        });
+      });
+      
+      scroll.appendChild(item);
+    });
+  });
+  
+  if (visible.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'tl-empty';
+    empty.textContent = 'No events match your filters';
+    scroll.appendChild(empty);
+  }
+}
+
+// === BUTTON STATE ===
+function updateBtns() {
+  document.getElementById('favsBtn').textContent = `Starred (${userStars.size})`;
+  if (issues.length > 0) {
+    document.getElementById('issuesBtn').style.display = 'inline-block';
+    document.getElementById('issuesBtn').textContent = `Issues (${issues.length})`;
+  } else {
+    document.getElementById('issuesBtn').style.display = 'none';
+  }
+}
+
+// === STAR / UNSTAR (SOCIAL) ===
+function toggleStar(idx) {
+  const ev = events[idx];
+  if (!ev || !ev.id) return;
+  
+  if (!userName) {
+    promptUserName(() => toggleStar(idx));
+    return;
+  }
+  
+  if (userStars.has(ev.id)) {
+    // Unstar
+    unstarEvent(ev.id);
+  } else {
+    // Star
+    starEvent(ev.id);
+  }
+}
+
+async function starEvent(eventId) {
+  try {
+    const { data, error } = await supabase
+      .from('stars')
+      .insert([{ event_id: eventId, user_name: userName }])
+      .select();
+    
+    if (error && error.code !== '23505') {
+      // 23505 is unique violation, meaning already starred
+      toast('Error starring event: ' + error.message, '#e63946');
+      return;
+    }
+    
+    userStars.add(eventId);
+    await fetchStarCounts();
+    render();
+    toast(`Added to your resonance beacons!`);
+  } catch (e) {
+    toast('Error starring event', '#e63946');
+  }
+}
+
+async function unstarEvent(eventId) {
+  try {
+    const { error } = await supabase
+      .from('stars')
+      .delete()
+      .eq('event_id', eventId)
+      .eq('user_name', userName);
+    
+    if (error) {
+      toast('Error unstarring event: ' + error.message, '#e63946');
+      return;
+    }
+    
+    userStars.delete(eventId);
+    await fetchStarCounts();
+    render();
+    toast(`Removed from your resonance beacons`);
+  } catch (e) {
+    toast('Error unstarring event', '#e63946');
+  }
+}
+
+// === IGNORE ===
+function toggleIgnore(idx) {
+  if (ignored.has(idx)) {
+    ignored.delete(idx);
+  } else {
+    ignored.add(idx);
+  }
+  render();
+  persist();
+}
+
+// === REPORT ISSUE ===
+function reportIssue(idx) {
+  const ev = events[idx];
+  const issue = prompt(`Report issue with "${ev.name}":`, '');
+  if (!issue) return;
+  
+  const issueObj = {
+    event_id: ev.id,
+    event_name: ev.name,
+    issue_text: issue,
+    created_by: userName || 'anonymous',
+    created_at: new Date().toISOString()
+  };
+  
+  // Save to Supabase
+  supabase
+    .from('issues')
+    .insert([issueObj])
+    .then(() => {
+      issues.push(issueObj);
+      persist();
+      updateBtns();
+      toast(`Issue reported!`);
+    })
+    .catch(e => toast('Error saving issue: ' + e.message, '#e63946'));
+}
+
+// === SEARCH ===
+function onSearch() {
+  searchQuery = document.getElementById('searchInput').value;
+  render();
+}
+
+// === FILTERS ===
+const filterBar = document.getElementById('filterBar');
+
+function initMonthFilters() {
+  // Clear existing month filters
+  Array.from(filterBar.querySelectorAll('label')).forEach(el => el.remove());
+  
+  MO.forEach(m => {
+    const label = document.createElement('label');
+    label.className = 'm-' + m.toLowerCase();
+    label.innerHTML = `<input type="checkbox" checked data-month="${m}"> ${m}`;
+    label.addEventListener('click', e => {
+      e.preventDefault();
+      if (activeMonths.has(m)) {
+        activeMonths.delete(m);
+        label.classList.add('off');
+      } else {
+        activeMonths.add(m);
+        label.classList.remove('off');
+      }
+      render();
+    });
+    filterBar.appendChild(label);
+  });
+}
+
+function toggleAll(on) {
+  document.querySelectorAll('.filters label').forEach(l => {
+    const inp = l.querySelector('input');
+    if (!inp) return;
+    const m = inp.dataset.month;
+    if (on) {
+      activeMonths.add(m);
+      l.classList.remove('off');
+    } else {
+      activeMonths.delete(m);
+      l.classList.add('off');
+    }
+  });
+  render();
+}
+
+// === TYPE FILTERS ===
+function initTypeFilters() {
+  const typesList = document.getElementById('typesList');
+  typesList.innerHTML = '';
+  
+  ALL_TAGS.forEach(tag => {
+    const item = document.createElement('div');
+    item.style.padding = '8px 18px';
+    item.style.borderBottom = '1px solid #0f346033';
+    item.style.cursor = 'pointer';
+    item.style.userSelect = 'none';
+    
+    const isActive = activeTags.has(tag);
+    item.style.background = isActive ? '#2a9d8f22' : 'transparent';
+    item.style.color = isActive ? '#2a9d8f' : '#888';
+    
+    const icon = TI[tag] || '';
+    item.innerHTML = `<span style="font-size:12px;font-weight:600">${icon} ${tag}</span>`;
+    
+    item.addEventListener('click', () => {
+      if (activeTags.has(tag)) {
+        activeTags.delete(tag);
+      } else {
+        activeTags.add(tag);
+      }
+      initTypeFilters();
+      render();
+    });
+    
+    typesList.appendChild(item);
+  });
+}
+
+function setAllTypes(on) {
+  if (on) {
+    ALL_TAGS.forEach(t => activeTags.add(t));
+  } else {
+    activeTags.clear();
+  }
+  initTypeFilters();
+  render();
+}
+
+// === SIDE PANELS ===
+function togglePanel(panel) {
+  const panels = { favs: 'favsPanel', issues: 'issuesPanel', types: 'typesPanel' };
+  const el = document.getElementById(panels[panel]);
+  if (!el) return;
+  
+  if (el.classList.contains('open')) {
+    el.classList.remove('open');
+  } else {
+    // Close other panels
+    document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
+    el.classList.add('open');
+    
+    if (panel === 'favs') renderFavsPanel();
+    if (panel === 'issues') renderIssuesPanel();
+  }
+}
+
+function renderFavsPanel() {
+  const list = document.getElementById('favsList');
+  list.innerHTML = '';
+  
+  if (userStars.size === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'sp-empty';
+    empty.textContent = 'Star events to see them here';
+    list.appendChild(empty);
+    return;
+  }
+  
+  const starredEvents = events.filter(e => userStars.has(e.id));
+  starredEvents.sort((a, b) => {
+    const ma = MO.indexOf(a.month);
+    const mb = MO.indexOf(b.month);
+    if (ma !== mb) return ma - mb;
+    const da = parseInt(a.dates.match(/\d+/)?.[0] || 0);
+    const db = parseInt(b.dates.match(/\d+/)?.[0] || 0);
+    return da - db;
+  });
+  
+  starredEvents.forEach(ev => {
+    const item = document.createElement('div');
+    item.className = 'sp-item';
+    item.innerHTML = `
+      <div class="sin">${ev.name}</div>
+      <div class="sid">${ev.dates}</div>
+      <div class="sil">${ev.location}</div>
+    `;
+    item.addEventListener('click', () => {
+      map.setView([ev.lat, ev.lng], 8);
+      clusterGroup.getLayers().forEach(m => {
+        if (m._evId === ev.id) m.openPopup();
+      });
+    });
+    list.appendChild(item);
+  });
+}
+
+function renderIssuesPanel() {
+  const list = document.getElementById('issuesList');
+  list.innerHTML = '';
+  
+  if (issues.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'sp-empty';
+    empty.textContent = 'No reported issues';
+    list.appendChild(empty);
+    return;
+  }
+  
+  issues.forEach((iss, i) => {
+    const item = document.createElement('div');
+    item.className = 'sp-item';
+    item.innerHTML = `
+      <div class="sin">${iss.event_name}</div>
+      <div class="sil">${iss.issue_text}</div>
+      <div style="font-size:9px;color:#666;margin-top:3px">by ${iss.created_by}</div>
+      <button class="sir" onclick="removeIssue(${i})">×</button>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function removeIssue(i) {
+  issues.splice(i, 1);
+  persist();
+  renderIssuesPanel();
+  updateBtns();
+}
+
+function copyIssues() {
+  const text = issues.map(iss => `- ${iss.event_name}: ${iss.issue_text} (${iss.created_by})`).join('\n');
+  navigator.clipboard.writeText(text).then(() => toast('Issues copied!'));
+}
+
+function clearIssues() {
+  if (confirm('Clear all issues?')) {
+    issues.length = 0;
+    persist();
+    renderIssuesPanel();
+    updateBtns();
+  }
+}
+
+function copyFavsList() {
+  const starredEvents = events.filter(e => userStars.has(e.id));
+  starredEvents.sort((a, b) => {
+    const ma = MO.indexOf(a.month);
+    const mb = MO.indexOf(b.month);
+    if (ma !== mb) return ma - mb;
+    const da = parseInt(a.dates.match(/\d+/)?.[0] || 0);
+    const db = parseInt(b.dates.match(/\d+/)?.[0] || 0);
+    return da - db;
+  });
+  
+  const text = starredEvents.map(e => `${e.name} - ${e.dates} in ${e.location}`).join('\n');
+  navigator.clipboard.writeText(text).then(() => toast('Starred list copied!'));
+}
+
+// === EXPORT ICS ===
+function exportICS() {
+  if (userStars.size === 0) {
+    toast('Star some events first!', '#e63946');
+    return;
+  }
+  
+  const starredEvents = events.filter(e => userStars.has(e.id));
+  starredEvents.sort((a, b) => {
+    const ma = MO.indexOf(a.month);
+    const mb = MO.indexOf(b.month);
+    if (ma !== mb) return ma - mb;
+    return 0;
+  });
+  
+  let ics = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Events 2026//EN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-CALNAME:2026 Starred Events\nX-WR-TIMEZONE:UTC\n`;
+  
+  starredEvents.forEach((ev, idx) => {
+    const [month] = ev.month.match(/\d+/) || ['01'];
+    const monthNum = String(MO.indexOf(ev.month) + 3).padStart(2, '0');
+    const dateMatch = ev.dates.match(/(\d+)/);
+    const day = dateMatch ? String(dateMatch[1]).padStart(2, '0') : '01';
+    const dtstart = `2026${monthNum}${day}`;
+    const uid = `${ev.id}-${idx}@events2026`;
+    
+    ics += `BEGIN:VEVENT\n`;
+    ics += `UID:${uid}\n`;
+    ics += `DTSTART;VALUE=DATE:${dtstart}\n`;
+    ics += `SUMMARY:${ev.name} (${ev.location})\n`;
+    ics += `DESCRIPTION:${ev.description}\n`;
+    ics += `LOCATION:${ev.location}\n`;
+    if (ev.url) ics += `URL:https://${ev.url}\n`;
+    ics += `END:VEVENT\n`;
+  });
+  
+  ics += `END:VCALENDAR`;
+  
+  const blob = new Blob([ics], { type: 'text/calendar' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'starred-events-2026.ics';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast(`Exported ${starredEvents.length} starred events to .ics!`);
+}
+
+// === EXPORT KML ===
+function exportKML() {
+  if (userStars.size === 0) {
+    toast('Star some events first!', '#e63946');
+    return;
+  }
+  
+  const starredEvents = events.filter(e => userStars.has(e.id));
+  starredEvents.sort((a, b) => {
+    const ma = MO.indexOf(a.month);
+    const mb = MO.indexOf(b.month);
+    if (ma !== mb) return ma - mb;
+    return 0;
+  });
+  
+  let kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n<name>Starred Events 2026 Route</name>\n<description>Regenerative gatherings route</description>\n`;
+  kml += `<Style id="eventPin"><IconStyle><color>ff00c4e9</color><scale>1.2</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/ylw-stars.png</href></Icon></IconStyle></Style>\n`;
+  
+  // Route line
+  kml += `<Placemark><name>Route</name><Style><LineStyle><color>ff2a9d8f</color><width>3</width></LineStyle></Style><LineString><tessellate>1</tessellate><coordinates>`;
+  starredEvents.forEach(e => {
+    kml += `${e.lng},${e.lat},0 `;
+  });
+  kml += `</coordinates></LineString></Placemark>\n`;
+  
+  // Pins
+  starredEvents.forEach((ev, n) => {
+    const desc = `${ev.dates}\n${ev.location}\n${ev.description}${ev.url ? '\n' + ev.url : ''}`;
+    kml += `<Placemark><name>${n + 1}. ${ev.name}</name><description><![CDATA[<b>${ev.dates}</b><br>${ev.location}<br>${ev.description}${ev.url ? '<br><a href="https://' + ev.url + '">' + ev.url + '</a>' : ''}]]></description><styleUrl>#eventPin</styleUrl><Point><coordinates>${ev.lng},${ev.lat},0</coordinates></Point></Placemark>\n`;
+  });
+  
+  kml += `</Document>\n</kml>`;
+  
+  const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'starred-events-2026-route.kml';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast(`Exported ${starredEvents.length} events as KML with route line!`);
+}
+
+// === ROUTE PAGE ===
+function openRoutePage() {
+  if (userStars.size === 0) {
+    toast('Star some events first!', '#e63946');
+    return;
+  }
+  if (userStars.size < 2) {
+    toast('Star at least 2 events for a route!', '#e63946');
+    return;
+  }
+  
+  const starredEvents = events.filter(e => userStars.has(e.id));
+  starredEvents.sort((a, b) => {
+    const ma = MO.indexOf(a.month);
+    const mb = MO.indexOf(b.month);
+    if (ma !== mb) return ma - mb;
+    const da = parseInt(a.dates.match(/\d+/)?.[0] || 0);
+    const db = parseInt(b.dates.match(/\d+/)?.[0] || 0);
+    return da - db;
+  });
+  
+  const evs = starredEvents.map((e, n) => ({ ...e, num: n + 1, title: e.name }));
+  const origin = encodeURIComponent(evs[0].location);
+  const dest = encodeURIComponent(evs[evs.length - 1].location);
+  const wps = evs.slice(1, -1).map(e => encodeURIComponent(e.location)).join('|');
+  let gmUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}`;
+  if (wps) gmUrl += `&waypoints=${wps}`;
+  
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Event Route 2026</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:#1a1a2e;color:#e0e0e0;padding:24px;max-width:800px;margin:0 auto}h1{font-size:22px;color:#e9c46a;margin-bottom:4px}
+.sub{font-size:12px;color:#888;margin-bottom:20px}
+.stop{display:flex;gap:14px;margin-bottom:0;position:relative}
+.line{display:flex;flex-direction:column;align-items:center;width:36px;flex-shrink:0}
+.dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#1a1a2e;flex-shrink:0}
+.connector{flex:1;width:2px;background:#333;margin:4px 0}
+.info{flex:1;padding-bottom:20px}
+.info h3{font-size:15px;color:#fff;margin-bottom:2px}
+.info .dates{font-size:12px;color:#e9c46a;font-weight:600}
+.info .loc{font-size:12px;color:#aaa;margin-top:1px}
+.info .desc{font-size:11px;color:#777;margin-top:4px}
+.info a{color:#2a9d8f;font-size:11px;text-decoration:none}
+.info a:hover{text-decoration:underline}
+.actions{margin-top:24px;display:flex;gap:10px;flex-wrap:wrap}
+.actions a,.actions button{padding:10px 20px;border-radius:8px;font-size:13px;cursor:pointer;text-decoration:none;border:none;font-weight:600}
+.gm{background:#2a9d8f;color:#fff}.gm:hover{background:#238b7e}
+.back{background:#333;color:#ccc;border:1px solid #555}.back:hover{background:#444}
+</style></head><body>
+<h1>Your 2026 Event Route</h1>
+<div class="sub">${evs.length} starred events in chronological order</div>
+${evs.map((e, i) => {
+  const c = MC[e.month] || '#888';
+  const isLast = i === evs.length - 1;
+  return `<div class="stop"><div class="line"><div class="dot" style="background:${c}">${e.num}</div>${isLast ? '' : '<div class="connector"></div>'}</div><div class="info"><h3>${e.title}</h3><div class="dates">${e.dates}</div><div class="loc">${e.location}</div><div class="desc">${e.description}</div>${e.url ? '<a href="https://' + e.url + '" target="_blank">' + e.url + '</a>' : ''}</div></div>`;
+}).join('')}
+<div class="actions">
+<a class="gm" href="${gmUrl}" target="_blank">Open route in Google Maps</a>
+<button class="back" onclick="window.close()">Close</button>
+</div></body></html>`;
+  
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  toast(`Opened route page with ${evs.length} stops`);
+}
+
+// === ADD EVENT MODAL ===
+function openAddModal() {
+  document.getElementById('addModal').classList.add('open');
+}
+
+function closeAddModal() {
+  document.getElementById('addModal').classList.remove('open');
+}
+
+function addEvent() {
+  const name = document.getElementById('ae-name').value.trim();
+  const dates = document.getElementById('ae-dates').value.trim();
+  const month = document.getElementById('ae-month').value;
+  const loc = document.getElementById('ae-loc').value.trim();
+  const venue = document.getElementById('ae-venue').value.trim();
+  const lat = parseFloat(document.getElementById('ae-lat').value);
+  const lng = parseFloat(document.getElementById('ae-lng').value);
+  const desc = document.getElementById('ae-desc').value.trim();
+  const tags = document.getElementById('ae-tags').value.split(',').map(s => s.trim()).filter(Boolean);
+  const url = document.getElementById('ae-url').value.trim();
+  const img = document.getElementById('ae-img').value.trim();
+  
+  if (!name || !dates || !loc) {
+    toast('Name, dates, and location are required.', '#e63946');
+    return;
+  }
+  if (isNaN(lat) || isNaN(lng)) {
+    toast('Please enter valid lat/lng coordinates.', '#e63946');
+    return;
+  }
+  
+  const newEvent = {
+    name,
+    dates,
+    month,
+    lat,
+    lng,
+    location: loc,
+    description: desc || '',
+    tags: tags.length > 0 ? tags : null
+  };
+  if (venue) newEvent.venue = venue;
+  if (url) newEvent.url = url;
+  if (img) newEvent.image_url = img;
+  newEvent.created_by = userName || 'community';
+  
+  supabase
+    .from('events')
+    .insert([newEvent])
+    .then(() => {
+      closeAddModal();
+      initData();
+      toast(`"${name}" added!`);
+      ['ae-name', 'ae-dates', 'ae-loc', 'ae-venue', 'ae-lat', 'ae-lng', 'ae-desc', 'ae-tags', 'ae-url', 'ae-img'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+    })
+    .catch(e => toast('Error adding event: ' + e.message, '#e63946'));
+}
+
+// === FETCH DATA FROM SUPABASE ===
+async function fetchEvents() {
+  try {
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .order('month')
+      .order('dates');
+    
+    if (error) {
+      console.error('Error fetching events:', error);
+      toast('Failed to load events from Supabase', '#e63946');
+      return [];
+    }
+    
+    return data || [];
+  } catch (e) {
+    console.error('Fetch error:', e);
+    toast('Failed to load events', '#e63946');
+    return [];
+  }
+}
+
+async function fetchStarCounts() {
+  try {
+    const { data, error } = await supabase
+      .from('event_star_counts')
+      .select('event_id, star_count, stargazers');
+    
+    if (error) {
+      console.error('Error fetching star counts:', error);
+      return;
+    }
+    
+    starCounts.clear();
+    (data || []).forEach(row => {
+      starCounts.set(row.event_id, {
+        count: row.star_count,
+        stargazers: row.stargazers || []
+      });
+    });
+    
+    syncUserStars();
+  } catch (e) {
+    console.error('Star counts error:', e);
+  }
+}
+
+async function initData() {
+  showSpinner();
+  
+  // Fetch events
+  const eventsData = await fetchEvents();
+  events = eventsData;
+  
+  // Fetch star counts
+  await fetchStarCounts();
+  
+  // Collect all tags
+  const allTags = new Set();
+  events.forEach(e => {
+    if (e.tags && Array.isArray(e.tags)) {
+      e.tags.forEach(t => allTags.add(t));
+    }
+  });
+  ALL_TAGS = Array.from(allTags).sort();
+  ALL_TAGS.forEach(t => activeTags.add(t));
+  
+  // Restore ignored list
+  restore();
+  
+  // Init filters
+  initMonthFilters();
+  initTypeFilters();
+  
+  // Initial render
+  render();
+  
+  hideSpinner();
+}
+
+// === INIT ===
+loadUserName();
+initData();
+</script>
+</body>
+</html>

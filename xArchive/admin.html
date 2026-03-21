@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events Admin — Review Suggestions</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 24px;
+        }
+        h1 {
+            font-size: 1.6rem;
+            margin-bottom: 8px;
+            color: #4ade80;
+        }
+        .subtitle {
+            color: #888;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+        }
+        .stats {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px 20px;
+            text-align: center;
+        }
+        .stat-card .number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #4ade80;
+        }
+        .stat-card .label {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-card.enriched .number { color: #60a5fa; }
+        .stat-card.approved .number { color: #a78bfa; }
+        .stat-card.rejected .number { color: #f87171; }
+
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .filter-btn {
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid #444;
+            background: #1a1a1a;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        .filter-btn:hover { border-color: #4ade80; color: #4ade80; }
+        .filter-btn.active { background: #4ade80; color: #000; border-color: #4ade80; font-weight: 600; }
+
+        .suggestion-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: border-color 0.2s;
+        }
+        .suggestion-card:hover { border-color: #555; }
+        .suggestion-card.status-enriched { border-left: 3px solid #60a5fa; }
+        .suggestion-card.status-pending { border-left: 3px solid #fbbf24; }
+        .suggestion-card.status-approved { border-left: 3px solid #4ade80; }
+        .suggestion-card.status-rejected { border-left: 3px solid #f87171; }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        .card-meta {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .badge {
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-pending { background: #fbbf2433; color: #fbbf24; }
+        .badge-enriched { background: #60a5fa33; color: #60a5fa; }
+        .badge-approved { background: #4ade8033; color: #4ade80; }
+        .badge-rejected { background: #f8717133; color: #f87171; }
+        .badge-source { background: #333; color: #aaa; }
+
+        .card-url {
+            color: #60a5fa;
+            text-decoration: none;
+            font-size: 0.9rem;
+            word-break: break-all;
+        }
+        .card-url:hover { text-decoration: underline; }
+
+        .card-date {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .enriched-preview {
+            background: #111;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+        }
+        .enriched-preview h3 {
+            color: #4ade80;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+        .enriched-fields {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .enriched-field label {
+            display: block;
+            font-size: 0.7rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+        .enriched-field input,
+        .enriched-field textarea,
+        .enriched-field select {
+            width: 100%;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 6px 10px;
+            color: #e0e0e0;
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+        .enriched-field textarea { resize: vertical; min-height: 60px; }
+        .enriched-field input:focus,
+        .enriched-field textarea:focus {
+            outline: none;
+            border-color: #4ade80;
+        }
+        .enriched-field.full-width { grid-column: 1 / -1; }
+
+        .tag-select {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 4px;
+        }
+        .tag-chip {
+            padding: 3px 10px;
+            border-radius: 12px;
+            border: 1px solid #444;
+            background: #1a1a1a;
+            color: #aaa;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .tag-chip:hover { border-color: #4ade80; }
+        .tag-chip.selected { background: #4ade8033; color: #4ade80; border-color: #4ade80; }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .btn {
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-approve { background: #4ade80; color: #000; }
+        .btn-approve:hover { background: #22c55e; }
+        .btn-reject { background: #333; color: #f87171; border: 1px solid #f8717144; }
+        .btn-reject:hover { background: #f8717122; }
+        .btn-duplicate { background: #333; color: #fbbf24; border: 1px solid #fbbf2444; }
+        .btn-duplicate:hover { background: #fbbf2422; }
+        .btn-enrich { background: #60a5fa33; color: #60a5fa; border: 1px solid #60a5fa44; }
+        .btn-enrich:hover { background: #60a5fa44; }
+        .btn-save { background: #333; color: #ccc; }
+        .btn-save:hover { background: #444; }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            background: #4ade80;
+            color: #000;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 999;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.error { background: #f87171; }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #555;
+        }
+        .empty-state h2 { font-size: 1.2rem; margin-bottom: 8px; color: #666; }
+
+        .not-event-warning {
+            background: #fbbf2411;
+            border: 1px solid #fbbf2433;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin: 8px 0;
+            font-size: 0.8rem;
+            color: #fbbf24;
+        }
+    </style>
+</head>
+<body>
+    <h1>Events Admin</h1>
+    <p class="subtitle">Review and approve suggested events for the Regen Events Map</p>
+
+    <div class="stats" id="stats"></div>
+    <div class="filter-bar" id="filters"></div>
+    <div id="suggestions-list"></div>
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const SUPABASE_URL = 'https://aurftdjjghtzeofqzezx.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1cmZ0ZGpqZ2h0emVvZnF6ZXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5OTA4MzUsImV4cCI6MjA4OTU2NjgzNX0.PeOisRNczOCYOgyiKL8lNDA0ZNiwhzBhqQWDYx6DtMo';
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const ALL_TAGS = [
+            'regen','bioregional','ecovillage','permaculture','commons','climate',
+            'systems change','governance','web3','transformation','festival',
+            'gathering','retreat','impact','futures','regen ag','regen economics',
+            'healing','wellbeing','craft','primitive skills','rewilding',
+            'cultural','food systems','entrepreneurship','hacker camp','burning man','UPgame'
+        ].sort();
+
+        const MONTHS = ['Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+        let suggestions = [];
+        let currentFilter = 'all';
+
+        // ── Toast ──
+        function toast(msg, isError = false) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.className = 'toast show' + (isError ? ' error' : '');
+            setTimeout(() => el.className = 'toast', 3000);
+        }
+
+        // ── Load suggestions ──
+        async function loadSuggestions() {
+            const { data, error } = await sb.from('suggestions').select('*').order('created_at', { ascending: false });
+            if (error) { toast('Error loading suggestions: ' + error.message, true); return; }
+            suggestions = data;
+            renderStats();
+            renderFilters();
+            renderList();
+        }
+
+        // ── Stats ──
+        function renderStats() {
+            const counts = { pending: 0, enriched: 0, approved: 0, rejected: 0 };
+            suggestions.forEach(s => { if (counts[s.status] !== undefined) counts[s.status]++; });
+            document.getElementById('stats').innerHTML = `
+                <div class="stat-card"><div class="number">${suggestions.length}</div><div class="label">Total</div></div>
+                <div class="stat-card"><div class="number">${counts.pending}</div><div class="label">Pending</div></div>
+                <div class="stat-card enriched"><div class="number">${counts.enriched}</div><div class="label">Enriched</div></div>
+                <div class="stat-card approved"><div class="number">${counts.approved}</div><div class="label">Approved</div></div>
+                <div class="stat-card rejected"><div class="number">${counts.rejected}</div><div class="label">Rejected</div></div>
+            `;
+        }
+
+        // ── Filters ──
+        function renderFilters() {
+            const statuses = ['all', 'pending', 'enriched', 'approved', 'rejected'];
+            document.getElementById('filters').innerHTML = statuses.map(s =>
+                `<button class="filter-btn ${currentFilter === s ? 'active' : ''}" onclick="setFilter('${s}')">${s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}</button>`
+            ).join('');
+        }
+
+        function setFilter(f) {
+            currentFilter = f;
+            renderFilters();
+            renderList();
+        }
+
+        // ── Render suggestion list ──
+        function renderList() {
+            const filtered = currentFilter === 'all' ? suggestions : suggestions.filter(s => s.status === currentFilter);
+            if (filtered.length === 0) {
+                document.getElementById('suggestions-list').innerHTML = `
+                    <div class="empty-state"><h2>No suggestions</h2><p>Nothing here with status "${currentFilter}"</p></div>
+                `;
+                return;
+            }
+            document.getElementById('suggestions-list').innerHTML = filtered.map(s => renderCard(s)).join('');
+        }
+
+        function renderCard(s) {
+            const ed = s.enriched_data || {};
+            const hasEnriched = Object.keys(ed).length > 0;
+            const isNotEvent = ed.is_not_event;
+            const isPast = ed.is_past_event;
+            const dateStr = new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+            let warningHtml = '';
+            if (isNotEvent) warningHtml = '<div class="not-event-warning">This URL does not appear to be an event page</div>';
+            else if (isPast) warningHtml = '<div class="not-event-warning">This event appears to have already passed</div>';
+
+            return `
+            <div class="suggestion-card status-${s.status}" id="card-${s.id}">
+                <div class="card-header">
+                    <div>
+                        <div class="card-meta">
+                            <span class="badge badge-${s.status}">${s.status}</span>
+                            <span class="badge badge-source">${s.source}</span>
+                            <span class="card-date">${dateStr}</span>
+                            ${s.submitted_by ? `<span class="card-date">by ${s.submitted_by}</span>` : ''}
+                        </div>
+                        <a class="card-url" href="${s.url}" target="_blank">${s.url}</a>
+                    </div>
+                </div>
+                ${s.notes ? `<p style="color:#888;font-size:0.85rem;margin:8px 0;">Notes: ${s.notes}</p>` : ''}
+                ${warningHtml}
+                ${hasEnriched || s.status !== 'pending' ? renderEnrichedForm(s) : `
+                    <p style="color:#666;font-size:0.85rem;margin:12px 0;">No enrichment data yet. Click "Manual Enrich" to fill in details, or wait for auto-enrichment via Make.com.</p>
+                `}
+                ${renderActions(s)}
+            </div>`;
+        }
+
+        function renderEnrichedForm(s) {
+            const ed = s.enriched_data || {};
+            const tags = ed.tags || [];
+            return `
+            <div class="enriched-preview">
+                <h3>${ed.name || '(untitled)'}</h3>
+                <div class="enriched-fields">
+                    <div class="enriched-field">
+                        <label>Event Name</label>
+                        <input type="text" value="${esc(ed.name || '')}" onchange="updateField(${s.id}, 'name', this.value)">
+                    </div>
+                    <div class="enriched-field">
+                        <label>Dates (e.g. "Jun 18–21")</label>
+                        <input type="text" value="${esc(ed.dates || '')}" onchange="updateField(${s.id}, 'dates', this.value)">
+                    </div>
+                    <div class="enriched-field">
+                        <label>Month</label>
+                        <select onchange="updateField(${s.id}, 'month', this.value)">
+                            <option value="">--</option>
+                            ${MONTHS.map(m => `<option value="${m}" ${ed.month === m ? 'selected' : ''}>${m}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="enriched-field">
+                        <label>Location</label>
+                        <input type="text" value="${esc(ed.location || '')}" onchange="updateField(${s.id}, 'location', this.value)">
+                    </div>
+                    <div class="enriched-field">
+                        <label>Latitude</label>
+                        <input type="number" step="0.001" value="${ed.lat || ''}" onchange="updateField(${s.id}, 'lat', parseFloat(this.value))">
+                    </div>
+                    <div class="enriched-field">
+                        <label>Longitude</label>
+                        <input type="number" step="0.001" value="${ed.lng || ''}" onchange="updateField(${s.id}, 'lng', parseFloat(this.value))">
+                    </div>
+                    <div class="enriched-field full-width">
+                        <label>Description</label>
+                        <textarea onchange="updateField(${s.id}, 'description', this.value)">${esc(ed.description || '')}</textarea>
+                    </div>
+                    <div class="enriched-field full-width">
+                        <label>URL (clean)</label>
+                        <input type="text" value="${esc(ed.url || s.url || '')}" onchange="updateField(${s.id}, 'url', this.value)">
+                    </div>
+                    <div class="enriched-field full-width">
+                        <label>Tags</label>
+                        <div class="tag-select">
+                            ${ALL_TAGS.map(t => `<span class="tag-chip ${tags.includes(t) ? 'selected' : ''}" onclick="toggleTag(${s.id}, '${t}', this)">${t}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function renderActions(s) {
+            let btns = '';
+            if (s.status === 'pending') {
+                btns = `
+                    <button class="btn btn-enrich" onclick="manualEnrich(${s.id})">Manual Enrich</button>
+                    <button class="btn btn-reject" onclick="updateStatus(${s.id}, 'rejected')">Reject</button>
+                `;
+            } else if (s.status === 'enriched') {
+                btns = `
+                    <button class="btn btn-approve" onclick="approveEvent(${s.id})">Approve & Add to Map</button>
+                    <button class="btn btn-save" onclick="saveEnrichment(${s.id})">Save Changes</button>
+                    <button class="btn btn-reject" onclick="updateStatus(${s.id}, 'rejected')">Reject</button>
+                    <button class="btn btn-duplicate" onclick="updateStatus(${s.id}, 'duplicate')">Duplicate</button>
+                `;
+            } else if (s.status === 'approved') {
+                btns = `<span style="color:#4ade80;font-size:0.85rem;">Added to map</span>`;
+            } else if (s.status === 'rejected') {
+                btns = `
+                    <button class="btn btn-enrich" onclick="updateStatus(${s.id}, 'pending')">Re-open</button>
+                `;
+            }
+            return `<div class="card-actions">${btns}</div>`;
+        }
+
+        // ── Field updates (local state) ──
+        function updateField(id, field, value) {
+            const s = suggestions.find(s => s.id === id);
+            if (!s.enriched_data) s.enriched_data = {};
+            s.enriched_data[field] = value;
+        }
+
+        function toggleTag(id, tag, el) {
+            const s = suggestions.find(s => s.id === id);
+            if (!s.enriched_data) s.enriched_data = {};
+            if (!s.enriched_data.tags) s.enriched_data.tags = [];
+            const idx = s.enriched_data.tags.indexOf(tag);
+            if (idx > -1) {
+                s.enriched_data.tags.splice(idx, 1);
+                el.classList.remove('selected');
+            } else {
+                s.enriched_data.tags.push(tag);
+                el.classList.add('selected');
+            }
+        }
+
+        // ── Manual Enrich (opens form with empty fields) ──
+        function manualEnrich(id) {
+            const s = suggestions.find(s => s.id === id);
+            if (!s.enriched_data) s.enriched_data = {};
+            s.status = 'enriched';
+            // Save to Supabase
+            sb.from('suggestions').update({ status: 'enriched', enriched_data: s.enriched_data, enriched_at: new Date().toISOString() }).eq('id', id).then(({ error }) => {
+                if (error) toast('Error: ' + error.message, true);
+                else { toast('Ready for enrichment'); renderList(); renderStats(); renderFilters(); }
+            });
+        }
+
+        // ── Save enrichment data ──
+        async function saveEnrichment(id) {
+            const s = suggestions.find(s => s.id === id);
+            const { error } = await sb.from('suggestions').update({
+                enriched_data: s.enriched_data,
+                enriched_at: new Date().toISOString()
+            }).eq('id', id);
+            if (error) toast('Error saving: ' + error.message, true);
+            else toast('Enrichment saved');
+        }
+
+        // ── Update status ──
+        async function updateStatus(id, status) {
+            const { error } = await sb.from('suggestions').update({ status }).eq('id', id);
+            if (error) { toast('Error: ' + error.message, true); return; }
+            const s = suggestions.find(s => s.id === id);
+            s.status = status;
+            toast(`Marked as ${status}`);
+            renderList(); renderStats(); renderFilters();
+        }
+
+        // ── Approve: promote to events table ──
+        async function approveEvent(id) {
+            const s = suggestions.find(s => s.id === id);
+            const ed = s.enriched_data || {};
+
+            // Validate required fields
+            if (!ed.name || !ed.dates || !ed.month || !ed.lat || !ed.lng || !ed.location) {
+                toast('Fill in name, dates, month, lat, lng, and location before approving', true);
+                return;
+            }
+
+            // Insert into events table
+            const newEvent = {
+                name: ed.name,
+                dates: ed.dates,
+                month: ed.month,
+                lat: ed.lat,
+                lng: ed.lng,
+                location: ed.location,
+                venue: ed.venue || null,
+                description: ed.description || '',
+                tags: ed.tags || [],
+                url: (ed.url || s.url || '').replace(/^https?:\/\//, ''),
+                image_url: ed.image_url || '',
+                created_by: s.submitted_by || 'suggestion'
+            };
+
+            const { data, error } = await sb.from('events').insert(newEvent).select();
+            if (error) { toast('Error adding event: ' + error.message, true); return; }
+
+            // Update suggestion status
+            await sb.from('suggestions').update({ status: 'approved' }).eq('id', id);
+            s.status = 'approved';
+            toast(`"${ed.name}" added to the map!`);
+            renderList(); renderStats(); renderFilters();
+        }
+
+        // ── Helpers ──
+        function esc(str) {
+            return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // ── Init ──
+        loadSuggestions();
+    </script>
+</body>
+</html>
