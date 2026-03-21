@@ -1013,6 +1013,7 @@ function toggleTimeline() {
   tl.classList.toggle('hidden');
   const isHidden = tl.classList.contains('hidden');
   btn.style.display = isHidden ? 'block' : 'none';
+  setTimeout(() => map.invalidateSize(), 300);
 }
 
 // === TYPE FILTERS ===
