@@ -242,6 +242,11 @@
         .btn-enrich:hover { background: #60a5fa44; }
         .btn-save { background: #333; color: #ccc; }
         .btn-save:hover { background: #444; }
+        .btn-geocode { background: #2a9d8f33; color: #2a9d8f; border: 1px solid #2a9d8f44; padding: 6px 14px; font-size: 0.8rem; }
+        .btn-geocode:hover { background: #2a9d8f44; }
+        .btn-visit { background: #333; color: #60a5fa; border: 1px solid #60a5fa44; padding: 6px 14px; font-size: 0.8rem; text-decoration: none; display: inline-block; }
+        .btn-visit:hover { background: #60a5fa22; }
+        .geocode-status { font-size: 0.75rem; color: #888; }
 
         .toast {
             position: fixed;
@@ -295,6 +300,51 @@
             color: #e0e0e0;
             font-size: 0.85rem;
         }
+        .btn-compare { background: #f59e0b33; color: #f59e0b; border: 1px solid #f59e0b44; padding: 4px 10px; font-size: 0.75rem; margin-left: 8px; }
+        .btn-compare:hover { background: #f59e0b44; }
+        .badge-merged { background: #f59e0b33; color: #f59e0b; }
+        .stat-card.merged .number { color: #f59e0b; }
+        .suggestion-card.status-merged { border-left: 3px solid #f59e0b; }
+
+        /* Compare & Update modal */
+        .merge-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8); z-index: 1000;
+            display: flex; align-items: center; justify-content: center;
+            padding: 24px;
+        }
+        .merge-modal {
+            background: #1a1a1a; border: 1px solid #444; border-radius: 12px;
+            padding: 24px; max-width: 720px; width: 100%; max-height: 85vh;
+            overflow-y: auto;
+        }
+        .merge-modal h3 { color: #f59e0b; margin-bottom: 16px; font-size: 1.1rem; }
+        .merge-row {
+            display: grid; grid-template-columns: 100px 1fr 1fr;
+            gap: 8px; margin-bottom: 10px; align-items: start;
+        }
+        .merge-label {
+            font-size: 0.75rem; color: #888; text-transform: uppercase;
+            letter-spacing: 0.5px; padding-top: 8px;
+        }
+        .merge-option {
+            padding: 8px 12px; border-radius: 6px; border: 2px solid #333;
+            background: #111; font-size: 0.85rem; color: #ccc;
+            cursor: pointer; transition: all 0.15s; min-height: 36px;
+            word-break: break-word;
+        }
+        .merge-option:hover { border-color: #666; }
+        .merge-option.selected { border-color: #4ade80; background: #4ade8011; color: #e0e0e0; }
+        .merge-option.same { border-color: #333; color: #555; cursor: default; font-style: italic; }
+        .merge-option .source-tag {
+            font-size: 0.65rem; color: #666; text-transform: uppercase;
+            display: block; margin-bottom: 2px;
+        }
+        .merge-actions { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+        .btn-merge { background: #f59e0b; color: #000; font-weight: 600; }
+        .btn-merge:hover { background: #d97706; }
+        .btn-cancel { background: #333; color: #ccc; }
+        .btn-cancel:hover { background: #444; }
     </style>
 </head>
 <body>
@@ -444,20 +494,21 @@
 
         // ── Stats ──
         function renderStats() {
-            const counts = { pending: 0, enriched: 0, approved: 0, rejected: 0 };
+            const counts = { pending: 0, enriched: 0, approved: 0, rejected: 0, merged: 0 };
             suggestions.forEach(s => { if (counts[s.status] !== undefined) counts[s.status]++; });
             document.getElementById('stats').innerHTML = `
                 <div class="stat-card"><div class="number">${suggestions.length}</div><div class="label">Total</div></div>
                 <div class="stat-card"><div class="number">${counts.pending}</div><div class="label">Pending</div></div>
                 <div class="stat-card enriched"><div class="number">${counts.enriched}</div><div class="label">Enriched</div></div>
                 <div class="stat-card approved"><div class="number">${counts.approved}</div><div class="label">Approved</div></div>
+                <div class="stat-card merged"><div class="number">${counts.merged}</div><div class="label">Merged</div></div>
                 <div class="stat-card rejected"><div class="number">${counts.rejected}</div><div class="label">Rejected</div></div>
             `;
         }
 
         // ── Filters ──
         function renderFilters() {
-            const statuses = ['all', 'pending', 'enriched', 'approved', 'rejected'];
+            const statuses = ['all', 'pending', 'enriched', 'approved', 'merged', 'rejected'];
             document.getElementById('filters').innerHTML = statuses.map(s =>
                 `<button class="filter-btn ${currentFilter === s ? 'active' : ''}" onclick="setFilter('${s}')">${s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}</button>`
             ).join('');
@@ -493,14 +544,16 @@
             else if (isPast) warningHtml = '<div class="not-event-warning">This event appears to have already passed</div>';
 
             // Duplicate detection
-            if (s.status !== 'approved' && s.status !== 'rejected') {
+            if (s.status !== 'approved' && s.status !== 'rejected' && s.status !== 'merged') {
                 const dupes = findDuplicates(ed.name || '');
                 if (dupes.length > 0) {
                     const dupeItems = dupes.map(d =>
-                        `<div style="margin:4px 0;padding:4px 8px;background:#fbbf2409;border-radius:4px;">` +
-                        `<strong>${d.event.name}</strong>` +
+                        `<div style="margin:4px 0;padding:4px 8px;background:#fbbf2409;border-radius:4px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;">` +
+                        `<div><strong>${d.event.name}</strong>` +
                         `<span style="color:#888;font-size:0.75rem;margin-left:8px;">${d.event.dates} · ${d.event.location}</span>` +
                         (d.isSubstring ? `<span style="color:#f87171;font-size:0.7rem;margin-left:6px;">exact match</span>` : '') +
+                        `</div>` +
+                        `<button class="btn btn-compare" onclick="openCompare(${s.id}, ${d.event.id})">Compare & Update</button>` +
                         `</div>`
                     ).join('');
                     warningHtml += `<div class="dupe-warning"><div class="dupe-header">⚠️ Possible duplicate${dupes.length > 1 ? 's' : ''} already on map:</div>${dupeItems}</div>`;
@@ -553,15 +606,20 @@
                     </div>
                     <div class="enriched-field">
                         <label>Location</label>
-                        <input type="text" value="${esc(ed.location || '')}" onchange="updateField(${s.id}, 'location', this.value)">
+                        <input type="text" id="loc-${s.id}" value="${esc(ed.location || '')}" onchange="updateField(${s.id}, 'location', this.value)">
                     </div>
                     <div class="enriched-field">
                         <label>Latitude</label>
-                        <input type="number" step="0.001" value="${ed.lat || ''}" onchange="updateField(${s.id}, 'lat', parseFloat(this.value))">
+                        <input type="number" step="0.001" id="lat-${s.id}" value="${ed.lat || ''}" onchange="updateField(${s.id}, 'lat', parseFloat(this.value))">
                     </div>
                     <div class="enriched-field">
                         <label>Longitude</label>
-                        <input type="number" step="0.001" value="${ed.lng || ''}" onchange="updateField(${s.id}, 'lng', parseFloat(this.value))">
+                        <input type="number" step="0.001" id="lng-${s.id}" value="${ed.lng || ''}" onchange="updateField(${s.id}, 'lng', parseFloat(this.value))">
+                    </div>
+                    <div class="enriched-field full-width" style="display:flex;gap:8px;align-items:center;">
+                        <button class="btn btn-geocode" onclick="geocodeLocation(${s.id})">📍 Geocode</button>
+                        ${(ed.url || s.url) ? `<a href="${ed.url || s.url}" target="_blank" class="btn btn-visit">🔗 Visit event page</a>` : ''}
+                        <span class="geocode-status" id="geo-status-${s.id}"></span>
                     </div>
                     <div class="enriched-field full-width">
                         <label>Description</label>
@@ -597,6 +655,9 @@
                 `;
             } else if (s.status === 'approved') {
                 btns = `<span style="color:#4ade80;font-size:0.85rem;">Added to map</span>`;
+            } else if (s.status === 'merged') {
+                btns = `<span style="color:#f59e0b;font-size:0.85rem;">Merged into existing event</span>
+                    <button class="btn btn-enrich" onclick="updateStatus(${s.id}, 'enriched')">Re-open</button>`;
             } else if (s.status === 'rejected') {
                 btns = `
                     <button class="btn btn-enrich" onclick="updateStatus(${s.id}, 'pending')">Re-open</button>
@@ -696,9 +757,246 @@
             renderList(); renderStats(); renderFilters();
         }
 
+        // ── Geocode ──
+        async function nominatimSearch(q) {
+            const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=3`, {
+                headers: { 'User-Agent': 'RegenEventsMap/1.0' }
+            });
+            return resp.json();
+        }
+
+        async function geocodeLocation(id) {
+            const s = suggestions.find(s => s.id === id);
+            const locInput = document.getElementById(`loc-${id}`);
+            const latInput = document.getElementById(`lat-${id}`);
+            const lngInput = document.getElementById(`lng-${id}`);
+            const status = document.getElementById(`geo-status-${id}`);
+            const query = locInput.value.trim();
+
+            if (!query) { toast('Enter a location first', true); return; }
+
+            status.textContent = 'Looking up…';
+            status.style.color = '#888';
+
+            try {
+                // Try the full query first
+                let results = await nominatimSearch(query);
+
+                // If no results, try progressively simpler queries
+                if (results.length === 0) {
+                    // Strip building/venue name — try from first number onward
+                    const addrMatch = query.match(/(\d+\s+.+)/);
+                    if (addrMatch) {
+                        status.textContent = 'Retrying with street address…';
+                        results = await nominatimSearch(addrMatch[1]);
+                    }
+                }
+                if (results.length === 0) {
+                    // Try just city, state, country (last 2-3 comma parts)
+                    const parts = query.split(',').map(p => p.trim());
+                    if (parts.length >= 2) {
+                        const cityQuery = parts.slice(-2).join(', ');
+                        status.textContent = 'Retrying with city…';
+                        results = await nominatimSearch(cityQuery);
+                    }
+                }
+
+                if (results.length === 0) {
+                    status.textContent = '❌ No results — try editing the location to a street address or city';
+                    status.style.color = '#f87171';
+                    return;
+                }
+
+                const best = results[0];
+                const lat = parseFloat(best.lat);
+                const lng = parseFloat(best.lon);
+
+                latInput.value = lat.toFixed(4);
+                lngInput.value = lng.toFixed(4);
+                updateField(id, 'lat', lat);
+                updateField(id, 'lng', lng);
+
+                status.innerHTML = `✅ ${best.display_name.substring(0, 60)}… <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" style="color:#60a5fa;font-size:0.7rem;">verify on map</a>`;
+                status.style.color = '#4ade80';
+
+                // If there were multiple results, show alternatives
+                if (results.length > 1) {
+                    const alts = results.slice(1).map((r, i) =>
+                        `<span class="geocode-alt" onclick="applyGeocode(${id}, ${r.lat}, ${r.lon})" style="cursor:pointer;color:#60a5fa;text-decoration:underline;font-size:0.7rem;margin-left:8px;" title="${r.display_name}">alt ${i+2}</span>`
+                    ).join('');
+                    status.innerHTML += ` ${alts}`;
+                }
+            } catch (e) {
+                status.textContent = '❌ Geocoding failed: ' + e.message;
+                status.style.color = '#f87171';
+            }
+        }
+
+        function applyGeocode(id, lat, lng) {
+            const latInput = document.getElementById(`lat-${id}`);
+            const lngInput = document.getElementById(`lng-${id}`);
+            latInput.value = parseFloat(lat).toFixed(4);
+            lngInput.value = parseFloat(lng).toFixed(4);
+            updateField(id, 'lat', parseFloat(lat));
+            updateField(id, 'lng', parseFloat(lng));
+            const status = document.getElementById(`geo-status-${id}`);
+            status.innerHTML = `✅ Updated <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" style="color:#60a5fa;font-size:0.7rem;">verify on map</a>`;
+            status.style.color = '#4ade80';
+        }
+
         // ── Helpers ──
         function esc(str) {
             return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // ── Compare & Update (merge) ──
+        let mergeSelections = {}; // { fieldName: 'existing' | 'suggestion' }
+
+        async function openCompare(suggestionId, eventId) {
+            const s = suggestions.find(s => s.id === suggestionId);
+            const ed = s.enriched_data || {};
+
+            // Fetch full event data from Supabase
+            const { data: ev, error } = await sb.from('events').select('*').eq('id', eventId).single();
+            if (error || !ev) { toast('Error loading event: ' + (error?.message || 'not found'), true); return; }
+
+            mergeSelections = {};
+            const fields = [
+                { key: 'name', label: 'Name' },
+                { key: 'dates', label: 'Dates' },
+                { key: 'month', label: 'Month' },
+                { key: 'location', label: 'Location' },
+                { key: 'lat', label: 'Latitude' },
+                { key: 'lng', label: 'Longitude' },
+                { key: 'description', label: 'Description' },
+                { key: 'url', label: 'URL' },
+                { key: 'tags', label: 'Tags' },
+            ];
+
+            let rowsHtml = '';
+            let hasDiffs = false;
+            fields.forEach(f => {
+                const evVal = f.key === 'tags' ? (ev[f.key] || []).sort().join(', ') : String(ev[f.key] || '');
+                const sugVal = f.key === 'tags' ? (ed[f.key] || []).sort().join(', ') : String(ed[f.key] || '');
+                const isSame = evVal === sugVal || (!evVal && !sugVal);
+
+                if (isSame) {
+                    // Same value — show grayed out, auto-select existing
+                    mergeSelections[f.key] = 'existing';
+                    rowsHtml += `
+                        <div class="merge-row">
+                            <div class="merge-label">${f.key === 'lat' || f.key === 'lng' ? f.label : f.label}</div>
+                            <div class="merge-option same" title="Both values are the same">
+                                <span class="source-tag">Same</span>${esc(evVal || '(empty)')}</div>
+                            <div class="merge-option same">
+                                <span class="source-tag">Same</span>${esc(sugVal || '(empty)')}</div>
+                        </div>`;
+                } else {
+                    hasDiffs = true;
+                    // Default to suggestion value if it's non-empty, otherwise existing
+                    const defaultPick = sugVal ? 'suggestion' : 'existing';
+                    mergeSelections[f.key] = defaultPick;
+                    rowsHtml += `
+                        <div class="merge-row">
+                            <div class="merge-label">${f.label}</div>
+                            <div class="merge-option ${defaultPick === 'existing' ? 'selected' : ''}"
+                                 onclick="pickMerge('${f.key}', 'existing', this)" id="merge-${f.key}-existing">
+                                <span class="source-tag">On map</span>${esc(evVal || '(empty)')}</div>
+                            <div class="merge-option ${defaultPick === 'suggestion' ? 'selected' : ''}"
+                                 onclick="pickMerge('${f.key}', 'suggestion', this)" id="merge-${f.key}-suggestion">
+                                <span class="source-tag">Incoming</span>${esc(sugVal || '(empty)')}</div>
+                        </div>`;
+                }
+            });
+
+            if (!hasDiffs) {
+                toast('No differences found — data is identical', false);
+                return;
+            }
+
+            const modalHtml = `
+                <div class="merge-overlay" id="merge-overlay" onclick="if(event.target===this)closeMerge()">
+                    <div class="merge-modal">
+                        <h3>Compare & Update: ${esc(ev.name)}</h3>
+                        <p style="color:#888;font-size:0.8rem;margin-bottom:16px;">Click a value to select it. Differing fields are highlighted — pick the best version for each.</p>
+                        <div style="display:grid;grid-template-columns:100px 1fr 1fr;gap:8px;margin-bottom:8px;">
+                            <div></div>
+                            <div style="font-size:0.7rem;color:#4ade80;text-transform:uppercase;font-weight:600;">Currently on Map</div>
+                            <div style="font-size:0.7rem;color:#f59e0b;text-transform:uppercase;font-weight:600;">Incoming Suggestion</div>
+                        </div>
+                        ${rowsHtml}
+                        <div class="merge-actions">
+                            <button class="btn btn-cancel" onclick="closeMerge()">Cancel</button>
+                            <button class="btn btn-merge" onclick="executeMerge(${eventId}, ${suggestionId})">Update Map Event</button>
+                        </div>
+                    </div>
+                </div>`;
+
+            // Insert modal into DOM
+            const div = document.createElement('div');
+            div.id = 'merge-container';
+            div.innerHTML = modalHtml;
+            document.body.appendChild(div);
+        }
+
+        function pickMerge(field, source, el) {
+            // Don't allow picking "same" fields
+            if (el.classList.contains('same')) return;
+            mergeSelections[field] = source;
+            // Update visual state
+            const existingEl = document.getElementById(`merge-${field}-existing`);
+            const suggestionEl = document.getElementById(`merge-${field}-suggestion`);
+            if (existingEl) existingEl.classList.toggle('selected', source === 'existing');
+            if (suggestionEl) suggestionEl.classList.toggle('selected', source === 'suggestion');
+        }
+
+        function closeMerge() {
+            const container = document.getElementById('merge-container');
+            if (container) container.remove();
+        }
+
+        async function executeMerge(eventId, suggestionId) {
+            const s = suggestions.find(s => s.id === suggestionId);
+            const ed = s.enriched_data || {};
+
+            // Fetch current event to get existing values
+            const { data: ev, error: fetchErr } = await sb.from('events').select('*').eq('id', eventId).single();
+            if (fetchErr || !ev) { toast('Error loading event', true); return; }
+
+            // Build update object from selections
+            const update = {};
+            const fields = ['name','dates','month','location','lat','lng','description','url','tags'];
+            fields.forEach(f => {
+                if (mergeSelections[f] === 'suggestion') {
+                    let sugVal = ed[f];
+                    if (f === 'url') sugVal = (sugVal || s.url || '').replace(/^https?:\/\//, '');
+                    if (sugVal !== undefined && sugVal !== null && sugVal !== '') {
+                        update[f] = sugVal;
+                    }
+                }
+            });
+
+            if (Object.keys(update).length === 0) {
+                toast('No changes selected — keeping existing data');
+                closeMerge();
+                return;
+            }
+
+            // Update the event
+            const { error: updateErr } = await sb.from('events').update(update).eq('id', eventId);
+            if (updateErr) { toast('Error updating event: ' + updateErr.message, true); return; }
+
+            // Mark suggestion as merged
+            await sb.from('suggestions').update({ status: 'merged' }).eq('id', suggestionId);
+            s.status = 'merged';
+
+            // Update local existingEvents cache
+            const evIdx = existingEvents.findIndex(e => e.id === eventId);
+            if (evIdx >= 0) Object.assign(existingEvents[evIdx], update);
+
+            closeMerge();
+            toast(`Updated "${ev.name}" with ${Object.keys(update).length} field(s)`);
+            renderList(); renderStats(); renderFilters();
         }
 
         // ── Init ──
