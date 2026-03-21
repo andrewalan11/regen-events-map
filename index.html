@@ -514,7 +514,7 @@ function popupHtml(ev, idx) {
       </div>`
     : '';
 
-  return `${img}<div class="pi">${badge}<h3>${ev.name}</h3><div class="dates">${ev.dates} ${durBadge}</div><div class="loc">${ev.location} ${mapsLink}</div>${venue}<div class="desc">${ev.description}</div>${beaconBanner}${tags}${url ? '<br>' + url : ''}<div class="pa"><button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ I'm interested' : '☆ I'm interested'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '✓ Ignored' : '— Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
+  return `${img}<div class="pi">${badge}<h3>${ev.name}</h3><div class="dates">${ev.dates} ${durBadge}</div><div class="loc">${ev.location} ${mapsLink}</div>${venue}<div class="desc">${ev.description}</div>${beaconBanner}${tags}${url ? '<br>' + url : ''}<div class="pa"><button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ Interested' : '☆ Interested'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '✓ Ignored' : '— Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
 }
 
 function tipHtml(ev) {
