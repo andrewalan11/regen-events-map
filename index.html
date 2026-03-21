@@ -56,6 +56,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .filters label{font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none}
 .filters label:hover{opacity:.85}
 .filters label input{display:none}
+.m-jan{background:#555;color:#999}.m-jan.off{background:transparent;color:#555;border-color:#555}
+.m-feb{background:#555;color:#999}.m-feb.off{background:transparent;color:#555;border-color:#555}
 .m-mar{background:#e63946;color:#fff}.m-mar.off{background:transparent;color:#e63946;border-color:#e63946}
 .m-apr{background:#e8613a;color:#fff}.m-apr.off{background:transparent;color:#e8613a;border-color:#e8613a}
 .m-may{background:#e89530;color:#1a1a2e}.m-may.off{background:transparent;color:#e89530;border-color:#e89530}
@@ -67,7 +69,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .m-nov{background:#3a5fa0;color:#fff}.m-nov.off{background:transparent;color:#3a5fa0;border-color:#3a5fa0}
 .m-dec{background:#6a4c9c;color:#fff}.m-dec.off{background:transparent;color:#6a4c9c;border-color:#6a4c9c}
 
-.main{display:flex;height:calc(100vh - 82px)}
+.main{display:flex;height:calc(100vh - 108px)}
 #map{flex:1;min-width:0}
 
 /* Timeline sidebar */
@@ -218,16 +220,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="btn btn-issues" id="issuesBtn" onclick="togglePanel('issues')" style="display:none">Issues (0)</button>
   </div>
 </div>
-<div class="filters" id="filterBar">
-  <span class="fl">Months:</span>
-  <button class="btn" onclick="toggleAll(true)" style="font-size:9px;padding:2px 6px">All</button>
-  <button class="btn" onclick="toggleAll(false)" style="font-size:9px;padding:2px 6px">None</button>
-  <!-- month labels get inserted here by JS -->
-  <span style="display:inline-block;width:40px"></span>
+<div class="filters" style="border-bottom:none;padding-bottom:2px">
   <span class="fl">Regions:</span>
   <button class="btn" onclick="toggleAllRegions(true)" style="font-size:9px;padding:2px 6px">All</button>
   <button class="btn" onclick="toggleAllRegions(false)" style="font-size:9px;padding:2px 6px">None</button>
   <span id="regionFilters"></span>
+</div>
+<div class="filters" id="filterBar" style="padding-top:2px">
+  <span class="fl">Months:</span>
+  <button class="btn" onclick="toggleAll(true)" style="font-size:9px;padding:2px 6px">All</button>
+  <button class="btn" onclick="toggleAll(false)" style="font-size:9px;padding:2px 6px">None</button>
+  <!-- month labels get inserted here by JS -->
 </div>
 
 <div class="main" style="position:relative">
@@ -346,7 +349,7 @@ const sb = window.supabase.createClient(
 );
 
 // === COLORS & ICONS ===
-const MC = {'Mar':'#e63946','Apr':'#e8613a','May':'#e89530','Jun':'#e9c46a','Jul':'#a8d430','Aug':'#4a9e4a','Sep':'#2a9d8f','Oct':'#457b9d','Nov':'#3a5fa0','Dec':'#6a4c9c'};
+const MC = {'Jan':'#555','Feb':'#555','Mar':'#e63946','Apr':'#e8613a','May':'#e89530','Jun':'#e9c46a','Jul':'#a8d430','Aug':'#4a9e4a','Sep':'#2a9d8f','Oct':'#457b9d','Nov':'#3a5fa0','Dec':'#6a4c9c'};
 const TI = {'ecovillage':'🛖','permaculture':'🌱','bioregional':'🌍','climate':'☁️','systems change':'🦋','web3':'⛓️','governance':'🏛️','regen ag':'🌾','festival':'🎪','commons':'🤝','transformation':'✨','UPgame':'🔮','primitive skills':'🏹','craft':'🧶','healing':'💚','rewilding':'🐺','gathering':'🧠','retreat':'🧘','impact':'💡','futures':'🔭','cultural':'🎭','hacker camp':'💻','burning man':'🔥','wellbeing':'🌸','food systems':'🍎','AI':'🤖','entrepreneurship':'🚀','regen':'♻️','regen economics':'💰'};
 function gi(ev){for(const t of(ev.tags||[])){if(TI[t])return TI[t]}return'📍'}
 
@@ -356,8 +359,9 @@ let starCounts = new Map(); // event_id -> {count, stargazers: []}
 let userStars = new Set(); // event_ids that user has starred (filter by userName)
 const ignored = new Set();
 const issues = [];
-const MO = ['Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const activeMonths = new Set(MO);
+const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const PAST_MONTHS = new Set(['Jan','Feb']);
+const activeMonths = new Set(MO.filter(m => !PAST_MONTHS.has(m)));
 let ALL_TAGS = [];
 const activeTags = new Set();
 let searchQuery = '';
@@ -497,16 +501,13 @@ function mkIcon(color, isIgn, isStar, ev) {
   const fill = isIgn ? '#555' : color;
   const em = gi(ev);
   const lb = ev.name.length > 16 ? ev.name.slice(0, 14) + '...' : ev.name;
-  const starData = starCounts.get(ev.id);
-  const sc = starData ? starData.count : 0;
-  const countBadge = sc > 0 ? `<div style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;background:#e9c46a;color:#1a1a2e;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #1a1a2e;pointer-events:none;z-index:2">${sc}</div>` : '';
   const ring = isStar ? `<div style="position:absolute;top:-7px;left:-7px;width:50px;height:50px;border-radius:50%;border:2px solid #e9c46a;box-shadow:0 0 10px 2px rgba(233,196,106,.4);pointer-events:none"></div>` : '';
   const bdr = isStar ? '2.5px solid #e9c46a' : '2px solid rgba(255,255,255,.6)';
   const glow = isStar ? 'box-shadow:0 2px 8px rgba(0,0,0,.4),0 0 14px 3px rgba(233,196,106,.35);' : 'box-shadow:0 2px 8px rgba(0,0,0,.4);';
   const dt = ev.dates || '';
   return L.divIcon({
     className: 'cm',
-    html: `<div style="position:relative;opacity:${op};text-align:center">${ring}<div style="width:36px;height:36px;border-radius:50%;background:${fill};border:${bdr};display:flex;align-items:center;justify-content:center;font-size:16px;${glow}cursor:pointer;position:relative;z-index:1">${em}</div>${countBadge}<div style="font-size:8px;color:${isStar ? '#e9c46a' : '#ccc'};text-shadow:0 1px 3px #000,0 0 6px #000;margin-top:1px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;${isStar ? 'font-weight:600' : ''}">${lb}</div><div style="font-size:7px;color:${fill};text-shadow:0 1px 3px #000,0 0 6px #000;white-space:nowrap;pointer-events:none;opacity:.9">${dt}</div></div>`,
+    html: `<div style="position:relative;opacity:${op};text-align:center">${ring}<div style="width:36px;height:36px;border-radius:50%;background:${fill};border:${bdr};display:flex;align-items:center;justify-content:center;font-size:16px;${glow}cursor:pointer;position:relative;z-index:1">${em}</div><div style="font-size:8px;color:${isStar ? '#e9c46a' : '#ccc'};text-shadow:0 1px 3px #000,0 0 6px #000;margin-top:1px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;${isStar ? 'font-weight:600' : ''}">${lb}</div><div style="font-size:7px;color:${fill};text-shadow:0 1px 3px #000,0 0 6px #000;white-space:nowrap;pointer-events:none;opacity:.9">${dt}</div></div>`,
     iconSize: [90, 68],
     iconAnchor: [45, 44],
     popupAnchor: [0, -46]
@@ -586,11 +587,28 @@ function getVisible() {
 function render() {
   if (clusterGroup) map.removeLayer(clusterGroup);
   clusterGroup = L.markerClusterGroup({
-    maxClusterRadius: 18,
+    maxClusterRadius: 40,
     spiderfyOnMaxZoom: true,
     showCoverageOnHover: false,
     zoomToBoundsOnClick: true,
-    disableClusteringAtZoom: 5
+    disableClusteringAtZoom: 7,
+    iconCreateFunction: function(cluster) {
+      const children = cluster.getAllChildMarkers();
+      const colors = children.map(m => {
+        const ev = events[m._evIdx];
+        return MC[ev?.month] || '#888';
+      });
+      const size = Math.min(20 + children.length * 4, 50);
+      const dots = colors.slice(0, 8).map((c, i) => {
+        const angle = (i / Math.min(colors.length, 8)) * Math.PI * 2 - Math.PI / 2;
+        const r = size * 0.32;
+        const x = 50 + Math.cos(angle) * r / size * 100;
+        const y = 50 + Math.sin(angle) * r / size * 100;
+        return `<circle cx="${x}%" cy="${y}%" r="4" fill="${c}" stroke="#1a1a2e" stroke-width="1"/>`;
+      }).join('');
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="50%" cy="50%" r="45%" fill="rgba(26,26,46,0.85)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>${dots}<text x="50%" y="54%" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">${children.length}</text></svg>`;
+      return L.divIcon({ html: svg, className: 'cm', iconSize: [size, size], iconAnchor: [size/2, size/2] });
+    }
   });
   
   const visible = getVisible();
@@ -659,7 +677,7 @@ function renderTimeline(visible) {
       item.innerHTML = `
         <div class="tl-icon" style="background:${c};color:#1a1a2e">${gi(ev)}</div>
         <div class="tl-info">
-          <div class="tl-name">${ev.name} ${starCount > 0 ? `(${starCount})` : ''}</div>
+          <div class="tl-name">${ev.name}</div>
           <div class="tl-dates">${ev.dates}</div>
           <div class="tl-loc">${ev.location}</div>
           ${starText}
@@ -814,7 +832,9 @@ function initMonthFilters() {
   MO.forEach(m => {
     const label = document.createElement('label');
     label.className = 'm-' + m.toLowerCase();
-    label.innerHTML = `<input type="checkbox" checked data-month="${m}"> ${m}`;
+    const isActive = activeMonths.has(m);
+    label.innerHTML = `<input type="checkbox" ${isActive ? 'checked' : ''} data-month="${m}"> ${m}`;
+    if (!isActive) label.classList.add('off');
     label.addEventListener('click', e => {
       e.preventDefault();
       if (activeMonths.has(m)) {
