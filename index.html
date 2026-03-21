@@ -953,46 +953,97 @@ function copyFavsList() {
 }
 
 // === EXPORT ICS ===
+function parseEventDates(dates, month) {
+  const monthIdx = MO.indexOf(month);
+  const startMonthNum = monthIdx >= 0 ? monthIdx + 3 : 1;
+  const startMatch = dates.match(/(\d+)/);
+  const startDay = startMatch ? parseInt(startMatch[1]) : 1;
+
+  // Cross-month range: "30–May 3", "Apr 30–May 3", "Mar 27–Apr 1"
+  const crossMatch = dates.match(/(\d+)\s*[–\-]\s*([A-Z][a-z]{2,})\s+(\d+)/);
+  if (crossMatch) {
+    const endMonthStr = crossMatch[2].substring(0, 3);
+    const endMonthIdx = MO.indexOf(endMonthStr);
+    const endMonthNum = endMonthIdx >= 0 ? endMonthIdx + 3 : startMonthNum;
+    const endDay = parseInt(crossMatch[3]);
+    const endDate = new Date(2026, endMonthNum - 1, endDay + 1); // exclusive
+    return {
+      dtstart: `2026${String(startMonthNum).padStart(2,'0')}${String(startDay).padStart(2,'0')}`,
+      dtend: `2026${String(endDate.getMonth()+1).padStart(2,'0')}${String(endDate.getDate()).padStart(2,'0')}`
+    };
+  }
+
+  // Same-month range: "18–21", "Apr 8–15"
+  const rangeMatch = dates.match(/(\d+)\s*[–\-]\s*(\d+)/);
+  if (rangeMatch) {
+    const endDay = parseInt(rangeMatch[2]);
+    const endDate = new Date(2026, startMonthNum - 1, endDay + 1); // exclusive
+    return {
+      dtstart: `2026${String(startMonthNum).padStart(2,'0')}${String(startDay).padStart(2,'0')}`,
+      dtend: `2026${String(endDate.getMonth()+1).padStart(2,'0')}${String(endDate.getDate()).padStart(2,'0')}`
+    };
+  }
+
+  // Single day or TBD — 1-day event
+  const endDate = new Date(2026, startMonthNum - 1, startDay + 1);
+  return {
+    dtstart: `2026${String(startMonthNum).padStart(2,'0')}${String(startDay).padStart(2,'0')}`,
+    dtend: `2026${String(endDate.getMonth()+1).padStart(2,'0')}${String(endDate.getDate()).padStart(2,'0')}`
+  };
+}
+
 function exportICS() {
   if (userStars.size === 0) {
     toast('Star some events first!', '#e63946');
     return;
   }
-  
+
   const starredEvents = events.filter(e => userStars.has(e.id));
   starredEvents.sort((a, b) => {
     const ma = MO.indexOf(a.month);
     const mb = MO.indexOf(b.month);
     if (ma !== mb) return ma - mb;
-    return 0;
+    const da = parseInt(a.dates.match(/\d+/)?.[0] || 0);
+    const db = parseInt(b.dates.match(/\d+/)?.[0] || 0);
+    return da - db;
   });
-  
-  let ics = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Events 2026//EN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-CALNAME:2026 Starred Events\nX-WR-TIMEZONE:UTC\n`;
-  
+
+  let ics = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Regen Events Map 2026//EN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-CALNAME:Regen Events 2026\nX-WR-TIMEZONE:UTC\n`;
+
   starredEvents.forEach((ev, idx) => {
-    const [month] = ev.month.match(/\d+/) || ['01'];
-    const monthNum = String(MO.indexOf(ev.month) + 3).padStart(2, '0');
-    const dateMatch = ev.dates.match(/(\d+)/);
-    const day = dateMatch ? String(dateMatch[1]).padStart(2, '0') : '01';
-    const dtstart = `2026${monthNum}${day}`;
-    const uid = `${ev.id}-${idx}@events2026`;
-    
+    const { dtstart, dtend } = parseEventDates(ev.dates, ev.month);
+    const uid = `${ev.id}-${idx}@regeneventsmap2026`;
+    const emoji = gi(ev);
+    const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(ev.venue || ev.location)}`;
+    const eventUrl = ev.url ? `https://${ev.url}` : '';
+
+    // Build description with URL + Google Maps link
+    let desc = ev.description || '';
+    if (eventUrl) desc += `\\n\\nEvent: ${eventUrl}`;
+    desc += `\\n\\nMap: ${mapsUrl}`;
+    // Escape special chars for ICS
+    desc = desc.replace(/,/g, '\\,').replace(/;/g, '\\;');
+
+    const summary = `${emoji} ${ev.name} — ${ev.location}`;
+
     ics += `BEGIN:VEVENT\n`;
     ics += `UID:${uid}\n`;
     ics += `DTSTART;VALUE=DATE:${dtstart}\n`;
-    ics += `SUMMARY:${ev.name} (${ev.location})\n`;
-    ics += `DESCRIPTION:${ev.description}\n`;
+    ics += `DTEND;VALUE=DATE:${dtend}\n`;
+    ics += `SUMMARY:${summary}\n`;
+    ics += `DESCRIPTION:${desc}\n`;
     ics += `LOCATION:${ev.location}\n`;
-    if (ev.url) ics += `URL:https://${ev.url}\n`;
+    if (eventUrl) ics += `URL:${eventUrl}\n`;
+    ics += `GEO:${ev.lat};${ev.lng}\n`;
     ics += `END:VEVENT\n`;
   });
-  
+
   ics += `END:VCALENDAR`;
-  
+
   const blob = new Blob([ics], { type: 'text/calendar' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'starred-events-2026.ics';
+  a.download = 'regen-events-2026.ics';
   a.click();
   URL.revokeObjectURL(a.href);
   toast(`Exported ${starredEvents.length} starred events to .ics!`);
