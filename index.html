@@ -224,7 +224,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="btn" id="ignBtn" onclick="togglePanel('ignored')" style="background:#55555522;color:#888;border-color:#55555555">Ignored (0)</button>
     <button class="btn btn-issues" id="issuesBtn" onclick="togglePanel('issues')" style="display:none">Issues (0)</button>
   </div>
-  <div style="flex-shrink:0">
+  <div style="flex-shrink:0;display:flex;gap:4px">
+    <button class="btn" id="tlToggleTop" onclick="toggleTimeline()" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">📋 Timeline</button>
     <button class="btn" onclick="togglePanel('about')" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">ℹ️ About</button>
   </div>
 </div>
@@ -1010,9 +1011,13 @@ function toggleAllRegions(on) {
 function toggleTimeline() {
   const tl = document.getElementById('timeline');
   const btn = document.getElementById('tlToggle');
+  const topBtn = document.getElementById('tlToggleTop');
   tl.classList.toggle('hidden');
   const isHidden = tl.classList.contains('hidden');
   btn.style.display = isHidden ? 'block' : 'none';
+  if (topBtn) {
+    topBtn.style.opacity = isHidden ? '0.5' : '1';
+  }
   setTimeout(() => map.invalidateSize(), 300);
 }
 
