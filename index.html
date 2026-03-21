@@ -14,7 +14,7 @@
 <meta property="og:description" content="Interactive map of 58+ regenerative gatherings, ecovillage festivals, bioregional congresses, and community events worldwide. Star your favorites, plan your route.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://andrewalan11.github.io/regen-events-map">
-<meta property="og:image" content="https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1200&h=630&fit=crop">
+<meta property="og:image" content="https://andrewalan11.github.io/regen-events-map/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 
@@ -22,7 +22,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Regen Events Map 2026">
 <meta name="twitter:description" content="Interactive map of 58+ regenerative gatherings worldwide. Star events, see who's going, plan your route.">
-<meta name="twitter:image" content="https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1200&h=630&fit=crop">
+<meta name="twitter:image" content="https://andrewalan11.github.io/regen-events-map/og-image.png">
 
 <meta name="description" content="Interactive map of regenerative gatherings, ecovillage festivals, bioregional congresses, and community events for 2026. Powered by Supabase.">
 <meta name="theme-color" content="#1a1a2e">
@@ -75,10 +75,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* Timeline sidebar */
 .timeline{width:340px;background:#12122a;border-left:1px solid #0f3460;display:flex;flex-direction:column;flex-shrink:0;transition:width .3s,opacity .3s}
 .timeline.hidden{width:0;overflow:hidden;opacity:0;border:none}
-.tl-toggle{position:absolute;right:340px;top:50%;transform:translateY(-50%);background:#12122a;border:1px solid #0f3460;color:#888;border-radius:4px 0 0 4px;padding:8px 3px;cursor:pointer;font-size:12px;z-index:10;line-height:1;transition:right .3s}
+.tl-toggle{position:absolute;right:0;top:50%;transform:translateY(-50%);background:#12122a;border:1px solid #0f3460;color:#888;border-radius:4px 0 0 4px;padding:8px 5px;cursor:pointer;font-size:12px;z-index:10;line-height:1}
 .tl-toggle:hover{color:#fff;background:#1a1a3a}
 .region-sep{color:#333;margin:0 4px;font-size:10px}
-.r-label{font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none;background:#2a9d8f;color:#fff}
+.r-label{font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none;background:#2a9d8f;color:#fff;margin-left:1px}
 .r-label.off{background:transparent;color:#2a9d8f;border-color:#2a9d8f}
 .tl-header{padding:10px 14px;border-bottom:1px solid #0f3460;font-size:12px;color:#888;display:flex;justify-content:space-between;align-items:center}
 .tl-header span{font-weight:600;color:#ccc}
@@ -100,6 +100,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tl-actions button:hover{opacity:1}
 .tl-actions button.active-star{opacity:1;filter:none}
 .tl-empty{padding:30px 14px;text-align:center;color:#555;font-size:12px}
+.tl-tip{position:fixed;z-index:9999;pointer-events:none;background:#1e1e3a;border:1px solid #333;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.7);max-width:300px;overflow:hidden;opacity:0;transition:opacity .15s}
+.tl-tip.show{opacity:1}
+.tl-tip .ttp-img{width:100%;height:80px;object-fit:cover}
+.tl-tip .ttp-body{padding:10px 12px}
+.tl-tip .ttp-name{font-size:13px;font-weight:600;color:#fff;margin-bottom:3px}
+.tl-tip .ttp-dates{font-size:11px;color:#e9c46a;margin-bottom:2px}
+.tl-tip .ttp-loc{font-size:10px;color:#888;margin-bottom:6px}
+.tl-tip .ttp-desc{font-size:10px;color:#bbb;line-height:1.4;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tl-tip .ttp-tags{display:flex;flex-wrap:wrap;gap:3px}
+.tl-tip .ttp-tag{font-size:8px;padding:1px 5px;border-radius:5px;white-space:nowrap}
+.tl-tip .ttp-stars{font-size:9px;color:#e9c46a;margin-top:4px}
+.filter-hints{margin-left:auto;display:flex;gap:12px;align-items:center;font-size:9px;color:#555;flex-shrink:0}
+.filter-hints span{white-space:nowrap}
 
 /* Popup */
 .leaflet-popup-content-wrapper{background:#1e1e3a;color:#e0e0e0;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,.6)}
@@ -209,37 +222,49 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="spinner-text">Loading events...</div>
 </div>
 
-<div class="top-bar">
-  <h1>Events & Gatherings 2026</h1>
-  <div class="search-box"><input type="text" id="searchInput" placeholder="Search events..." oninput="onSearch()"></div>
-  <div class="top-btns">
-    <button class="btn" onclick="togglePanel('about')" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">ℹ️ About</button>
+<div class="top-bar" style="justify-content:space-between">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+    <h1>Events & Gatherings 2026</h1>
+    <div class="search-box"><input type="text" id="searchInput" placeholder="Search events..." oninput="onSearch()"></div>
     <button class="btn btn-add" onclick="openAddModal()">+ Suggest Event</button>
+  </div>
+  <div class="top-btns" style="justify-content:center;margin-left:0">
     <button class="btn" id="typesBtn" onclick="togglePanel('types')" style="background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55">🏷️ Types</button>
     <button class="btn btn-favs" id="favsBtn" onclick="togglePanel('favs')">Starred (0)</button>
+    <button class="btn" id="ignBtn" onclick="togglePanel('ignored')" style="background:#55555522;color:#888;border-color:#55555555">Ignored (0)</button>
     <button class="btn btn-issues" id="issuesBtn" onclick="togglePanel('issues')" style="display:none">Issues (0)</button>
   </div>
+  <div style="flex-shrink:0">
+    <button class="btn" onclick="togglePanel('about')" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">ℹ️ About</button>
+  </div>
 </div>
-<div class="filters" style="border-bottom:none;padding-bottom:2px">
+<div class="filters" style="border-bottom:none;padding-bottom:4px">
   <span class="fl">Regions:</span>
   <button class="btn" onclick="toggleAllRegions(true)" style="font-size:9px;padding:2px 6px">All</button>
   <button class="btn" onclick="toggleAllRegions(false)" style="font-size:9px;padding:2px 6px">None</button>
   <span id="regionFilters"></span>
+  <div class="filter-hints">
+    <span>☆ Star to save favorites</span>
+    <span>📅 Export to calendar</span>
+    <span>🗺 Plan a route</span>
+    <span>— Ignore to hide</span>
+  </div>
 </div>
-<div class="filters" id="filterBar" style="padding-top:2px">
+<div class="filters" id="filterBar" style="padding-top:0px">
   <span class="fl">Months:</span>
   <button class="btn" onclick="toggleAll(true)" style="font-size:9px;padding:2px 6px">All</button>
   <button class="btn" onclick="toggleAll(false)" style="font-size:9px;padding:2px 6px">None</button>
   <!-- month labels get inserted here by JS -->
 </div>
+<div id="tlTip" class="tl-tip"></div>
 
 <div class="main" style="position:relative">
   <div id="map"></div>
   <div class="timeline" id="timeline">
-    <div class="tl-header"><span>Timeline</span><span id="tlCount"></span></div>
+    <div class="tl-header"><span>Timeline (<span id="tlCount">0</span>)</span><button onclick="toggleTimeline()" style="background:none;border:none;color:#888;cursor:pointer;font-size:14px;padding:2px 6px" title="Collapse timeline">✕</button></div>
     <div class="tl-scroll" id="tlScroll"></div>
   </div>
-  <button class="tl-toggle" id="tlToggle" onclick="toggleTimeline()" title="Toggle timeline">◀</button>
+  <button class="tl-toggle" id="tlToggle" onclick="toggleTimeline()" title="Show timeline" style="display:none">▶</button>
 </div>
 
 <!-- User Name Modal (for stars) -->
@@ -273,6 +298,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="save" onclick="suggestEvent()">Submit Suggestion</button>
     </div>
   </div>
+</div>
+
+<!-- Ignored Panel -->
+<div class="side-panel" id="ignoredPanel">
+  <div class="sp-header"><h2 style="color:#888">Ignored Events</h2><button class="sp-close" onclick="togglePanel('ignored')">&times;</button></div>
+  <div class="sp-list" id="ignoredList"></div>
+  <button class="sp-btn" onclick="clearIgnored()" style="background:#33333322;color:#666;border-color:#44444455">Clear all ignored</button>
 </div>
 
 <!-- Starred Panel -->
@@ -691,7 +723,11 @@ function renderTimeline(visible) {
           if (m._evId === ev.id) m.openPopup();
         });
       });
-      
+
+      item.addEventListener('mouseenter', (e) => showTlTip(ev, e));
+      item.addEventListener('mousemove', (e) => moveTlTip(e));
+      item.addEventListener('mouseleave', hideTlTip);
+
       scroll.appendChild(item);
     });
   });
@@ -704,9 +740,39 @@ function renderTimeline(visible) {
   }
 }
 
+// === TIMELINE TOOLTIP ===
+function showTlTip(ev, e) {
+  const tip = document.getElementById('tlTip');
+  const c = MC[ev.month] || '#888';
+  const img = ev.image_url ? `<img class="ttp-img" src="${ev.image_url}" onerror="this.style.display='none'">` : '';
+  const tags = (ev.tags || []).map(t => `<span class="ttp-tag" style="background:${c}44;color:${c};border:1px solid ${c}66">${TI[t] || ''} ${t}</span>`).join('');
+  const duration = calcDuration(ev.dates);
+  const starData = starCounts.get(ev.id);
+  const starCount = starData ? starData.count : 0;
+  const starText = starCount > 0 ? `<div class="ttp-stars">⭐ ${starCount} interested</div>` : '';
+  tip.innerHTML = `${img}<div class="ttp-body"><div class="ttp-name">${ev.name}</div><div class="ttp-dates">${ev.dates} · ${duration}</div><div class="ttp-loc">${ev.location}${ev.venue ? ' · ' + ev.venue : ''}</div><div class="ttp-desc">${ev.description}</div><div class="ttp-tags">${tags}</div>${starText}</div>`;
+  moveTlTip(e);
+  tip.classList.add('show');
+}
+function moveTlTip(e) {
+  const tip = document.getElementById('tlTip');
+  const tipW = 300;
+  let x = e.clientX - tipW - 16;
+  if (x < 10) x = e.clientX + 16;
+  let y = e.clientY - 20;
+  if (y + 300 > window.innerHeight) y = window.innerHeight - 310;
+  if (y < 10) y = 10;
+  tip.style.left = x + 'px';
+  tip.style.top = y + 'px';
+}
+function hideTlTip() {
+  document.getElementById('tlTip').classList.remove('show');
+}
+
 // === BUTTON STATE ===
 function updateBtns() {
   document.getElementById('favsBtn').textContent = `Starred (${userStars.size})`;
+  document.getElementById('ignBtn').textContent = `Ignored (${ignored.size})`;
   if (issues.length > 0) {
     document.getElementById('issuesBtn').style.display = 'inline-block';
     document.getElementById('issuesBtn').textContent = `Issues (${issues.length})`;
@@ -909,8 +975,7 @@ function toggleTimeline() {
   const btn = document.getElementById('tlToggle');
   tl.classList.toggle('hidden');
   const isHidden = tl.classList.contains('hidden');
-  btn.textContent = isHidden ? '▶' : '◀';
-  btn.style.right = isHidden ? '0' : '340px';
+  btn.style.display = isHidden ? 'block' : 'none';
 }
 
 // === TYPE FILTERS ===
@@ -958,7 +1023,7 @@ function setAllTypes(on) {
 
 // === SIDE PANELS ===
 function togglePanel(panel) {
-  const panels = { favs: 'favsPanel', issues: 'issuesPanel', types: 'typesPanel', about: 'aboutPanel' };
+  const panels = { favs: 'favsPanel', issues: 'issuesPanel', types: 'typesPanel', about: 'aboutPanel', ignored: 'ignoredPanel' };
   const el = document.getElementById(panels[panel]);
   if (!el) return;
   
@@ -970,6 +1035,7 @@ function togglePanel(panel) {
     el.classList.add('open');
     
     if (panel === 'favs') renderFavsPanel();
+    if (panel === 'ignored') renderIgnoredPanel();
     if (panel === 'issues') renderIssuesPanel();
   }
 }
@@ -1012,6 +1078,41 @@ function renderFavsPanel() {
     });
     list.appendChild(item);
   });
+}
+
+function renderIgnoredPanel() {
+  const list = document.getElementById('ignoredList');
+  list.innerHTML = '';
+  if (ignored.size === 0) {
+    list.innerHTML = '<div class="sp-empty">No ignored events</div>';
+    return;
+  }
+  [...ignored].forEach(idx => {
+    const ev = events[idx];
+    if (!ev) return;
+    const item = document.createElement('div');
+    item.className = 'sp-item';
+    item.innerHTML = `<button class="sir" onclick="event.stopPropagation();unIgnore(${idx})">↩</button><div class="sin">${ev.name}</div><div class="sid">${ev.dates}</div><div class="sil">${ev.location}</div>`;
+    item.addEventListener('click', () => {
+      map.setView([ev.lat, ev.lng], 8);
+      togglePanel('ignored');
+    });
+    list.appendChild(item);
+  });
+}
+
+function unIgnore(idx) {
+  ignored.delete(idx);
+  persist();
+  render();
+  renderIgnoredPanel();
+}
+
+function clearIgnored() {
+  ignored.clear();
+  persist();
+  render();
+  renderIgnoredPanel();
 }
 
 function renderIssuesPanel() {
