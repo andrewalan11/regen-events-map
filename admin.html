@@ -336,10 +336,6 @@
             loadSuggestions();
         }
 
-        // Auto-unlock if already authed this session
-        if (sessionStorage.getItem('admin_auth') === 'true') {
-            showApp();
-        }
         const SUPABASE_URL = 'https://aurftdjjghtzeofqzezx.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1cmZ0ZGpqZ2h0emVvZnF6ZXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5OTA4MzUsImV4cCI6MjA4OTU2NjgzNX0.PeOisRNczOCYOgyiKL8lNDA0ZNiwhzBhqQWDYx6DtMo';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -620,7 +616,11 @@
         }
 
         // ── Init ──
-        // loadSuggestions() is called from showApp() after auth
+        // Auto-unlock if already authed this session
+        // (must be after sb client is created so loadSuggestions() works)
+        if (sessionStorage.getItem('admin_auth') === 'true') {
+            showApp();
+        }
     </script>
 </body>
 </html>
