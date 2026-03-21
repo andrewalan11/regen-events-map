@@ -576,7 +576,7 @@ function popupHtml(ev, idx) {
   const starData = starCounts.get(ev.id);
   const starCount = starData ? starData.count : 0;
   const stargazers = starData && starData.stargazers ? starData.stargazers.join(', ') : '';
-  const beaconBanner = starCount > 0
+  const beaconBanner = starCount > 1
     ? `<div style="margin:8px 0;padding:8px 12px;background:#e9c46a11;border:1px solid #e9c46a33;border-radius:8px">
         <div style="font-size:12px;color:#e9c46a;font-weight:600">✨ ${starCount} ${starCount === 1 ? 'person interested' : 'people interested'}</div>
         ${stargazers ? `<div style="font-size:10px;color:#aaa;margin-top:3px">${stargazers}</div>` : ''}
@@ -594,7 +594,7 @@ function tipHtml(ev) {
   // Show star count in tooltip
   const starData = starCounts.get(ev.id);
   const starCount = starData ? starData.count : 0;
-  const starDisplay = starCount > 0 ? `<div style="margin-top:4px;font-size:9px;color:#e9c46a;font-weight:600">⭐ ${starCount} interested</div>` : '';
+  const starDisplay = starCount > 1 ? `<div style="margin-top:4px;font-size:9px;color:#e9c46a;font-weight:600">⭐ ${starCount} interested</div>` : '';
   
   return `${img}<div class="tb"><div class="tn">${ev.name}</div><div class="td">${ev.dates} · ${ev.location}</div><div class="tds">${ev.description}</div><div class="tt">${tags}</div>${starDisplay}</div>`;
 }
@@ -705,7 +705,7 @@ function renderTimeline(visible) {
       
       const starData = starCounts.get(ev.id);
       const starCount = starData ? starData.count : 0;
-      const starText = starCount > 0 ? `<div class="tl-stars">⭐ ${starCount} interested</div>` : '';
+      const starText = starCount > 1 ? `<div class="tl-stars">⭐ ${starCount} interested</div>` : '';
       
       item.innerHTML = `
         <div class="tl-icon" style="background:${c};color:#1a1a2e">${gi(ev)}</div>
@@ -750,7 +750,7 @@ function showTlTip(ev, e) {
   const duration = calcDuration(ev.dates);
   const starData = starCounts.get(ev.id);
   const starCount = starData ? starData.count : 0;
-  const starText = starCount > 0 ? `<div class="ttp-stars">⭐ ${starCount} interested</div>` : '';
+  const starText = starCount > 1 ? `<div class="ttp-stars">⭐ ${starCount} interested</div>` : '';
   tip.innerHTML = `${img}<div class="ttp-body"><div class="ttp-name">${ev.name}</div><div class="ttp-dates">${ev.dates} · ${duration}</div><div class="ttp-loc">${ev.location}${ev.venue ? ' · ' + ev.venue : ''}</div><div class="ttp-desc">${ev.description}</div><div class="ttp-tags">${tags}</div>${starText}</div>`;
   moveTlTip(e);
   tip.classList.add('show');
