@@ -71,7 +71,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #map{flex:1;min-width:0}
 
 /* Timeline sidebar */
-.timeline{width:340px;background:#12122a;border-left:1px solid #0f3460;display:flex;flex-direction:column;flex-shrink:0}
+.timeline{width:340px;background:#12122a;border-left:1px solid #0f3460;display:flex;flex-direction:column;flex-shrink:0;transition:width .3s,opacity .3s}
+.timeline.hidden{width:0;overflow:hidden;opacity:0;border:none}
+.tl-toggle{position:absolute;right:340px;top:50%;transform:translateY(-50%);background:#12122a;border:1px solid #0f3460;color:#888;border-radius:4px 0 0 4px;padding:8px 3px;cursor:pointer;font-size:12px;z-index:10;line-height:1;transition:right .3s}
+.tl-toggle:hover{color:#fff;background:#1a1a3a}
+.region-sep{color:#333;margin:0 4px;font-size:10px}
+.r-label{font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none;background:#2a9d8f;color:#fff}
+.r-label.off{background:transparent;color:#2a9d8f;border-color:#2a9d8f}
 .tl-header{padding:10px 14px;border-bottom:1px solid #0f3460;font-size:12px;color:#888;display:flex;justify-content:space-between;align-items:center}
 .tl-header span{font-weight:600;color:#ccc}
 .tl-scroll{flex:1;overflow-y:auto;padding:0}
@@ -216,14 +222,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <span class="fl">Months:</span>
   <button class="btn" onclick="toggleAll(true)" style="font-size:9px;padding:2px 6px">All</button>
   <button class="btn" onclick="toggleAll(false)" style="font-size:9px;padding:2px 6px">None</button>
+  <!-- month labels get inserted here by JS -->
+  <span class="region-sep">|</span>
+  <span class="fl">Regions:</span>
+  <button class="btn" onclick="toggleAllRegions(true)" style="font-size:9px;padding:2px 6px">All</button>
+  <button class="btn" onclick="toggleAllRegions(false)" style="font-size:9px;padding:2px 6px">None</button>
+  <span id="regionFilters"></span>
 </div>
 
-<div class="main">
+<div class="main" style="position:relative">
   <div id="map"></div>
-  <div class="timeline">
+  <div class="timeline" id="timeline">
     <div class="tl-header"><span>Timeline</span><span id="tlCount"></span></div>
     <div class="tl-scroll" id="tlScroll"></div>
   </div>
+  <button class="tl-toggle" id="tlToggle" onclick="toggleTimeline()" title="Toggle timeline">◀</button>
 </div>
 
 <!-- User Name Modal (for stars) -->
@@ -349,6 +362,28 @@ let ALL_TAGS = [];
 const activeTags = new Set();
 let searchQuery = '';
 let clusterGroup;
+
+// === GEO-REGIONS ===
+const REGIONS = {
+  'N. America': { latMin: 15, latMax: 72, lngMin: -170, lngMax: -50 },
+  'C/S America': { latMin: -56, latMax: 15, lngMin: -120, lngMax: -30 },
+  'Europe': { latMin: 35, latMax: 72, lngMin: -25, lngMax: 45 },
+  'Africa': { latMin: -35, latMax: 37, lngMin: -20, lngMax: 55 },
+  'Asia': { latMin: -10, latMax: 72, lngMin: 45, lngMax: 180 },
+  'Oceania': { latMin: -50, latMax: 0, lngMin: 100, lngMax: 180 }
+};
+const activeRegions = new Set(Object.keys(REGIONS));
+
+function getRegion(lat, lng) {
+  // Check in priority order (Europe before Africa for overlap zone)
+  if (lat >= 35 && lat <= 72 && lng >= -25 && lng <= 45) return 'Europe';
+  if (lat >= 15 && lat <= 72 && lng >= -170 && lng <= -50) return 'N. America';
+  if (lat >= -56 && lat <= 15 && lng >= -120 && lng <= -30) return 'C/S America';
+  if (lat >= -35 && lat <= 37 && lng >= -20 && lng <= 55) return 'Africa';
+  if (lat >= -10 && lat <= 72 && lng >= 45 && lng <= 180) return 'Asia';
+  if (lat >= -50 && lat <= 0 && lng >= 100 && lng <= 180) return 'Oceania';
+  return 'Other';
+}
 let userName = '';
 let currentStarIndex = -1; // which event the user is trying to star
 let currentStarCallback = null; // callback after user enters name
@@ -531,7 +566,11 @@ function tipHtml(ev) {
 }
 
 function getVisible() {
-  return events.map((ev, i) => ({ ev, i })).filter(({ ev }) => {
+  return events.map((ev, i) => {
+    const region = getRegion(ev.lat, ev.lng);
+    const inRegion = activeRegions.has(region);
+    return { ev, i, region, inRegion };
+  }).filter(({ ev }) => {
     if (!activeMonths.has(ev.month)) return false;
     const evTags = ev.tags || [];
     if (evTags.length > 0 && !evTags.some(t => activeTags.has(t))) return false;
@@ -547,17 +586,18 @@ function getVisible() {
 function render() {
   if (clusterGroup) map.removeLayer(clusterGroup);
   clusterGroup = L.markerClusterGroup({
-    maxClusterRadius: 35,
+    maxClusterRadius: 18,
     spiderfyOnMaxZoom: true,
     showCoverageOnHover: false,
     zoomToBoundsOnClick: true,
-    disableClusteringAtZoom: 8
+    disableClusteringAtZoom: 5
   });
   
   const visible = getVisible();
-  visible.forEach(({ ev, i }) => {
+  visible.forEach(({ ev, i, inRegion }) => {
     const c = MC[ev.month] || '#888';
-    const icon = mkIcon(c, ignored.has(i), userStars.has(ev.id), ev);
+    const isGreyed = ignored.has(i) || !inRegion;
+    const icon = mkIcon(c, isGreyed, userStars.has(ev.id), ev);
     const marker = L.marker([ev.lat, ev.lng], { icon })
       .bindPopup(popupHtml(ev, i), { maxWidth: 360, minWidth: 260 })
       .bindTooltip(tipHtml(ev), { className: 'et', direction: 'top', offset: [0, -40] });
@@ -577,10 +617,13 @@ function render() {
 function renderTimeline(visible) {
   const scroll = document.getElementById('tlScroll');
   scroll.innerHTML = '';
-  document.getElementById('tlCount').textContent = visible.length;
-  
+
+  // Filter out ignored and out-of-region events for timeline
+  const tlVisible = visible.filter(({ ev, i, inRegion }) => !ignored.has(i) && inRegion);
+  document.getElementById('tlCount').textContent = tlVisible.length;
+
   const byMonth = {};
-  visible.forEach(({ ev }) => {
+  tlVisible.forEach(({ ev }) => {
     const m = ev.month;
     if (!byMonth[m]) byMonth[m] = [];
     byMonth[m].push(ev);
@@ -788,7 +831,7 @@ function initMonthFilters() {
 }
 
 function toggleAll(on) {
-  document.querySelectorAll('.filters label').forEach(l => {
+  document.querySelectorAll('.filters label[class^="m-"]').forEach(l => {
     const inp = l.querySelector('input');
     if (!inp) return;
     const m = inp.dataset.month;
@@ -801,6 +844,53 @@ function toggleAll(on) {
     }
   });
   render();
+}
+
+// === REGION FILTERS ===
+function initRegionFilters() {
+  const container = document.getElementById('regionFilters');
+  container.innerHTML = '';
+  Object.keys(REGIONS).forEach(r => {
+    const label = document.createElement('label');
+    label.className = 'r-label';
+    label.textContent = r;
+    label.addEventListener('click', e => {
+      e.preventDefault();
+      if (activeRegions.has(r)) {
+        activeRegions.delete(r);
+        label.classList.add('off');
+      } else {
+        activeRegions.add(r);
+        label.classList.remove('off');
+      }
+      render();
+    });
+    container.appendChild(label);
+  });
+}
+
+function toggleAllRegions(on) {
+  document.querySelectorAll('.r-label').forEach(l => {
+    const r = l.textContent;
+    if (on) {
+      activeRegions.add(r);
+      l.classList.remove('off');
+    } else {
+      activeRegions.delete(r);
+      l.classList.add('off');
+    }
+  });
+  render();
+}
+
+// === TIMELINE TOGGLE ===
+function toggleTimeline() {
+  const tl = document.getElementById('timeline');
+  const btn = document.getElementById('tlToggle');
+  tl.classList.toggle('hidden');
+  const isHidden = tl.classList.contains('hidden');
+  btn.textContent = isHidden ? '▶' : '◀';
+  btn.style.right = isHidden ? '0' : '340px';
 }
 
 // === TYPE FILTERS ===
@@ -1282,6 +1372,7 @@ async function initData() {
   
   // Init filters
   initMonthFilters();
+  initRegionFilters();
   initTypeFilters();
   
   // Initial render
