@@ -277,6 +277,24 @@
             font-size: 0.8rem;
             color: #fbbf24;
         }
+        .dupe-warning {
+            background: #f8717111;
+            border: 1px solid #f8717133;
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin: 8px 0;
+            font-size: 0.8rem;
+            color: #f87171;
+        }
+        .dupe-header {
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+        }
+        .dupe-warning strong {
+            color: #e0e0e0;
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 <body>
@@ -351,6 +369,7 @@
         const MONTHS = ['Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
         let suggestions = [];
+        let existingEvents = [];
         let currentFilter = 'all';
 
         // ── Toast ──
@@ -361,14 +380,66 @@
             setTimeout(() => el.className = 'toast', 3000);
         }
 
-        // ── Load suggestions ──
+        // ── Load suggestions + existing events ──
         async function loadSuggestions() {
-            const { data, error } = await sb.from('suggestions').select('*').order('created_at', { ascending: false });
-            if (error) { toast('Error loading suggestions: ' + error.message, true); return; }
-            suggestions = data;
+            const [sugResult, evResult] = await Promise.all([
+                sb.from('suggestions').select('*').order('created_at', { ascending: false }),
+                sb.from('events').select('id,name,dates,month,location')
+            ]);
+            if (sugResult.error) { toast('Error loading suggestions: ' + sugResult.error.message, true); return; }
+            if (evResult.error) { toast('Error loading events: ' + evResult.error.message, true); return; }
+            suggestions = sugResult.data;
+            existingEvents = evResult.data || [];
             renderStats();
             renderFilters();
             renderList();
+        }
+
+        // ── Duplicate detection ──
+        function normalizeForMatch(str) {
+            return (str || '').toLowerCase()
+                .replace(/[^a-z0-9\s]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function getKeywords(str) {
+            const stopWords = new Set(['the','a','an','of','for','and','in','at','to','by','on','is','it','with','from','as','or','be','are','was','this','that','2026','2025']);
+            return normalizeForMatch(str)
+                .split(' ')
+                .filter(w => w.length > 2 && !stopWords.has(w));
+        }
+
+        function findDuplicates(suggestionName) {
+            if (!suggestionName) return [];
+            const sugKeywords = getKeywords(suggestionName);
+            if (sugKeywords.length === 0) return [];
+
+            const matches = [];
+            existingEvents.forEach(ev => {
+                const evKeywords = getKeywords(ev.name);
+                if (evKeywords.length === 0) return;
+
+                // Count shared keywords
+                const shared = sugKeywords.filter(k => evKeywords.some(ek => ek.includes(k) || k.includes(ek)));
+                const score = shared.length / Math.min(sugKeywords.length, evKeywords.length);
+
+                // Also check if one name contains the other (substring match)
+                const normSug = normalizeForMatch(suggestionName);
+                const normEv = normalizeForMatch(ev.name);
+                const isSubstring = normSug.includes(normEv) || normEv.includes(normSug);
+
+                // Require either: substring match, or 2+ shared keywords with high score
+                const commonWords = new Set(['festival','gathering','conference','summit','week','camp','retreat','congress','convergence','day','days']);
+                const meaningfulShared = shared.filter(w => !commonWords.has(w));
+                const isGoodMatch = (score >= 0.6 && shared.length >= 2 && meaningfulShared.length >= 1) || isSubstring;
+
+                if (isGoodMatch) {
+                    matches.push({ event: ev, score, shared, isSubstring });
+                }
+            });
+
+            return matches.sort((a, b) => b.score - a.score);
         }
 
         // ── Stats ──
@@ -420,6 +491,21 @@
             let warningHtml = '';
             if (isNotEvent) warningHtml = '<div class="not-event-warning">This URL does not appear to be an event page</div>';
             else if (isPast) warningHtml = '<div class="not-event-warning">This event appears to have already passed</div>';
+
+            // Duplicate detection
+            if (s.status !== 'approved' && s.status !== 'rejected') {
+                const dupes = findDuplicates(ed.name || '');
+                if (dupes.length > 0) {
+                    const dupeItems = dupes.map(d =>
+                        `<div style="margin:4px 0;padding:4px 8px;background:#fbbf2409;border-radius:4px;">` +
+                        `<strong>${d.event.name}</strong>` +
+                        `<span style="color:#888;font-size:0.75rem;margin-left:8px;">${d.event.dates} · ${d.event.location}</span>` +
+                        (d.isSubstring ? `<span style="color:#f87171;font-size:0.7rem;margin-left:6px;">exact match</span>` : '') +
+                        `</div>`
+                    ).join('');
+                    warningHtml += `<div class="dupe-warning"><div class="dupe-header">⚠️ Possible duplicate${dupes.length > 1 ? 's' : ''} already on map:</div>${dupeItems}</div>`;
+                }
+            }
 
             return `
             <div class="suggestion-card status-${s.status}" id="card-${s.id}">
