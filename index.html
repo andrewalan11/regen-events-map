@@ -113,6 +113,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tl-tip .ttp-stars{font-size:9px;color:#e9c46a;margin-top:4px}
 .filter-hints{margin-left:auto;display:flex;gap:12px;align-items:center;font-size:9px;color:#555;flex-shrink:0}
 .filter-hints span{white-space:nowrap}
+.filter-hints span.clickable{cursor:pointer;transition:color .15s}.filter-hints span.clickable:hover{color:#e9c46a}
 
 /* Popup */
 .leaflet-popup-content-wrapper{background:#1e1e3a;color:#e0e0e0;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,.6)}
@@ -245,8 +246,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <span id="regionFilters"></span>
   <div class="filter-hints">
     <span>☆ Star to save favorites</span>
-    <span>📅 Export to calendar</span>
-    <span>🗺 Plan a route</span>
+    <span class="clickable" onclick="togglePanel('favs')">📅 Export to calendar</span>
+    <span class="clickable" onclick="togglePanel('favs')">🗺 Plan a route</span>
     <span>— Ignore to hide</span>
   </div>
 </div>
