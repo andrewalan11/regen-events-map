@@ -56,16 +56,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .filters label{font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none}
 .filters label:hover{opacity:.85}
 .filters label input{display:none}
-.m-mar{background:#4a9e4a;color:#fff}.m-mar.off{background:transparent;color:#4a9e4a;border-color:#4a9e4a}
-.m-apr{background:#6bbe45;color:#1a1a2e}.m-apr.off{background:transparent;color:#6bbe45;border-color:#6bbe45}
-.m-may{background:#a8d430;color:#1a1a2e}.m-may.off{background:transparent;color:#a8d430;border-color:#a8d430}
-.m-jun{background:#d4c520;color:#1a1a2e}.m-jun.off{background:transparent;color:#d4c520;border-color:#d4c520}
-.m-jul{background:#e8b518;color:#1a1a2e}.m-jul.off{background:transparent;color:#e8b518;border-color:#e8b518}
-.m-aug{background:#e89530;color:#1a1a2e}.m-aug.off{background:transparent;color:#e89530;border-color:#e89530}
-.m-sep{background:#d4652a;color:#fff}.m-sep.off{background:transparent;color:#d4652a;border-color:#d4652a}
-.m-oct{background:#b5422a;color:#fff}.m-oct.off{background:transparent;color:#b5422a;border-color:#b5422a}
-.m-nov{background:#7a3b2e;color:#fff}.m-nov.off{background:transparent;color:#7a3b2e;border-color:#7a3b2e}
-.m-dec{background:#4a6a8a;color:#fff}.m-dec.off{background:transparent;color:#4a6a8a;border-color:#4a6a8a}
+.m-mar{background:#e63946;color:#fff}.m-mar.off{background:transparent;color:#e63946;border-color:#e63946}
+.m-apr{background:#e8613a;color:#fff}.m-apr.off{background:transparent;color:#e8613a;border-color:#e8613a}
+.m-may{background:#e89530;color:#1a1a2e}.m-may.off{background:transparent;color:#e89530;border-color:#e89530}
+.m-jun{background:#e9c46a;color:#1a1a2e}.m-jun.off{background:transparent;color:#e9c46a;border-color:#e9c46a}
+.m-jul{background:#a8d430;color:#1a1a2e}.m-jul.off{background:transparent;color:#a8d430;border-color:#a8d430}
+.m-aug{background:#4a9e4a;color:#fff}.m-aug.off{background:transparent;color:#4a9e4a;border-color:#4a9e4a}
+.m-sep{background:#2a9d8f;color:#fff}.m-sep.off{background:transparent;color:#2a9d8f;border-color:#2a9d8f}
+.m-oct{background:#457b9d;color:#fff}.m-oct.off{background:transparent;color:#457b9d;border-color:#457b9d}
+.m-nov{background:#3a5fa0;color:#fff}.m-nov.off{background:transparent;color:#3a5fa0;border-color:#3a5fa0}
+.m-dec{background:#6a4c9c;color:#fff}.m-dec.off{background:transparent;color:#6a4c9c;border-color:#6a4c9c}
 
 .main{display:flex;height:calc(100vh - 82px)}
 #map{flex:1;min-width:0}
@@ -230,7 +230,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="user-modal-overlay" id="userNameModal">
   <div class="user-modal">
     <h3 style="margin-bottom:8px">Resonance Beacons ✨</h3>
-    <p style="font-size:12px;color:#aaa;line-height:1.5;margin-bottom:12px">When you star an event, it becomes a <strong style="color:#e9c46a">resonance beacon</strong> — a signal to the community that you're interested. Others can see how many people resonate with each gathering, and who they are. This helps the community self-organize and find each other.</p>
+    <p style="font-size:12px;color:#aaa;line-height:1.5;margin-bottom:12px">When you star an event, it becomes a <strong style="color:#e9c46a">resonance beacon</strong> — a signal to the community that you're interested. Others can see how many people are interested in each gathering, and who they are. This helps the community self-organize and find each other.</p>
     <p style="font-size:12px;color:#888;margin-bottom:10px">Enter your name so others know who's interested, or skip to star anonymously.</p>
     <input type="text" id="userNameInput" placeholder="Your name (e.g. Andrew)" onkeypress="if(event.key==='Enter') confirmUserName()">
     <div class="buttons">
@@ -286,7 +286,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <p style="margin-top:12px">This project emerged from the regenerative economy ecosystem — connecting communities working on bioregionalism, decentralized governance, community coordination, regenerative finance, and systems change.</p>
 
     <p style="font-size:13px;color:#e9c46a;font-weight:600;margin-top:20px;margin-bottom:6px">✨ Resonance Beacons</p>
-    <p>When you star an event, it becomes a "resonance beacon" — a signal visible to the whole community showing interest in that gathering. You can see how many people resonate with each event and who they are. This helps the community self-organize and find each other on the road.</p>
+    <p>When you star an event, it becomes a "resonance beacon" — a signal visible to the whole community showing interest in that gathering. You can see how many people are interested in each event and who they are. This helps the community self-organize and find each other on the road.</p>
 
     <p style="font-size:13px;color:#2a9d8f;font-weight:600;margin-top:20px;margin-bottom:6px">🔒 Privacy & Identity</p>
     <p>We don't track you. There are no accounts, no cookies, no analytics. Your "ignored" events list is stored only in your browser's local storage — nobody else can see it, and it disappears if you clear your browser data.</p>
@@ -333,7 +333,7 @@ const sb = window.supabase.createClient(
 );
 
 // === COLORS & ICONS ===
-const MC = {'Mar':'#4a9e4a','Apr':'#6bbe45','May':'#a8d430','Jun':'#d4c520','Jul':'#e8b518','Aug':'#e89530','Sep':'#d4652a','Oct':'#b5422a','Nov':'#7a3b2e','Dec':'#4a6a8a'};
+const MC = {'Mar':'#e63946','Apr':'#e8613a','May':'#e89530','Jun':'#e9c46a','Jul':'#a8d430','Aug':'#4a9e4a','Sep':'#2a9d8f','Oct':'#457b9d','Nov':'#3a5fa0','Dec':'#6a4c9c'};
 const TI = {'ecovillage':'🛖','permaculture':'🌱','bioregional':'🌍','climate':'☁️','systems change':'🦋','web3':'⛓️','governance':'🏛️','regen ag':'🌾','festival':'🎪','commons':'🤝','transformation':'✨','UPgame':'🔮','primitive skills':'🏹','craft':'🧶','healing':'💚','rewilding':'🐺','gathering':'🧠','retreat':'🧘','impact':'💡','futures':'🔭','cultural':'🎭','hacker camp':'💻','burning man':'🔥','wellbeing':'🌸','food systems':'🍎','AI':'🤖','entrepreneurship':'🚀','regen':'♻️','regen economics':'💰'};
 function gi(ev){for(const t of(ev.tags||[])){if(TI[t])return TI[t]}return'📍'}
 
@@ -468,13 +468,23 @@ function mkIcon(color, isIgn, isStar, ev) {
   const ring = isStar ? `<div style="position:absolute;top:-7px;left:-7px;width:50px;height:50px;border-radius:50%;border:2px solid #e9c46a;box-shadow:0 0 10px 2px rgba(233,196,106,.4);pointer-events:none"></div>` : '';
   const bdr = isStar ? '2.5px solid #e9c46a' : '2px solid rgba(255,255,255,.6)';
   const glow = isStar ? 'box-shadow:0 2px 8px rgba(0,0,0,.4),0 0 14px 3px rgba(233,196,106,.35);' : 'box-shadow:0 2px 8px rgba(0,0,0,.4);';
+  const dt = ev.dates || '';
   return L.divIcon({
     className: 'cm',
-    html: `<div style="position:relative;opacity:${op};text-align:center">${ring}<div style="width:36px;height:36px;border-radius:50%;background:${fill};border:${bdr};display:flex;align-items:center;justify-content:center;font-size:16px;${glow}cursor:pointer;position:relative;z-index:1">${em}</div>${countBadge}<div style="font-size:8px;color:${isStar ? '#e9c46a' : '#ccc'};text-shadow:0 1px 3px #000,0 0 6px #000;margin-top:1px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;${isStar ? 'font-weight:600' : ''}">${lb}</div></div>`,
-    iconSize: [90, 58],
-    iconAnchor: [45, 38],
-    popupAnchor: [0, -40]
+    html: `<div style="position:relative;opacity:${op};text-align:center">${ring}<div style="width:36px;height:36px;border-radius:50%;background:${fill};border:${bdr};display:flex;align-items:center;justify-content:center;font-size:16px;${glow}cursor:pointer;position:relative;z-index:1">${em}</div>${countBadge}<div style="font-size:8px;color:${isStar ? '#e9c46a' : '#ccc'};text-shadow:0 1px 3px #000,0 0 6px #000;margin-top:1px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;${isStar ? 'font-weight:600' : ''}">${lb}</div><div style="font-size:7px;color:${fill};text-shadow:0 1px 3px #000,0 0 6px #000;white-space:nowrap;pointer-events:none;opacity:.9">${dt}</div></div>`,
+    iconSize: [90, 68],
+    iconAnchor: [45, 44],
+    popupAnchor: [0, -46]
   });
+}
+
+function calcDuration(dates) {
+  const range = dates.match(/(\d+)\s*[–\-]\s*(?:[A-Za-z]+\s+)?(\d+)/);
+  if (range) {
+    const d = parseInt(range[2]) - parseInt(range[1]) + 1;
+    if (d > 0 && d < 60) return d === 1 ? '1 day' : `${d} days`;
+  }
+  return '1 day';
 }
 
 function popupHtml(ev, idx) {
@@ -485,23 +495,26 @@ function popupHtml(ev, idx) {
     return `<span class="tag" style="background:${c}44;color:${c};border:1px solid ${c}66">${ic} ${t}</span>`;
   }).join('');
   const url = ev.url ? `<a href="https://${ev.url}" target="_blank">${ev.url}</a>` : '';
-  const venue = ev.venue ? `<div class="venue">📍 ${ev.venue} <a href="https://www.google.com/maps/search/${encodeURIComponent(ev.venue)}" target="_blank" style="font-size:9px;color:#457b9d">map</a></div>` : '';
+  const mapsLink = `<a href="https://www.google.com/maps?q=${ev.lat},${ev.lng}" target="_blank" style="font-size:9px;color:#457b9d;margin-left:4px">open in maps</a>`;
+  const venue = ev.venue ? `<div class="venue">📍 ${ev.venue}</div>` : '';
   const isStar = userStars.has(ev.id);
   const isIgn = ignored.has(idx);
   const badge = `<span style="display:inline-block;font-size:9px;padding:2px 7px;border-radius:8px;background:${c};color:#fff;font-weight:600;margin-bottom:4px">${ev.month} 2026</span>`;
-  
+  const duration = calcDuration(ev.dates);
+  const durBadge = `<span style="font-size:10px;color:#888;margin-left:6px">(${duration})</span>`;
+
   // Star count and stargazers
   const starData = starCounts.get(ev.id);
   const starCount = starData ? starData.count : 0;
   const stargazers = starData && starData.stargazers ? starData.stargazers.join(', ') : '';
   const beaconBanner = starCount > 0
     ? `<div style="margin:8px 0;padding:8px 12px;background:#e9c46a11;border:1px solid #e9c46a33;border-radius:8px">
-        <div style="font-size:12px;color:#e9c46a;font-weight:600">✨ ${starCount} ${starCount === 1 ? 'person resonates' : 'people resonate'}</div>
+        <div style="font-size:12px;color:#e9c46a;font-weight:600">✨ ${starCount} ${starCount === 1 ? 'person interested' : 'people interested'}</div>
         ${stargazers ? `<div style="font-size:10px;color:#aaa;margin-top:3px">${stargazers}</div>` : ''}
       </div>`
     : '';
 
-  return `${img}<div class="pi">${badge}<h3>${ev.name}</h3><div class="dates">${ev.dates}</div><div class="loc">${ev.location}</div>${venue}<div class="desc">${ev.description}</div>${beaconBanner}${tags}${url ? '<br>' + url : ''}<div class="pa"><button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ I resonate' : '☆ I resonate'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '✓ Ignored' : '— Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
+  return `${img}<div class="pi">${badge}<h3>${ev.name}</h3><div class="dates">${ev.dates} ${durBadge}</div><div class="loc">${ev.location} ${mapsLink}</div>${venue}<div class="desc">${ev.description}</div>${beaconBanner}${tags}${url ? '<br>' + url : ''}<div class="pa"><button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ I'm interested' : '☆ I'm interested'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '✓ Ignored' : '— Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
 }
 
 function tipHtml(ev) {
@@ -578,7 +591,7 @@ function renderTimeline(visible) {
     const header = document.createElement('div');
     header.className = 'tl-month';
     header.style.background = MC[m];
-    header.style.color = m.match(/Jun|May|Apr|Jul|Aug|Sep/) ? '#1a1a2e' : '#fff';
+    header.style.color = m.match(/May|Jun|Jul/) ? '#1a1a2e' : '#fff';
     header.textContent = m;
     scroll.appendChild(header);
     
