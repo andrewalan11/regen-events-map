@@ -485,7 +485,12 @@ function syncUserStars() {
 
 function persist() {
   try {
-    const s = { ignoredNames: [...ignored].map(i => events[i]?.name).filter(Boolean), issues };
+    const s = {
+      ignoredNames: [...ignored].map(i => events[i]?.name).filter(Boolean),
+      issues,
+      activeMonths: [...activeMonths],
+      activeRegions: [...activeRegions]
+    };
     localStorage.setItem(LS_KEY, JSON.stringify(s));
   } catch(e) {}
 }
@@ -502,6 +507,14 @@ function restore() {
       if (i !== undefined) ignored.add(i);
     });
     if (s.issues) s.issues.forEach(iss => issues.push(iss));
+    if (s.activeMonths) {
+      activeMonths.clear();
+      s.activeMonths.forEach(m => activeMonths.add(m));
+    }
+    if (s.activeRegions) {
+      activeRegions.clear();
+      s.activeRegions.forEach(r => activeRegions.add(r));
+    }
   } catch(e) {}
 }
 
@@ -963,6 +976,7 @@ function initMonthFilters() {
         activeMonths.add(m);
         label.classList.remove('off');
       }
+      persist();
       render();
     });
     filterBar.appendChild(label);
@@ -982,6 +996,7 @@ function toggleAll(on) {
       l.classList.add('off');
     }
   });
+  persist();
   render();
 }
 
@@ -1002,8 +1017,10 @@ function initRegionFilters() {
         activeRegions.add(r);
         label.classList.remove('off');
       }
+      persist();
       render();
     });
+    if (!activeRegions.has(r)) label.classList.add('off');
     container.appendChild(label);
   });
 }
@@ -1019,6 +1036,7 @@ function toggleAllRegions(on) {
       l.classList.add('off');
     }
   });
+  persist();
   render();
 }
 
