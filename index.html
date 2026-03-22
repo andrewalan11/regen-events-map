@@ -645,8 +645,8 @@ function tipHtml(ev) {
   const starCount = starData ? starData.count : 0;
   const starDisplay = starCount > 1 ? `<div style="margin-top:4px;font-size:9px;color:#e9c46a;font-weight:600">⭐ ${starCount} interested</div>` : '';
   
-  const desc = ev.long_description || ev.description;
-  return `${img}<div class="tb"><div class="tn">${ev.name}</div><div class="td">${ev.dates} · ${ev.location}</div><div class="tds">${desc}</div><div class="tt">${tags}</div>${starDisplay}</div>`;
+  const more = ev.long_description ? `<div style="margin-top:3px;font-size:8px;color:#2a9d8f">click for more</div>` : '';
+  return `${img}<div class="tb"><div class="tn">${ev.name}</div><div class="td">${ev.dates} · ${ev.location}</div><div class="tds">${ev.description}</div><div class="tt">${tags}</div>${starDisplay}${more}</div>`;
 }
 
 function getVisible() {
@@ -818,8 +818,8 @@ function showTlTip(ev, e) {
   const starData = starCounts.get(ev.id);
   const starCount = starData ? starData.count : 0;
   const starText = starCount > 1 ? `<div class="ttp-stars">⭐ ${starCount} interested</div>` : '';
-  const desc = ev.long_description || ev.description;
-  tip.innerHTML = `${img}<div class="ttp-body"><div class="ttp-name">${ev.name}</div><div class="ttp-dates">${ev.dates} · ${duration}</div><div class="ttp-loc">${ev.location}${ev.venue ? ' · ' + ev.venue : ''}</div><div class="ttp-desc">${desc}</div><div class="ttp-tags">${tags}</div>${starText}</div>`;
+  const more = ev.long_description ? `<div style="margin-top:3px;font-size:8px;color:#2a9d8f">click for more</div>` : '';
+  tip.innerHTML = `${img}<div class="ttp-body"><div class="ttp-name">${ev.name}</div><div class="ttp-dates">${ev.dates} · ${duration}</div><div class="ttp-loc">${ev.location}${ev.venue ? ' · ' + ev.venue : ''}</div><div class="ttp-desc">${ev.description}</div><div class="ttp-tags">${tags}</div>${starText}${more}</div>`;
   moveTlTip(e);
   tip.classList.add('show');
 }
