@@ -631,7 +631,8 @@ function popupHtml(ev, idx) {
       </div>`
     : '';
 
-  return `${img}<div class="pi">${badge}<h3>${ev.name}</h3><div class="dates">${ev.dates} ${durBadge}</div><div class="loc">${ev.location} ${mapsLink}</div>${venue}<div class="desc">${ev.description}</div>${beaconBanner}${tags}${url ? '<br>' + url : ''}<div class="pa"><button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ Interested' : '☆ Interested'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '✓ Ignored' : '— Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
+  const desc = ev.long_description || ev.description;
+  return `${img}<div class="pi">${badge}<h3>${ev.name}</h3><div class="dates">${ev.dates} ${durBadge}</div><div class="loc">${ev.location} ${mapsLink}</div>${venue}<div class="desc">${desc}</div>${beaconBanner}${tags}${url ? '<br>' + url : ''}<div class="pa"><button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ Interested' : '☆ Interested'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '✓ Ignored' : '— Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
 }
 
 function tipHtml(ev) {
@@ -644,7 +645,8 @@ function tipHtml(ev) {
   const starCount = starData ? starData.count : 0;
   const starDisplay = starCount > 1 ? `<div style="margin-top:4px;font-size:9px;color:#e9c46a;font-weight:600">⭐ ${starCount} interested</div>` : '';
   
-  return `${img}<div class="tb"><div class="tn">${ev.name}</div><div class="td">${ev.dates} · ${ev.location}</div><div class="tds">${ev.description}</div><div class="tt">${tags}</div>${starDisplay}</div>`;
+  const desc = ev.long_description || ev.description;
+  return `${img}<div class="tb"><div class="tn">${ev.name}</div><div class="td">${ev.dates} · ${ev.location}</div><div class="tds">${desc}</div><div class="tt">${tags}</div>${starDisplay}</div>`;
 }
 
 function getVisible() {
@@ -816,7 +818,8 @@ function showTlTip(ev, e) {
   const starData = starCounts.get(ev.id);
   const starCount = starData ? starData.count : 0;
   const starText = starCount > 1 ? `<div class="ttp-stars">⭐ ${starCount} interested</div>` : '';
-  tip.innerHTML = `${img}<div class="ttp-body"><div class="ttp-name">${ev.name}</div><div class="ttp-dates">${ev.dates} · ${duration}</div><div class="ttp-loc">${ev.location}${ev.venue ? ' · ' + ev.venue : ''}</div><div class="ttp-desc">${ev.description}</div><div class="ttp-tags">${tags}</div>${starText}</div>`;
+  const desc = ev.long_description || ev.description;
+  tip.innerHTML = `${img}<div class="ttp-body"><div class="ttp-name">${ev.name}</div><div class="ttp-dates">${ev.dates} · ${duration}</div><div class="ttp-loc">${ev.location}${ev.venue ? ' · ' + ev.venue : ''}</div><div class="ttp-desc">${desc}</div><div class="ttp-tags">${tags}</div>${starText}</div>`;
   moveTlTip(e);
   tip.classList.add('show');
 }
