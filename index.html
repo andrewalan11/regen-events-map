@@ -66,17 +66,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .timeline.hidden{width:0;overflow:hidden;opacity:0;border:none}
 .tl-toggle{position:absolute;right:0;top:50%;transform:translateY(-50%);background:#12122a;border:1px solid #0f3460;color:#888;border-radius:4px 0 0 4px;padding:8px 5px;cursor:pointer;font-size:12px;z-index:10;line-height:1}
 .tl-toggle:hover{color:#fff;background:#1a1a3a}
-.region-groups{display:flex;flex-wrap:wrap;gap:2px;align-items:flex-start}
-.rg-group{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px}
-.rg-parent{font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none;background:#2a9d8f;color:#fff;display:inline-flex;align-items:center;gap:3px}
-.rg-parent.off{background:transparent;color:#2a9d8f;border-color:#2a9d8f}
-.rg-parent .rg-arrow{font-size:16px;margin-left:2px;transition:transform .2s;display:inline-block;line-height:1}
-.rg-parent.expanded .rg-arrow{transform:rotate(180deg)}
-.rg-subs{display:none;gap:2px;flex-wrap:wrap;align-items:center;margin-left:2px}
-.rg-group.expanded .rg-subs{display:inline-flex}
+.region-groups{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
+.rg-btn{font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none;background:#2a9d8f;color:#fff}
+.rg-btn.off{background:transparent;color:#2a9d8f;border-color:#2a9d8f}
+.rg-expand{font-size:10px;padding:3px 5px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid #2a9d8f55;user-select:none;background:#2a9d8f44;color:#fff;margin-left:-2px;display:inline-flex;align-items:center}
+.rg-expand:hover{background:#2a9d8f88}
+.rg-expand .rg-arrow{font-size:12px;transition:transform .2s;display:inline-block;line-height:1}
+.rg-expand.expanded .rg-arrow{transform:rotate(180deg)}
+.rg-sub-row{display:none;width:100%;padding:2px 0 0 0;gap:3px;flex-wrap:wrap;align-items:center}
+.rg-sub-row.open{display:flex}
 .rg-sub{font-size:9px;padding:2px 6px;border-radius:8px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none;background:#2a9d8f99;color:#fff}
 .rg-sub.off{background:transparent;color:#2a9d8f;border-color:#2a9d8f88;opacity:.7}
-.rg-sep{color:#333;margin:0 3px;font-size:10px}
+.rg-sep{color:#333;margin:0 2px;font-size:10px}
+.type-bar{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
+.type-chip{font-size:9px;padding:2px 7px;border-radius:8px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none;background:#2a9d8f;color:#fff}
+.type-chip.off{background:transparent;color:#666;border-color:#444}
 .tl-header{padding:10px 14px;border-bottom:1px solid #0f3460;font-size:12px;color:#888;display:flex;justify-content:space-between;align-items:center}
 .tl-header span{font-weight:600;color:#ccc}
 .tl-scroll{flex:1;overflow-y:auto;padding:0}
@@ -280,11 +284,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="btn" onclick="togglePanel('about')" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">ℹ️ About</button>
   </div>
 </div>
-<div class="filters region-bar" style="border-bottom:none;padding-bottom:4px">
+<div class="filters region-bar" style="border-bottom:none;padding-bottom:2px">
   <span class="fl">Regions:</span>
   <button class="btn" onclick="toggleAllRegions(true)" style="font-size:9px;padding:2px 6px">All</button>
   <button class="btn" onclick="toggleAllRegions(false)" style="font-size:9px;padding:2px 6px">None</button>
   <div id="regionFilters" class="region-groups"></div>
+  <div id="regionSubRow" class="rg-sub-row"></div>
   <div class="filter-hints">
     <span>☆ Star to save favorites</span>
     <span class="clickable" onclick="togglePanel('favs')">📅 Export to calendar</span>
@@ -292,11 +297,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <span>— Ignore to hide</span>
   </div>
 </div>
-<div class="filters" id="filterBar" style="padding-top:0px">
+<div class="filters" id="filterBar" style="padding-top:0px;border-bottom:none">
   <span class="fl">Months:</span>
   <button class="btn" onclick="toggleAll(true)" style="font-size:9px;padding:2px 6px">All</button>
   <button class="btn" onclick="toggleAll(false)" style="font-size:9px;padding:2px 6px">None</button>
   <!-- month labels get inserted here by JS -->
+</div>
+<div class="filters" id="typeBar" style="padding-top:0px">
+  <span class="fl">Types:</span>
+  <button class="btn" onclick="setAllTypes(true)" style="font-size:9px;padding:2px 6px">All</button>
+  <button class="btn" onclick="setAllTypes(false)" style="font-size:9px;padding:2px 6px">None</button>
+  <div id="typeChips" class="type-bar"></div>
 </div>
 <div id="tlTip" class="tl-tip"></div>
 
@@ -515,22 +526,25 @@ let clusterGroup;
 const REGION_HIERARCHY = {
   'Europe': {
     emoji: '🇪🇺',
+    expandable: true,
     subs: ['Iberian', 'Mediterranean', 'Western Europe', 'Central Europe', 'Nordic', 'Eastern Europe', 'British Isles']
   },
   'N. America': {
     emoji: '🌎',
+    expandable: true,
     subs: ['West Coast', 'Mountain & Central', 'East Coast', 'Mexico & Caribbean']
   },
-  'Other': {
-    emoji: '🌏',
-    subs: ['C/S America', 'Africa', 'Asia', 'Oceania']
-  }
+  'C/S America': { emoji: '🌎', expandable: false, subs: ['C/S America'] },
+  'Africa': { emoji: '🌍', expandable: false, subs: ['Africa'] },
+  'Asia': { emoji: '🌏', expandable: false, subs: ['Asia'] },
+  'Oceania': { emoji: '🏝️', expandable: false, subs: ['Oceania'] }
 };
 
 // Collect all sub-region names
 const ALL_SUBS = [];
 Object.values(REGION_HIERARCHY).forEach(r => r.subs.forEach(s => ALL_SUBS.push(s)));
 const activeRegions = new Set(ALL_SUBS);
+let expandedRegion = null; // track which parent is expanded
 
 function getRegion(lat, lng) {
   // Europe sub-regions (check first — priority over Africa overlap)
@@ -1292,29 +1306,16 @@ function initRegionFilters() {
   const container = document.getElementById('regionFilters');
   container.innerHTML = '';
 
-  const parents = Object.entries(REGION_HIERARCHY);
-  parents.forEach(([parentName, data], idx) => {
-    const group = document.createElement('div');
-    group.className = 'rg-group';
-    group.dataset.parent = parentName;
-
-    // Parent button
-    const parentBtn = document.createElement('span');
-    parentBtn.className = 'rg-parent';
-    const allOn = data.subs.every(s => activeRegions.has(s));
+  Object.entries(REGION_HIERARCHY).forEach(([parentName, data], idx) => {
+    // Main region button — toggles all its subs on/off
+    const btn = document.createElement('span');
+    btn.className = 'rg-btn';
+    btn.dataset.parent = parentName;
     const noneOn = data.subs.every(s => !activeRegions.has(s));
-    if (noneOn) parentBtn.classList.add('off');
-    parentBtn.innerHTML = `${data.emoji} ${parentName} <span class="rg-arrow">▾</span>`;
+    if (noneOn) btn.classList.add('off');
+    btn.textContent = `${data.emoji} ${parentName}`;
 
-    // Click parent label = toggle all subs on/off
-    parentBtn.addEventListener('click', e => {
-      if (e.target.classList.contains('rg-arrow') || e.target.closest('.rg-arrow')) {
-        // Arrow click = expand/collapse
-        e.stopPropagation();
-        group.classList.toggle('expanded');
-        parentBtn.classList.toggle('expanded');
-        return;
-      }
+    btn.addEventListener('click', () => {
       const currentlyAllOn = data.subs.every(s => activeRegions.has(s));
       data.subs.forEach(s => {
         if (currentlyAllOn) activeRegions.delete(s);
@@ -1324,57 +1325,76 @@ function initRegionFilters() {
       persist();
       render();
     });
+    container.appendChild(btn);
 
-    group.appendChild(parentBtn);
-
-    // Sub-region container
-    const subsContainer = document.createElement('span');
-    subsContainer.className = 'rg-subs';
-
-    data.subs.forEach(subName => {
-      const subBtn = document.createElement('span');
-      subBtn.className = 'rg-sub';
-      subBtn.dataset.sub = subName;
-      subBtn.textContent = subName;
-      if (!activeRegions.has(subName)) subBtn.classList.add('off');
-
-      subBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        if (activeRegions.has(subName)) activeRegions.delete(subName);
-        else activeRegions.add(subName);
-        refreshRegionUI();
-        persist();
-        render();
+    // Expand arrow (only for regions with multiple sub-regions)
+    if (data.expandable) {
+      const arrow = document.createElement('span');
+      arrow.className = 'rg-expand';
+      arrow.dataset.parent = parentName;
+      if (expandedRegion === parentName) arrow.classList.add('expanded');
+      arrow.innerHTML = '<span class="rg-arrow">▾</span>';
+      arrow.addEventListener('click', () => {
+        if (expandedRegion === parentName) {
+          expandedRegion = null;
+        } else {
+          expandedRegion = parentName;
+        }
+        renderSubRow();
+        document.querySelectorAll('.rg-expand').forEach(el => {
+          el.classList.toggle('expanded', el.dataset.parent === expandedRegion);
+        });
       });
-
-      subsContainer.appendChild(subBtn);
-    });
-
-    group.appendChild(subsContainer);
-    container.appendChild(group);
-
-    // Separator between groups
-    if (idx < parents.length - 1) {
-      const sep = document.createElement('span');
-      sep.className = 'rg-sep';
-      sep.textContent = '·';
-      container.appendChild(sep);
+      container.appendChild(arrow);
     }
+  });
+
+  renderSubRow();
+}
+
+function renderSubRow() {
+  const subRow = document.getElementById('regionSubRow');
+  subRow.innerHTML = '';
+  subRow.classList.toggle('open', !!expandedRegion);
+  if (!expandedRegion) return;
+
+  const data = REGION_HIERARCHY[expandedRegion];
+  if (!data) return;
+
+  const label = document.createElement('span');
+  label.style.cssText = 'font-size:9px;color:#888;margin-right:4px;font-weight:600';
+  label.textContent = expandedRegion + ':';
+  subRow.appendChild(label);
+
+  data.subs.forEach(subName => {
+    const chip = document.createElement('span');
+    chip.className = 'rg-sub';
+    chip.dataset.sub = subName;
+    chip.textContent = subName;
+    if (!activeRegions.has(subName)) chip.classList.add('off');
+    chip.addEventListener('click', () => {
+      if (activeRegions.has(subName)) activeRegions.delete(subName);
+      else activeRegions.add(subName);
+      refreshRegionUI();
+      persist();
+      render();
+    });
+    subRow.appendChild(chip);
   });
 }
 
 function refreshRegionUI() {
-  Object.entries(REGION_HIERARCHY).forEach(([parentName, data]) => {
-    const group = document.querySelector(`.rg-group[data-parent="${parentName}"]`);
-    if (!group) return;
-    const parentBtn = group.querySelector('.rg-parent');
+  // Update parent buttons
+  document.querySelectorAll('.rg-btn[data-parent]').forEach(btn => {
+    const parentName = btn.dataset.parent;
+    const data = REGION_HIERARCHY[parentName];
+    if (!data) return;
     const noneOn = data.subs.every(s => !activeRegions.has(s));
-    parentBtn.classList.toggle('off', noneOn);
-
-    group.querySelectorAll('.rg-sub').forEach(el => {
-      const sub = el.dataset.sub;
-      el.classList.toggle('off', !activeRegions.has(sub));
-    });
+    btn.classList.toggle('off', noneOn);
+  });
+  // Update sub-region chips
+  document.querySelectorAll('.rg-sub[data-sub]').forEach(el => {
+    el.classList.toggle('off', !activeRegions.has(el.dataset.sub));
   });
 }
 
@@ -1404,34 +1424,55 @@ function toggleTimeline() {
 
 // === TYPE FILTERS ===
 function initTypeFilters() {
-  const typesList = document.getElementById('typesList');
-  typesList.innerHTML = '';
-  
-  ALL_TAGS.forEach(tag => {
-    const item = document.createElement('div');
-    item.style.padding = '8px 18px';
-    item.style.borderBottom = '1px solid #0f346033';
-    item.style.cursor = 'pointer';
-    item.style.userSelect = 'none';
-    
-    const isActive = activeTags.has(tag);
-    item.style.background = isActive ? '#2a9d8f22' : 'transparent';
-    item.style.color = isActive ? '#2a9d8f' : '#888';
-    
-    const icon = TI[tag] || '';
-    item.innerHTML = `<span style="font-size:12px;font-weight:600">${icon} ${tag}</span>`;
-    
-    item.addEventListener('click', () => {
-      if (activeTags.has(tag)) {
-        activeTags.delete(tag);
-      } else {
-        activeTags.add(tag);
-      }
-      initTypeFilters();
-      render();
+  // Render chips in the visible bar
+  const chipBar = document.getElementById('typeChips');
+  if (chipBar) {
+    chipBar.innerHTML = '';
+    ALL_TAGS.forEach(tag => {
+      const chip = document.createElement('span');
+      chip.className = 'type-chip' + (activeTags.has(tag) ? '' : ' off');
+      chip.dataset.tag = tag;
+      const icon = TI[tag] || '';
+      chip.textContent = icon ? `${icon} ${tag}` : tag;
+      chip.addEventListener('click', () => {
+        if (activeTags.has(tag)) activeTags.delete(tag);
+        else activeTags.add(tag);
+        refreshTypeUI();
+        render();
+      });
+      chipBar.appendChild(chip);
     });
-    
-    typesList.appendChild(item);
+  }
+
+  // Also update side panel if it exists
+  const typesList = document.getElementById('typesList');
+  if (typesList) {
+    typesList.innerHTML = '';
+    ALL_TAGS.forEach(tag => {
+      const item = document.createElement('div');
+      item.style.padding = '8px 18px';
+      item.style.borderBottom = '1px solid #0f346033';
+      item.style.cursor = 'pointer';
+      item.style.userSelect = 'none';
+      const isActive = activeTags.has(tag);
+      item.style.background = isActive ? '#2a9d8f22' : 'transparent';
+      item.style.color = isActive ? '#2a9d8f' : '#888';
+      const icon = TI[tag] || '';
+      item.innerHTML = `<span style="font-size:12px;font-weight:600">${icon} ${tag}</span>`;
+      item.addEventListener('click', () => {
+        if (activeTags.has(tag)) activeTags.delete(tag);
+        else activeTags.add(tag);
+        initTypeFilters();
+        render();
+      });
+      typesList.appendChild(item);
+    });
+  }
+}
+
+function refreshTypeUI() {
+  document.querySelectorAll('.type-chip[data-tag]').forEach(el => {
+    el.classList.toggle('off', !activeTags.has(el.dataset.tag));
   });
 }
 
@@ -1441,6 +1482,7 @@ function setAllTypes(on) {
   } else {
     activeTags.clear();
   }
+  refreshTypeUI();
   initTypeFilters();
   render();
 }
