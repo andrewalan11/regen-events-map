@@ -69,9 +69,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .region-groups{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
 .rg-btn{font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none;background:#2a9d8f;color:#fff}
 .rg-btn.off{background:transparent;color:#2a9d8f;border-color:#2a9d8f}
-.rg-expand{font-size:9px;padding:2px 6px;border-radius:8px;cursor:pointer;transition:all .2s;border:1px solid #2a9d8f55;user-select:none;background:transparent;color:#2a9d8f;margin-left:-1px;display:inline-flex;align-items:center}
-.rg-expand:hover{background:#2a9d8f33}
-.rg-expand.expanded{background:#2a9d8f33}
+/* rg-expand removed — continent click now expands sub-regions directly */
 .rg-sub-row{display:none;width:100%;padding:2px 0 0 0;gap:3px;flex-wrap:wrap;align-items:center}
 .rg-sub-row.open{display:flex}
 .rg-sub{font-size:9px;padding:2px 6px;border-radius:8px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none;background:#2a9d8f99;color:#fff}
@@ -129,7 +127,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tl-tip .ttp-tags{display:flex;flex-wrap:wrap;gap:3px}
 .tl-tip .ttp-tag{font-size:8px;padding:1px 5px;border-radius:5px;white-space:nowrap}
 .tl-tip .ttp-stars{font-size:9px;color:#e9c46a;margin-top:4px}
-.filter-hints{margin-left:0;display:flex;gap:12px;align-items:center;font-size:9px;color:#555;flex-shrink:0}
+.filter-hints{margin-left:80px;display:flex;gap:12px;align-items:center;font-size:9px;color:#555;flex-shrink:0}
 .filter-hints span{white-space:nowrap}
 .filter-hints span.clickable{cursor:pointer;transition:color .15s}.filter-hints span.clickable:hover{color:#e9c46a}
 
@@ -1344,7 +1342,6 @@ function initRegionFilters() {
 
   Object.entries(REGION_HIERARCHY).forEach(([parentName, data], idx) => {
     const c = data.color;
-    // Main region button — toggles all its subs on/off
     const btn = document.createElement('span');
     btn.className = 'rg-btn';
     btn.dataset.parent = parentName;
@@ -1356,41 +1353,40 @@ function initRegionFilters() {
     } else {
       btn.style.cssText = `background:${c};color:#fff;border-color:transparent`;
     }
-    btn.textContent = `${data.emoji} ${parentName}`;
+    const arrow = data.expandable ? (expandedRegion === parentName ? ' ▾' : ' ▸') : '';
+    btn.textContent = `${data.emoji} ${parentName}${arrow}`;
 
     btn.addEventListener('click', () => {
-      const currentlyAllOn = data.subs.every(s => activeRegions.has(s));
-      data.subs.forEach(s => {
-        if (currentlyAllOn) activeRegions.delete(s);
-        else activeRegions.add(s);
-      });
-      refreshRegionUI();
-      persist();
-      render();
-    });
-    container.appendChild(btn);
-
-    // Expand arrow (only for regions with multiple sub-regions)
-    if (data.expandable) {
-      const arrow = document.createElement('span');
-      arrow.className = 'rg-expand';
-      arrow.dataset.parent = parentName;
-      if (expandedRegion === parentName) arrow.classList.add('expanded');
-      arrow.textContent = 'regions';
-      arrow.style.cssText = `border-color:${c}55;color:${c}`;
-      arrow.addEventListener('click', () => {
+      if (data.expandable) {
+        // Toggle expand/collapse — show sub-regions
         if (expandedRegion === parentName) {
           expandedRegion = null;
         } else {
           expandedRegion = parentName;
         }
         renderSubRow();
-        document.querySelectorAll('.rg-expand').forEach(el => {
-          el.classList.toggle('expanded', el.dataset.parent === expandedRegion);
+        // Update arrows on all expandable buttons
+        document.querySelectorAll('.rg-btn[data-parent]').forEach(b => {
+          const pn = b.dataset.parent;
+          const d = REGION_HIERARCHY[pn];
+          if (d && d.expandable) {
+            const a = expandedRegion === pn ? ' ▾' : ' ▸';
+            b.textContent = `${d.emoji} ${pn}${a}`;
+          }
         });
-      });
-      container.appendChild(arrow);
-    }
+      } else {
+        // Simple toggle on/off for non-expandable continents
+        const currentlyAllOn = data.subs.every(s => activeRegions.has(s));
+        data.subs.forEach(s => {
+          if (currentlyAllOn) activeRegions.delete(s);
+          else activeRegions.add(s);
+        });
+        refreshRegionUI();
+        persist();
+        render();
+      }
+    });
+    container.appendChild(btn);
   });
 
   renderSubRow();
@@ -1405,12 +1401,23 @@ function renderSubRow() {
   const data = REGION_HIERARCHY[expandedRegion];
   if (!data) return;
 
-  const label = document.createElement('span');
-  label.style.cssText = 'font-size:9px;color:#888;margin-right:4px;font-weight:600';
-  label.textContent = expandedRegion + ':';
-  subRow.appendChild(label);
-
   const c = data.color || '#2a9d8f';
+
+  // All / None toggle for the expanded continent
+  const allBtn = document.createElement('span');
+  allBtn.className = 'rg-sub';
+  allBtn.textContent = 'All';
+  allBtn.style.cssText = `background:${c}44;color:${c};border-color:${c}55;font-weight:700;font-size:8px;padding:2px 5px`;
+  allBtn.addEventListener('click', () => {
+    const allOn = data.subs.every(s => activeRegions.has(s));
+    data.subs.forEach(s => { if (allOn) activeRegions.delete(s); else activeRegions.add(s); });
+    refreshRegionUI();
+    renderSubRow();
+    persist();
+    render();
+  });
+  subRow.appendChild(allBtn);
+
   data.subs.forEach(subName => {
     const chip = document.createElement('span');
     chip.className = 'rg-sub';
