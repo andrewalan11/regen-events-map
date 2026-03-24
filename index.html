@@ -87,10 +87,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tp-item.inactive{color:#555}
 .starred-panel{width:0;overflow:hidden;background:#12122a;border-left:1px solid #0f3460;display:flex;flex-direction:column;flex-shrink:0;transition:width .3s;opacity:0}
 .starred-panel.open{width:220px;opacity:1}
+.ignored-panel{width:0;overflow:hidden;background:#12122a;border-left:1px solid #0f3460;display:flex;flex-direction:column;flex-shrink:0;transition:width .3s;opacity:0}
+.ignored-panel.open{width:200px;opacity:1}
+.ip-inline-list{flex:1;overflow-y:auto;padding:4px 0}
+.ip-inline-actions{padding:6px;border-top:1px solid #0f3460;display:flex;flex-wrap:wrap;gap:3px}
 .sp-inline-list{flex:1;overflow-y:auto;padding:4px 0}
 .sp-inline-actions{padding:6px;border-top:1px solid #0f3460;display:flex;flex-wrap:wrap;gap:3px}
 .sp-inline-btn{font-size:9px;padding:3px 6px;border-radius:6px;cursor:pointer;border:1px solid #444;background:#333;color:#ccc;white-space:nowrap}
 .sp-inline-btn:hover{background:#444}
+.sp-unstar{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:#e9c46a;cursor:pointer;font-size:14px;padding:4px 6px;opacity:.4;transition:opacity .15s}
+.sp-item:hover .sp-unstar{opacity:1}
+.sp-unstar:hover{color:#e63946!important;opacity:1}
 .tl-header{padding:10px 14px;border-bottom:1px solid #0f3460;font-size:12px;color:#888;display:flex;justify-content:space-between;align-items:center}
 .tl-header span{font-weight:600;color:#ccc}
 .tl-scroll{flex:1;overflow-y:auto;padding:0}
@@ -122,7 +129,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tl-tip .ttp-tags{display:flex;flex-wrap:wrap;gap:3px}
 .tl-tip .ttp-tag{font-size:8px;padding:1px 5px;border-radius:5px;white-space:nowrap}
 .tl-tip .ttp-stars{font-size:9px;color:#e9c46a;margin-top:4px}
-.filter-hints{margin-left:auto;display:flex;gap:12px;align-items:center;font-size:9px;color:#555;flex-shrink:0}
+.filter-hints{margin-left:0;display:flex;gap:12px;align-items:center;font-size:9px;color:#555;flex-shrink:0}
 .filter-hints span{white-space:nowrap}
 .filter-hints span.clickable{cursor:pointer;transition:color .15s}.filter-hints span.clickable:hover{color:#e9c46a}
 
@@ -283,7 +290,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <button class="btn btn-online" id="onlineBtn" onclick="toggleOnlineOverlay()">🌐 Online Events (<span id="onlineCount">0</span>)</button>
   <button class="btn" id="typesBtn" onclick="toggleTypesPanel()" style="background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55">🏷️ Event Types</button>
   <button class="btn btn-favs" id="favsBtn" onclick="toggleStarredPanel()">★ Starred (0)</button>
-  <button class="btn" id="ignBtn" onclick="togglePanel('ignored')" style="background:#55555522;color:#888;border-color:#55555555">Ignored (0)</button>
+  <button class="btn" id="ignBtn" onclick="toggleIgnoredPanel()" style="background:#55555522;color:#888;border-color:#55555555">Ignored (0)</button>
   <button class="btn btn-issues" id="issuesBtn" onclick="togglePanel('issues')" style="display:none">Issues (0)</button>
   <button class="btn" id="tlToggleTop" onclick="toggleTimeline()" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">📋 Timeline</button>
   <button class="btn" onclick="togglePanel('about')" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">ℹ️ About</button>
@@ -296,8 +303,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="regionSubRow" class="rg-sub-row"></div>
   <div class="filter-hints">
     <span>☆ Star to save favorites</span>
-    <span class="clickable" onclick="toggleStarredPanel()">📅 Export to calendar</span>
-    <span class="clickable" onclick="toggleStarredPanel()">🗺 Plan a route</span>
+    <span class="clickable" onclick="openExportModal()">📅 Export to calendar</span>
+    <span class="clickable" onclick="openRouteModal()">🗺 Plan a route</span>
     <span>— Ignore to hide</span>
   </div>
 </div>
@@ -333,6 +340,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="sp-inline-btn" onclick="exportICS()">📅 Export .ics</button>
       <button class="sp-inline-btn" onclick="openRoutePage()">🗺️ Route</button>
       <button class="sp-inline-btn" onclick="exportKML()">📍 KML</button>
+    </div>
+  </div>
+  <div class="ignored-panel" id="ignoredPanel">
+    <div class="tp-header">
+      <span style="font-weight:600;color:#888;font-size:12px">— Ignored</span>
+      <button onclick="toggleIgnoredPanel()" style="background:none;border:none;color:#888;cursor:pointer;font-size:14px;padding:2px 6px" title="Close ignored">✕</button>
+    </div>
+    <div class="ip-inline-list" id="ignoredList"></div>
+    <div class="ip-inline-actions">
+      <button class="sp-inline-btn" onclick="clearIgnored()">Clear all</button>
     </div>
   </div>
   <div class="timeline" id="timeline">
@@ -375,14 +392,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
-<!-- Ignored Panel -->
-<div class="side-panel" id="ignoredPanel">
-  <div class="sp-header"><h2 style="color:#888">Ignored Events</h2><button class="sp-close" onclick="togglePanel('ignored')">&times;</button></div>
-  <div class="sp-list" id="ignoredList"></div>
-  <button class="sp-btn" onclick="clearIgnored()" style="background:#33333322;color:#666;border-color:#44444455">Clear all ignored</button>
+<!-- Export to Calendar Modal -->
+<div class="modal-overlay" id="exportModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:420px">
+    <h2 style="color:#e9c46a;font-size:16px">📅 Export to Calendar</h2>
+    <div id="exportModalBody" style="margin-top:12px"></div>
+    <div class="mbtn" style="margin-top:14px">
+      <button class="cancel" onclick="document.getElementById('exportModal').style.display='none'">Close</button>
+    </div>
+  </div>
 </div>
 
-<!-- Starred Panel -->
+<!-- Plan a Route Modal -->
+<div class="modal-overlay" id="routeModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:420px">
+    <h2 style="color:#e9c46a;font-size:16px">🗺 Plan a Route</h2>
+    <div id="routeModalBody" style="margin-top:12px"></div>
+    <div class="mbtn" style="margin-top:14px">
+      <button class="cancel" onclick="document.getElementById('routeModal').style.display='none'">Close</button>
+    </div>
+  </div>
+</div>
 
 <!-- Issues Panel -->
 <div class="side-panel" id="issuesPanel">
@@ -531,19 +561,19 @@ let clusterGroup;
 // === HIERARCHICAL REGION / SUB-REGION SYSTEM ===
 const REGION_HIERARCHY = {
   'Europe': {
-    emoji: '🇪🇺',
+    emoji: '🇪🇺', color: '#4a90d9',
     expandable: true,
     subs: ['Iberian', 'Mediterranean', 'Western Europe', 'Central Europe', 'Nordic', 'Eastern Europe', 'British Isles']
   },
   'N. America': {
-    emoji: '🌎',
+    emoji: '🌎', color: '#2a9d8f',
     expandable: true,
     subs: ['West Coast', 'Mountain & Central', 'East Coast', 'Mexico & Caribbean']
   },
-  'C/S America': { emoji: '🌎', expandable: false, subs: ['C/S America'] },
-  'Africa': { emoji: '🌍', expandable: false, subs: ['Africa'] },
-  'Asia': { emoji: '🌏', expandable: false, subs: ['Asia'] },
-  'Oceania': { emoji: '🏝️', expandable: false, subs: ['Oceania'] }
+  'C/S America': { emoji: '🌎', color: '#e76f51', expandable: false, subs: ['C/S America'] },
+  'Africa': { emoji: '🌍', color: '#e9c46a', expandable: false, subs: ['Africa'] },
+  'Asia': { emoji: '🌏', color: '#e63946', expandable: false, subs: ['Asia'] },
+  'Oceania': { emoji: '🏝️', color: '#9b59b6', expandable: false, subs: ['Oceania'] }
 };
 
 // Collect all sub-region names
@@ -1313,12 +1343,19 @@ function initRegionFilters() {
   container.innerHTML = '';
 
   Object.entries(REGION_HIERARCHY).forEach(([parentName, data], idx) => {
+    const c = data.color;
     // Main region button — toggles all its subs on/off
     const btn = document.createElement('span');
     btn.className = 'rg-btn';
     btn.dataset.parent = parentName;
+    btn.dataset.color = c;
     const noneOn = data.subs.every(s => !activeRegions.has(s));
-    if (noneOn) btn.classList.add('off');
+    if (noneOn) {
+      btn.classList.add('off');
+      btn.style.cssText = `background:transparent;color:${c};border-color:${c}`;
+    } else {
+      btn.style.cssText = `background:${c};color:#fff;border-color:transparent`;
+    }
     btn.textContent = `${data.emoji} ${parentName}`;
 
     btn.addEventListener('click', () => {
@@ -1340,6 +1377,7 @@ function initRegionFilters() {
       arrow.dataset.parent = parentName;
       if (expandedRegion === parentName) arrow.classList.add('expanded');
       arrow.textContent = 'regions';
+      arrow.style.cssText = `border-color:${c}55;color:${c}`;
       arrow.addEventListener('click', () => {
         if (expandedRegion === parentName) {
           expandedRegion = null;
@@ -1372,12 +1410,20 @@ function renderSubRow() {
   label.textContent = expandedRegion + ':';
   subRow.appendChild(label);
 
+  const c = data.color || '#2a9d8f';
   data.subs.forEach(subName => {
     const chip = document.createElement('span');
     chip.className = 'rg-sub';
     chip.dataset.sub = subName;
+    chip.dataset.color = c;
     chip.textContent = subName;
-    if (!activeRegions.has(subName)) chip.classList.add('off');
+    const isOff = !activeRegions.has(subName);
+    if (isOff) {
+      chip.classList.add('off');
+      chip.style.cssText = `background:transparent;color:${c};border-color:${c}88;opacity:.7`;
+    } else {
+      chip.style.cssText = `background:${c}99;color:#fff;border-color:transparent`;
+    }
     chip.addEventListener('click', () => {
       if (activeRegions.has(subName)) activeRegions.delete(subName);
       else activeRegions.add(subName);
@@ -1390,17 +1436,30 @@ function renderSubRow() {
 }
 
 function refreshRegionUI() {
-  // Update parent buttons
+  // Update parent buttons with colors
   document.querySelectorAll('.rg-btn[data-parent]').forEach(btn => {
     const parentName = btn.dataset.parent;
     const data = REGION_HIERARCHY[parentName];
     if (!data) return;
+    const c = data.color;
     const noneOn = data.subs.every(s => !activeRegions.has(s));
     btn.classList.toggle('off', noneOn);
+    if (noneOn) {
+      btn.style.cssText = `background:transparent;color:${c};border-color:${c}`;
+    } else {
+      btn.style.cssText = `background:${c};color:#fff;border-color:transparent`;
+    }
   });
-  // Update sub-region chips
+  // Update sub-region chips with parent color
   document.querySelectorAll('.rg-sub[data-sub]').forEach(el => {
-    el.classList.toggle('off', !activeRegions.has(el.dataset.sub));
+    const isOff = !activeRegions.has(el.dataset.sub);
+    el.classList.toggle('off', isOff);
+    const c = el.dataset.color || '#2a9d8f';
+    if (isOff) {
+      el.style.cssText = `background:transparent;color:${c};border-color:${c}88;opacity:.7`;
+    } else {
+      el.style.cssText = `background:${c}99;color:#fff;border-color:transparent`;
+    }
   });
 }
 
@@ -1470,6 +1529,12 @@ function toggleStarredPanel() {
   if (panel.classList.contains('open')) renderFavsPanel();
 }
 
+function toggleIgnoredPanel() {
+  const panel = document.getElementById('ignoredPanel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) renderIgnoredPanel();
+}
+
 function setAllTypes(on) {
   if (on) {
     ALL_TAGS.forEach(t => activeTags.add(t));
@@ -1482,7 +1547,7 @@ function setAllTypes(on) {
 
 // === SIDE PANELS ===
 function togglePanel(panel) {
-  const panels = { issues: 'issuesPanel', about: 'aboutPanel', ignored: 'ignoredPanel' };
+  const panels = { issues: 'issuesPanel', about: 'aboutPanel' };
   const el = document.getElementById(panels[panel]);
   if (!el) return;
   
@@ -1493,7 +1558,6 @@ function togglePanel(panel) {
     document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
     el.classList.add('open');
     
-    if (panel === 'ignored') renderIgnoredPanel();
     if (panel === 'issues') renderIssuesPanel();
   }
 }
@@ -1523,12 +1587,15 @@ function renderFavsPanel() {
   starredEvents.forEach(ev => {
     const item = document.createElement('div');
     item.className = 'sp-item';
+    item.style.position = 'relative';
     item.innerHTML = `
+      <button class="sp-unstar" onclick="event.stopPropagation();unstarFromPanel(${ev.id})" title="Remove star">★</button>
       <div class="sin">${ev.name}</div>
       <div class="sid">${ev.dates}</div>
       <div class="sil">${ev.location}</div>
     `;
     item.addEventListener('click', () => {
+      if (ev.is_online) return;
       map.setView([ev.lat, ev.lng], 8);
       clusterGroup.getLayers().forEach(m => {
         if (m._evId === ev.id) m.openPopup();
@@ -1536,6 +1603,14 @@ function renderFavsPanel() {
     });
     list.appendChild(item);
   });
+}
+
+function unstarFromPanel(evId) {
+  userStars.delete(evId);
+  persist();
+  render();
+  renderFavsPanel();
+  document.getElementById('favsBtn').textContent = '★ Starred (' + userStars.size + ')';
 }
 
 function renderIgnoredPanel() {
@@ -1552,8 +1627,9 @@ function renderIgnoredPanel() {
     item.className = 'sp-item';
     item.innerHTML = `<button class="sir" onclick="event.stopPropagation();unIgnore(${idx})">↩</button><div class="sin">${ev.name}</div><div class="sid">${ev.dates}</div><div class="sil">${ev.location}</div>`;
     item.addEventListener('click', () => {
-      map.setView([ev.lat, ev.lng], 8);
-      togglePanel('ignored');
+      if (!ev.is_online) {
+        map.setView([ev.lat, ev.lng], 8);
+      }
     });
     list.appendChild(item);
   });
@@ -1836,6 +1912,52 @@ ${evs.map((e, i) => {
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank');
   toast(`Opened route page with ${evs.length} stops`);
+}
+
+// === EXPORT CALENDAR MODAL ===
+function openExportModal() {
+  const modal = document.getElementById('exportModal');
+  const body = document.getElementById('exportModalBody');
+  const starred = events.filter(e => userStars.has(e.id));
+
+  if (starred.length === 0) {
+    body.innerHTML = `
+      <p style="color:#888;font-size:13px;line-height:1.6;margin-bottom:12px">You haven't starred any events yet.</p>
+      <p style="color:#666;font-size:12px">Star events on the map or timeline by clicking the ☆ icon, then come back here to export them to your calendar.</p>
+    `;
+  } else {
+    body.innerHTML = `
+      <p style="color:#ccc;font-size:13px;line-height:1.6;margin-bottom:14px">You have <strong style="color:#e9c46a">${starred.length} starred event${starred.length === 1 ? '' : 's'}</strong> ready to export.</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button onclick="exportICS();document.getElementById('exportModal').style.display='none'" style="padding:10px 16px;border-radius:8px;background:#2a9d8f;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:600;text-align:left">📅 Download .ics file<br><span style="font-size:10px;font-weight:400;opacity:.7">Works with Apple Calendar, Google Calendar, Outlook</span></button>
+        <button onclick="copyFavsList();document.getElementById('exportModal').style.display='none'" style="padding:10px 16px;border-radius:8px;background:#333;color:#ccc;border:1px solid #555;cursor:pointer;font-size:13px;font-weight:600;text-align:left">📋 Copy event list<br><span style="font-size:10px;font-weight:400;opacity:.7">Paste into notes, email, or chat</span></button>
+      </div>
+    `;
+  }
+  modal.style.display = 'flex';
+}
+
+// === ROUTE PLANNING MODAL ===
+function openRouteModal() {
+  const modal = document.getElementById('routeModal');
+  const body = document.getElementById('routeModalBody');
+  const starred = events.filter(e => userStars.has(e.id) && !e.is_online);
+
+  if (starred.length < 2) {
+    body.innerHTML = `
+      <p style="color:#888;font-size:13px;line-height:1.6;margin-bottom:12px">${starred.length === 0 ? "You haven't starred any in-person events yet." : "You need at least 2 starred in-person events to plan a route."}</p>
+      <p style="color:#666;font-size:12px">Star events on the map or timeline, then come back here to plan your travel route between them.</p>
+    `;
+  } else {
+    body.innerHTML = `
+      <p style="color:#ccc;font-size:13px;line-height:1.6;margin-bottom:14px">Plan a route between your <strong style="color:#e9c46a">${starred.length} starred in-person events</strong>.</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button onclick="openRoutePage();document.getElementById('routeModal').style.display='none'" style="padding:10px 16px;border-radius:8px;background:#2a9d8f;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:600;text-align:left">🗺️ Open route page<br><span style="font-size:10px;font-weight:400;opacity:.7">Visual timeline + Google Maps link</span></button>
+        <button onclick="exportKML();document.getElementById('routeModal').style.display='none'" style="padding:10px 16px;border-radius:8px;background:#333;color:#ccc;border:1px solid #555;cursor:pointer;font-size:13px;font-weight:600;text-align:left">📍 Download KML file<br><span style="font-size:10px;font-weight:400;opacity:.7">Import into Google Earth or Maps</span></button>
+      </div>
+    `;
+  }
+  modal.style.display = 'flex';
 }
 
 // === ADD EVENT MODAL ===
