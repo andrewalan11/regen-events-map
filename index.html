@@ -249,6 +249,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <h1>Events & Gatherings 2026</h1>
     <div class="search-box"><input type="text" id="searchInput" placeholder="Search events..." oninput="onSearch()"></div>
     <button class="btn btn-add" onclick="openAddModal()">+ Suggest Event</button>
+    <button class="btn btn-online" id="onlineBtn" onclick="toggleOnlineOverlay()" style="margin-left:8px">🌐 Online Events (<span id="onlineCount">0</span>)</button>
   </div>
   <div class="top-btns" style="justify-content:center;margin-left:0">
     <button class="btn" id="typesBtn" onclick="togglePanel('types')" style="background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55">🏷️ Types</button>
@@ -257,7 +258,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="btn btn-issues" id="issuesBtn" onclick="togglePanel('issues')" style="display:none">Issues (0)</button>
   </div>
   <div style="flex-shrink:0;display:flex;gap:4px">
-    <button class="btn btn-online" id="onlineBtn" onclick="toggleOnlineOverlay()">🌐 Online Events (<span id="onlineCount">0</span>)</button>
     <button class="btn" id="tlToggleTop" onclick="toggleTimeline()" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">📋 Timeline</button>
     <button class="btn" onclick="togglePanel('about')" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">ℹ️ About</button>
   </div>
@@ -1043,10 +1043,15 @@ function renderOnlineOverlay() {
     return;
   }
 
-  // Group by month
+  // Group by month — convert "2026-03" to "Mar" etc.
   const byMonth = {};
   filtered.forEach(ev => {
-    const m = ev.month || 'TBD';
+    let m = ev.month || 'TBD';
+    // Convert YYYY-MM format to short month name
+    if (m.match(/^\d{4}-\d{2}$/)) {
+      const mIdx = parseInt(m.split('-')[1], 10) - 1;
+      m = MO[mIdx] || m;
+    }
     if (!byMonth[m]) byMonth[m] = [];
     byMonth[m].push(ev);
   });
