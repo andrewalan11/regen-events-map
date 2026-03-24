@@ -212,6 +212,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .online-header h2{font-size:15px;color:#2a9d8f}
 .online-header .sp-close{background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px 8px}
 .online-header .sp-close:hover{color:#fff}
+.ol-starred-btn{font-size:10px;padding:4px 10px;border-radius:8px;cursor:pointer;border:1px solid #444;background:#333;color:#888;white-space:nowrap}
+.ol-starred-btn:hover{border-color:#e9c46a55;color:#e9c46a}
+.ol-starred-btn.active{background:#e9c46a22;color:#e9c46a;border-color:#e9c46a55}
 .online-body{display:flex;flex:1;overflow:hidden}
 .online-tags{width:200px;border-right:1px solid #0f3460;padding:12px;overflow-y:auto;flex-shrink:0;display:flex;flex-direction:column;gap:4px}
 .online-tags .ot-label{font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
@@ -400,7 +403,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="online-panel">
     <div class="online-header">
       <h2>🌐 Online Events</h2>
-      <button class="sp-close" onclick="toggleOnlineOverlay()">&times;</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn ol-starred-btn" id="olStarredBtn" onclick="toggleOnlineStarredFilter()">★ Starred</button>
+        <button class="sp-close" onclick="toggleOnlineOverlay()">&times;</button>
+      </div>
     </div>
     <div class="online-body">
       <div class="online-tags" id="onlineTags">
@@ -947,7 +953,6 @@ async function starEvent(eventId) {
     userStars.add(eventId);
     await fetchStarCounts();
     render();
-    toast(`Added to your resonance beacons!`);
   } catch (e) {
     toast('Error starring event', '#e63946');
   }
@@ -969,7 +974,6 @@ async function unstarEvent(eventId) {
     userStars.delete(eventId);
     await fetchStarCounts();
     render();
-    toast(`Removed from your resonance beacons`);
   } catch (e) {
     toast('Error unstarring event', '#e63946');
   }
@@ -989,6 +993,13 @@ function toggleIgnore(idx) {
 // === ONLINE EVENTS OVERLAY ===
 const onlineActiveTags = new Set();
 let onlineTagsInitialized = false;
+let onlineStarredOnly = false;
+
+function toggleOnlineStarredFilter() {
+  onlineStarredOnly = !onlineStarredOnly;
+  document.getElementById('olStarredBtn').classList.toggle('active', onlineStarredOnly);
+  renderOnlineOverlay();
+}
 
 function toggleOnlineOverlay() {
   const overlay = document.getElementById('onlineOverlay');
@@ -1034,8 +1045,9 @@ function renderOnlineOverlay() {
     chipsContainer.appendChild(chip);
   });
 
-  // Filter online events by active tags
+  // Filter online events by active tags + starred filter
   const filtered = onlineEvts.filter(ev => {
+    if (onlineStarredOnly && !userStars.has(ev.id)) return false;
     const evTags = ev.tags || [];
     if (evTags.length === 0) return true;
     return evTags.some(t => onlineActiveTags.has(t));
@@ -1046,7 +1058,7 @@ function renderOnlineOverlay() {
   timeline.innerHTML = '';
 
   if (filtered.length === 0) {
-    timeline.innerHTML = '<div class="online-empty">No online events match your filters.</div>';
+    timeline.innerHTML = `<div class="online-empty">${onlineStarredOnly ? 'No starred online events yet. Star some events to see them here!' : 'No online events match your filters.'}</div>`;
     return;
   }
 
