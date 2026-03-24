@@ -233,6 +233,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .online-timeline .ol-link{margin-top:6px}
 .online-timeline .ol-link a{color:#2a9d8f;font-size:11px;text-decoration:none}
 .online-timeline .ol-link a:hover{text-decoration:underline}
+.online-timeline .ol-stars{font-size:10px;color:#e9c46a;margin-top:4px}
+.online-timeline .ol-actions{display:flex;flex-direction:column;gap:4px;flex-shrink:0;margin-left:4px}
+.online-timeline .ol-actions button{background:none;border:1px solid #333;border-radius:6px;width:28px;height:28px;cursor:pointer;color:#888;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.online-timeline .ol-actions button:hover{border-color:#2a9d8f;color:#2a9d8f;background:#2a9d8f22}
+.online-timeline .ol-actions .active-star{color:#e9c46a;border-color:#e9c46a55;background:#e9c46a22}
+.online-timeline .ol-event.starred-ev{background:#e9c46a0a}
+.online-timeline .ol-event.ignored-ev{opacity:.35}
 .online-empty{padding:40px 20px;text-align:center;color:#555;font-size:12px}
 .btn-online{background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55}
 </style>
@@ -426,7 +433,7 @@ const sb = window.supabase.createClient(
 );
 
 // === COLORS & ICONS ===
-const TI = {'ecovillage':'🛖','permaculture':'🌱','bioregional':'🌍','climate':'☁️','systems change':'🦋','web3':'⛓️','governance':'🏛️','regen ag':'🌾','festival':'🎪','commons':'🤝','transformation':'✨','UPgame':'🔮','primitive skills':'🏹','craft':'🧶','healing':'💚','rewilding':'🐺','gathering':'🧠','retreat':'🧘','impact':'💡','futures':'🔭','cultural':'🎭','hacker camp':'💻','burning man':'🔥','wellbeing':'🌸','food systems':'🍎','AI':'🤖','entrepreneurship':'🚀','regen':'♻️','regen economics':'💰'};
+const TI = {'ecovillage':'🛖','permaculture':'🌱','bioregional':'🌍','bioregionalism':'🌍','climate':'☁️','systems change':'🦋','web3':'⛓️','Web3':'⛓️','governance':'🏛️','regen ag':'🌾','festival':'🎪','commons':'🤝','transformation':'✨','UPgame':'🔮','primitive skills':'🏹','craft':'🧶','healing':'💚','rewilding':'🐺','gathering':'🧠','retreat':'🧘','impact':'💡','futures':'🔭','cultural':'🎭','hacker camp':'💻','burning man':'🔥','wellbeing':'🌸','food systems':'🍎','AI':'🤖','entrepreneurship':'🚀','regen':'♻️','regen economics':'💰','networking':'🔗','regeneration':'♻️','community':'👥','Europe':'🇪🇺','intergenerational':'🌳','youth':'🌱','solarpunk':'☀️','biodiversity':'🦋','conservation':'🌿','sustainability':'🌎','policy':'📜','transition':'🔄','public-goods':'🏗️','funding':'💸','open-source':'📖'};
 function gi(ev){for(const t of(ev.tags||[])){if(TI[t])return TI[t]}return'📍'}
 
 // === DYNAMIC COLOR SHIFTING ===
@@ -1075,11 +1082,17 @@ function renderOnlineOverlay() {
 
     byMonth[m].forEach(ev => {
       const card = document.createElement('div');
-      card.className = 'ol-event';
+      const evIdx = events.indexOf(ev);
+      const isStar = userStars.has(ev.id);
+      const isIgn = ignored.has(evIdx);
+      card.className = `ol-event${isStar ? ' starred-ev' : ''}${isIgn ? ' ignored-ev' : ''}`;
       const c = MC[m] || '#888';
       const icon = gi(ev);
-      const tagsHtml = (ev.tags || []).map(t => `<span class="ol-tag">${t}</span>`).join('');
+      const tagsHtml = (ev.tags || []).map(t => `<span class="ol-tag">${TI[t] || ''} ${t}</span>`).join('');
       const linkHtml = ev.url ? `<div class="ol-link"><a href="${ev.url.startsWith('http') ? ev.url : 'https://'+ev.url}" target="_blank">🔗 ${ev.url.replace(/^https?:\/\/(www\.)?/,'').split('/')[0]}</a></div>` : '';
+      const starData = starCounts.get(ev.id);
+      const starCount = starData ? starData.count : 0;
+      const starText = starCount > 1 ? `<div class="ol-stars">⭐ ${starCount} interested</div>` : '';
       card.innerHTML = `
         <div class="ol-icon" style="background:${c}22;border:2px solid ${c}">${icon}</div>
         <div class="ol-info">
@@ -1087,9 +1100,24 @@ function renderOnlineOverlay() {
           <div class="ol-dates">${ev.dates || 'TBD'}</div>
           <div class="ol-desc">${ev.description || ''}</div>
           <div class="ol-tags">${tagsHtml}</div>
+          ${starText}
           ${linkHtml}
         </div>
+        <div class="ol-actions">
+          <button class="${isStar ? 'active-star' : ''}" data-action="star" title="${isStar ? 'Remove star' : 'Star this event'}">${isStar ? '★' : '☆'}</button>
+          <button data-action="ignore" title="Ignore this event">—</button>
+        </div>
       `;
+      card.querySelector('[data-action="star"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleStar(evIdx);
+        renderOnlineOverlay();
+      });
+      card.querySelector('[data-action="ignore"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleIgnore(evIdx);
+        renderOnlineOverlay();
+      });
       timeline.appendChild(card);
     });
   });
