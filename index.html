@@ -69,18 +69,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .region-groups{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
 .rg-btn{font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none;background:#2a9d8f;color:#fff}
 .rg-btn.off{background:transparent;color:#2a9d8f;border-color:#2a9d8f}
-.rg-expand{font-size:10px;padding:3px 5px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid #2a9d8f55;user-select:none;background:#2a9d8f44;color:#fff;margin-left:-2px;display:inline-flex;align-items:center}
-.rg-expand:hover{background:#2a9d8f88}
-.rg-expand .rg-arrow{font-size:12px;transition:transform .2s;display:inline-block;line-height:1}
-.rg-expand.expanded .rg-arrow{transform:rotate(180deg)}
+.rg-expand{font-size:9px;padding:2px 6px;border-radius:8px;cursor:pointer;transition:all .2s;border:1px solid #2a9d8f55;user-select:none;background:transparent;color:#2a9d8f;margin-left:-1px;display:inline-flex;align-items:center}
+.rg-expand:hover{background:#2a9d8f33}
+.rg-expand.expanded{background:#2a9d8f33}
 .rg-sub-row{display:none;width:100%;padding:2px 0 0 0;gap:3px;flex-wrap:wrap;align-items:center}
 .rg-sub-row.open{display:flex}
 .rg-sub{font-size:9px;padding:2px 6px;border-radius:8px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none;background:#2a9d8f99;color:#fff}
 .rg-sub.off{background:transparent;color:#2a9d8f;border-color:#2a9d8f88;opacity:.7}
 .rg-sep{color:#333;margin:0 2px;font-size:10px}
-.type-bar{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
-.type-chip{font-size:9px;padding:2px 7px;border-radius:8px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none;background:#2a9d8f;color:#fff}
-.type-chip.off{background:transparent;color:#666;border-color:#444}
+.types-panel{width:0;overflow:hidden;background:#12122a;border-left:1px solid #0f3460;display:flex;flex-direction:column;flex-shrink:0;transition:width .3s;opacity:0}
+.types-panel.open{width:180px;opacity:1}
+.tp-header{padding:10px 12px;border-bottom:1px solid #0f3460;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.tp-list{flex:1;overflow-y:auto;padding:4px 0}
+.tp-item{padding:6px 12px;cursor:pointer;user-select:none;transition:background .15s;font-size:11px;font-weight:600;border-bottom:1px solid #0f346022}
+.tp-item:hover{background:#2a9d8f11}
+.tp-item.active{background:#2a9d8f22;color:#2a9d8f}
+.tp-item.inactive{color:#555}
 .tl-header{padding:10px 14px;border-bottom:1px solid #0f3460;font-size:12px;color:#888;display:flex;justify-content:space-between;align-items:center}
 .tl-header span{font-weight:600;color:#ccc}
 .tl-scroll{flex:1;overflow-y:auto;padding:0}
@@ -274,7 +278,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="btn btn-online" id="onlineBtn" onclick="toggleOnlineOverlay()" style="margin-left:8px">🌐 Online Events (<span id="onlineCount">0</span>)</button>
   </div>
   <div class="top-btns" style="justify-content:center;margin-left:0">
-    <button class="btn" id="typesBtn" onclick="togglePanel('types')" style="background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55">🏷️ Types</button>
+    <button class="btn" id="typesBtn" onclick="toggleTypesPanel()" style="background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55">🏷️ Event Types</button>
     <button class="btn btn-favs" id="favsBtn" onclick="togglePanel('favs')">Starred (0)</button>
     <button class="btn" id="ignBtn" onclick="togglePanel('ignored')" style="background:#55555522;color:#888;border-color:#55555555">Ignored (0)</button>
     <button class="btn btn-issues" id="issuesBtn" onclick="togglePanel('issues')" style="display:none">Issues (0)</button>
@@ -297,22 +301,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <span>— Ignore to hide</span>
   </div>
 </div>
-<div class="filters" id="filterBar" style="padding-top:0px;border-bottom:none">
+<div class="filters" id="filterBar" style="padding-top:0px">
   <span class="fl">Months:</span>
   <button class="btn" onclick="toggleAll(true)" style="font-size:9px;padding:2px 6px">All</button>
   <button class="btn" onclick="toggleAll(false)" style="font-size:9px;padding:2px 6px">None</button>
   <!-- month labels get inserted here by JS -->
 </div>
-<div class="filters" id="typeBar" style="padding-top:0px">
-  <span class="fl">Types:</span>
-  <button class="btn" onclick="setAllTypes(true)" style="font-size:9px;padding:2px 6px">All</button>
-  <button class="btn" onclick="setAllTypes(false)" style="font-size:9px;padding:2px 6px">None</button>
-  <div id="typeChips" class="type-bar"></div>
-</div>
 <div id="tlTip" class="tl-tip"></div>
 
 <div class="main" style="position:relative">
   <div id="map"></div>
+  <div class="types-panel" id="typesPanel">
+    <div class="tp-header">
+      <span style="font-weight:600;color:#2a9d8f;font-size:12px">🏷️ Event Types</span>
+      <div style="display:flex;gap:4px">
+        <button class="btn" onclick="setAllTypes(true)" style="font-size:9px;padding:2px 6px">All</button>
+        <button class="btn" onclick="setAllTypes(false)" style="font-size:9px;padding:2px 6px">None</button>
+        <button onclick="toggleTypesPanel()" style="background:none;border:none;color:#888;cursor:pointer;font-size:14px;padding:2px 6px" title="Close types">✕</button>
+      </div>
+    </div>
+    <div class="tp-list" id="typesList"></div>
+  </div>
   <div class="timeline" id="timeline">
     <div class="tl-header"><span>Timeline (<span id="tlCount">0</span>)</span><button onclick="toggleTimeline()" style="background:none;border:none;color:#888;cursor:pointer;font-size:14px;padding:2px 6px" title="Collapse timeline">✕</button></div>
     <div class="tl-scroll" id="tlScroll"></div>
@@ -408,14 +417,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- Types Filter Panel -->
-<div class="side-panel" id="typesPanel" style="z-index:2001;">
-  <div class="sp-header"><h2 style="color:#2a9d8f">Event Types</h2><button class="sp-close" onclick="togglePanel('types')">&times;</button></div>
-  <div style="padding:8px 18px;border-bottom:1px solid #0f346033;display:flex;gap:6px">
-    <button class="btn" onclick="setAllTypes(true)" style="font-size:10px;padding:3px 8px">All on</button>
-    <button class="btn" onclick="setAllTypes(false)" style="font-size:10px;padding:3px 8px">All off</button>
-  </div>
-  <div class="sp-list" id="typesList" style="padding:8px 0"></div>
-</div>
 
 <!-- Online Events Overlay -->
 <div class="online-overlay" id="onlineOverlay" onclick="if(event.target===this)toggleOnlineOverlay()">
@@ -1333,7 +1334,7 @@ function initRegionFilters() {
       arrow.className = 'rg-expand';
       arrow.dataset.parent = parentName;
       if (expandedRegion === parentName) arrow.classList.add('expanded');
-      arrow.innerHTML = '<span class="rg-arrow">▾</span>';
+      arrow.textContent = 'regions';
       arrow.addEventListener('click', () => {
         if (expandedRegion === parentName) {
           expandedRegion = null;
@@ -1424,56 +1425,38 @@ function toggleTimeline() {
 
 // === TYPE FILTERS ===
 function initTypeFilters() {
-  // Render chips in the visible bar
-  const chipBar = document.getElementById('typeChips');
-  if (chipBar) {
-    chipBar.innerHTML = '';
-    ALL_TAGS.forEach(tag => {
-      const chip = document.createElement('span');
-      chip.className = 'type-chip' + (activeTags.has(tag) ? '' : ' off');
-      chip.dataset.tag = tag;
-      const icon = TI[tag] || '';
-      chip.textContent = icon ? `${icon} ${tag}` : tag;
-      chip.addEventListener('click', () => {
-        if (activeTags.has(tag)) activeTags.delete(tag);
-        else activeTags.add(tag);
-        refreshTypeUI();
-        render();
-      });
-      chipBar.appendChild(chip);
-    });
-  }
-
-  // Also update side panel if it exists
   const typesList = document.getElementById('typesList');
-  if (typesList) {
-    typesList.innerHTML = '';
-    ALL_TAGS.forEach(tag => {
-      const item = document.createElement('div');
-      item.style.padding = '8px 18px';
-      item.style.borderBottom = '1px solid #0f346033';
-      item.style.cursor = 'pointer';
-      item.style.userSelect = 'none';
-      const isActive = activeTags.has(tag);
-      item.style.background = isActive ? '#2a9d8f22' : 'transparent';
-      item.style.color = isActive ? '#2a9d8f' : '#888';
-      const icon = TI[tag] || '';
-      item.innerHTML = `<span style="font-size:12px;font-weight:600">${icon} ${tag}</span>`;
-      item.addEventListener('click', () => {
-        if (activeTags.has(tag)) activeTags.delete(tag);
-        else activeTags.add(tag);
-        initTypeFilters();
-        render();
-      });
-      typesList.appendChild(item);
+  if (!typesList) return;
+  typesList.innerHTML = '';
+
+  ALL_TAGS.forEach(tag => {
+    const item = document.createElement('div');
+    const isActive = activeTags.has(tag);
+    item.className = 'tp-item ' + (isActive ? 'active' : 'inactive');
+    item.dataset.tag = tag;
+    const icon = TI[tag] || '';
+    item.textContent = icon ? `${icon} ${tag}` : tag;
+    item.addEventListener('click', () => {
+      if (activeTags.has(tag)) activeTags.delete(tag);
+      else activeTags.add(tag);
+      refreshTypeUI();
+      render();
     });
-  }
+    typesList.appendChild(item);
+  });
 }
 
 function refreshTypeUI() {
-  document.querySelectorAll('.type-chip[data-tag]').forEach(el => {
-    el.classList.toggle('off', !activeTags.has(el.dataset.tag));
+  document.querySelectorAll('.tp-item[data-tag]').forEach(el => {
+    const active = activeTags.has(el.dataset.tag);
+    el.classList.toggle('active', active);
+    el.classList.toggle('inactive', !active);
   });
+}
+
+function toggleTypesPanel() {
+  const panel = document.getElementById('typesPanel');
+  panel.classList.toggle('open');
 }
 
 function setAllTypes(on) {
@@ -1483,13 +1466,12 @@ function setAllTypes(on) {
     activeTags.clear();
   }
   refreshTypeUI();
-  initTypeFilters();
   render();
 }
 
 // === SIDE PANELS ===
 function togglePanel(panel) {
-  const panels = { favs: 'favsPanel', issues: 'issuesPanel', types: 'typesPanel', about: 'aboutPanel', ignored: 'ignoredPanel' };
+  const panels = { favs: 'favsPanel', issues: 'issuesPanel', about: 'aboutPanel', ignored: 'ignoredPanel' };
   const el = document.getElementById(panels[panel]);
   if (!el) return;
   
