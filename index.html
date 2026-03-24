@@ -203,6 +203,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sp-item .sir{float:right;background:none;border:none;color:#555;cursor:pointer;font-size:13px}
 .sp-item .sir:hover{color:#e63946}
 .sp-btn{margin:10px 18px;padding:7px;border-radius:6px;cursor:pointer;font-size:11px;text-align:center;flex-shrink:0;border:1px solid}
+
+/* Online Events Overlay */
+.online-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:2500;display:none;align-items:center;justify-content:center}
+.online-overlay.open{display:flex}
+.online-panel{background:#12122a;border-radius:14px;width:90vw;max-width:900px;height:80vh;display:flex;flex-direction:column;box-shadow:0 12px 48px rgba(0,0,0,.7);overflow:hidden}
+.online-header{padding:14px 20px;border-bottom:1px solid #0f3460;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;background:#16213e}
+.online-header h2{font-size:15px;color:#2a9d8f}
+.online-header .sp-close{background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px 8px}
+.online-header .sp-close:hover{color:#fff}
+.online-body{display:flex;flex:1;overflow:hidden}
+.online-tags{width:200px;border-right:1px solid #0f3460;padding:12px;overflow-y:auto;flex-shrink:0;display:flex;flex-direction:column;gap:4px}
+.online-tags .ot-label{font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.online-tags .ot-btns{display:flex;gap:4px;margin-bottom:8px}
+.online-tags .ot-chip{font-size:10px;padding:4px 10px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid #2a9d8f55;background:#2a9d8f22;color:#2a9d8f;user-select:none}
+.online-tags .ot-chip:hover{opacity:.85}
+.online-tags .ot-chip.active{background:#2a9d8f;color:#fff}
+.online-timeline{flex:1;overflow-y:auto;padding:0}
+.online-timeline .tl-month{padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;position:sticky;top:0;z-index:10;backdrop-filter:blur(8px)}
+.online-timeline .ol-event{padding:12px 16px;border-bottom:1px solid #ffffff08;transition:background .15s;display:flex;gap:12px;align-items:flex-start}
+.online-timeline .ol-event:hover{background:#1a1a3a}
+.online-timeline .ol-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.online-timeline .ol-info{flex:1;min-width:0}
+.online-timeline .ol-name{font-size:13px;font-weight:600;color:#fff}
+.online-timeline .ol-dates{font-size:10px;color:#e9c46a;margin-top:2px}
+.online-timeline .ol-desc{font-size:11px;color:#999;margin-top:4px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.online-timeline .ol-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+.online-timeline .ol-tag{font-size:8px;padding:1px 5px;border-radius:5px;white-space:nowrap;background:#ffffff11;color:#999;border:1px solid #ffffff15}
+.online-timeline .ol-link{margin-top:6px}
+.online-timeline .ol-link a{color:#2a9d8f;font-size:11px;text-decoration:none}
+.online-timeline .ol-link a:hover{text-decoration:underline}
+.online-empty{padding:40px 20px;text-align:center;color:#555;font-size:12px}
+.btn-online{background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55}
 </style>
 </head>
 <body>
@@ -225,6 +257,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="btn btn-issues" id="issuesBtn" onclick="togglePanel('issues')" style="display:none">Issues (0)</button>
   </div>
   <div style="flex-shrink:0;display:flex;gap:4px">
+    <button class="btn btn-online" id="onlineBtn" onclick="toggleOnlineOverlay()">🌐 Online Events (<span id="onlineCount">0</span>)</button>
     <button class="btn" id="tlToggleTop" onclick="toggleTimeline()" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">📋 Timeline</button>
     <button class="btn" onclick="togglePanel('about')" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">ℹ️ About</button>
   </div>
@@ -353,6 +386,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="btn" onclick="setAllTypes(false)" style="font-size:10px;padding:3px 8px">All off</button>
   </div>
   <div class="sp-list" id="typesList" style="padding:8px 0"></div>
+</div>
+
+<!-- Online Events Overlay -->
+<div class="online-overlay" id="onlineOverlay" onclick="if(event.target===this)toggleOnlineOverlay()">
+  <div class="online-panel">
+    <div class="online-header">
+      <h2>🌐 Online Events</h2>
+      <button class="sp-close" onclick="toggleOnlineOverlay()">&times;</button>
+    </div>
+    <div class="online-body">
+      <div class="online-tags" id="onlineTags">
+        <div class="ot-label">Filter by tag</div>
+        <div class="ot-btns">
+          <button class="btn" onclick="setOnlineTags(true)" style="font-size:9px;padding:2px 6px">All</button>
+          <button class="btn" onclick="setOnlineTags(false)" style="font-size:9px;padding:2px 6px">None</button>
+        </div>
+        <div id="onlineTagChips"></div>
+      </div>
+      <div class="online-timeline" id="onlineTimeline"></div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -655,6 +709,7 @@ function getVisible() {
     const inRegion = activeRegions.has(region);
     return { ev, i, region, inRegion };
   }).filter(({ ev }) => {
+    if (ev.is_online) return false; // online events shown in overlay, not on map
     if (!activeMonths.has(ev.month)) return false;
     const evTags = ev.tags || [];
     if (evTags.length > 0 && !evTags.some(t => activeTags.has(t))) return false;
@@ -922,6 +977,131 @@ function toggleIgnore(idx) {
   }
   render();
   persist();
+}
+
+// === ONLINE EVENTS OVERLAY ===
+const onlineActiveTags = new Set();
+let onlineTagsInitialized = false;
+
+function toggleOnlineOverlay() {
+  const overlay = document.getElementById('onlineOverlay');
+  const isOpen = overlay.classList.contains('open');
+  if (isOpen) {
+    overlay.classList.remove('open');
+  } else {
+    overlay.classList.add('open');
+    renderOnlineOverlay();
+  }
+}
+
+function getOnlineEvents() {
+  return events.filter(ev => ev.is_online);
+}
+
+function renderOnlineOverlay() {
+  const onlineEvts = getOnlineEvents();
+
+  // Collect all tags from online events
+  const tagSet = new Set();
+  onlineEvts.forEach(ev => (ev.tags || []).forEach(t => tagSet.add(t)));
+  const allOnlineTags = [...tagSet].sort();
+
+  // Initialize active tags on first render
+  if (!onlineTagsInitialized) {
+    allOnlineTags.forEach(t => onlineActiveTags.add(t));
+    onlineTagsInitialized = true;
+  }
+
+  // Render tag chips
+  const chipsContainer = document.getElementById('onlineTagChips');
+  chipsContainer.innerHTML = '';
+  allOnlineTags.forEach(tag => {
+    const chip = document.createElement('div');
+    chip.className = 'ot-chip' + (onlineActiveTags.has(tag) ? ' active' : '');
+    chip.textContent = (TI[tag] || '') + ' ' + tag;
+    chip.onclick = () => {
+      if (onlineActiveTags.has(tag)) onlineActiveTags.delete(tag);
+      else onlineActiveTags.add(tag);
+      renderOnlineOverlay();
+    };
+    chipsContainer.appendChild(chip);
+  });
+
+  // Filter online events by active tags
+  const filtered = onlineEvts.filter(ev => {
+    const evTags = ev.tags || [];
+    if (evTags.length === 0) return true;
+    return evTags.some(t => onlineActiveTags.has(t));
+  });
+
+  // Render timeline
+  const timeline = document.getElementById('onlineTimeline');
+  timeline.innerHTML = '';
+
+  if (filtered.length === 0) {
+    timeline.innerHTML = '<div class="online-empty">No online events match your filters.</div>';
+    return;
+  }
+
+  // Group by month
+  const byMonth = {};
+  filtered.forEach(ev => {
+    const m = ev.month || 'TBD';
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(ev);
+  });
+
+  MO.forEach(m => {
+    if (!byMonth[m]) return;
+    const header = document.createElement('div');
+    header.className = 'tl-month';
+    header.style.background = MC[m] || '#555';
+    const mIdx = MO.indexOf(m);
+    const mSlot = mIdx - NOW_MONTH;
+    header.style.color = (mIdx < NOW_MONTH) ? '#999' : (LIGHT_TEXT_SLOTS.has(mSlot) ? '#1a1a2e' : '#fff');
+    header.textContent = m;
+    timeline.appendChild(header);
+
+    byMonth[m].sort((a, b) => {
+      const da = parseInt(a.dates?.match(/\d+/)?.[0] || 0);
+      const db = parseInt(b.dates?.match(/\d+/)?.[0] || 0);
+      return da - db;
+    });
+
+    byMonth[m].forEach(ev => {
+      const card = document.createElement('div');
+      card.className = 'ol-event';
+      const c = MC[m] || '#888';
+      const icon = gi(ev);
+      const tagsHtml = (ev.tags || []).map(t => `<span class="ol-tag">${t}</span>`).join('');
+      const linkHtml = ev.url ? `<div class="ol-link"><a href="${ev.url.startsWith('http') ? ev.url : 'https://'+ev.url}" target="_blank">🔗 ${ev.url.replace(/^https?:\/\/(www\.)?/,'').split('/')[0]}</a></div>` : '';
+      card.innerHTML = `
+        <div class="ol-icon" style="background:${c}22;border:2px solid ${c}">${icon}</div>
+        <div class="ol-info">
+          <div class="ol-name">${ev.name}</div>
+          <div class="ol-dates">${ev.dates || 'TBD'}</div>
+          <div class="ol-desc">${ev.description || ''}</div>
+          <div class="ol-tags">${tagsHtml}</div>
+          ${linkHtml}
+        </div>
+      `;
+      timeline.appendChild(card);
+    });
+  });
+}
+
+function setOnlineTags(allOn) {
+  const onlineEvts = getOnlineEvents();
+  onlineActiveTags.clear();
+  if (allOn) {
+    onlineEvts.forEach(ev => (ev.tags || []).forEach(t => onlineActiveTags.add(t)));
+  }
+  renderOnlineOverlay();
+}
+
+function updateOnlineCount() {
+  const count = events.filter(ev => ev.is_online).length;
+  document.getElementById('onlineCount').textContent = count;
 }
 
 // === REPORT ISSUE ===
@@ -1574,10 +1754,11 @@ async function initData() {
   initMonthFilters();
   initRegionFilters();
   initTypeFilters();
-  
+  updateOnlineCount();
+
   // Initial render
   render();
-  
+
   hideSpinner();
 }
 
