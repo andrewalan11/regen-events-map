@@ -494,23 +494,23 @@
 
         // ── Stats ──
         function renderStats() {
-            const counts = { pending: 0, enriched: 0, approved: 0, rejected: 0, merged: 0 };
+            const counts = { pending: 0, enriched: 0, approved: 0, rejected: 0 };
             suggestions.forEach(s => { if (counts[s.status] !== undefined) counts[s.status]++; });
             document.getElementById('stats').innerHTML = `
                 <div class="stat-card"><div class="number">${suggestions.length}</div><div class="label">Total</div></div>
                 <div class="stat-card"><div class="number">${counts.pending}</div><div class="label">Pending</div></div>
                 <div class="stat-card enriched"><div class="number">${counts.enriched}</div><div class="label">Enriched</div></div>
-                <div class="stat-card approved"><div class="number">${counts.approved}</div><div class="label">Approved</div></div>
-                <div class="stat-card merged"><div class="number">${counts.merged}</div><div class="label">Merged</div></div>
+                <div class="stat-card approved"><div class="number">${counts.approved}</div><div class="label">On Map</div></div>
                 <div class="stat-card rejected"><div class="number">${counts.rejected}</div><div class="label">Rejected</div></div>
             `;
         }
 
         // ── Filters ──
         function renderFilters() {
-            const statuses = ['all', 'pending', 'enriched', 'approved', 'merged', 'rejected'];
+            const statuses = ['all', 'pending', 'enriched', 'approved', 'rejected'];
+            const statusLabels = {all: 'All', pending: 'Pending', enriched: 'Enriched', approved: 'On Map', rejected: 'Rejected'};
             document.getElementById('filters').innerHTML = statuses.map(s =>
-                `<button class="filter-btn ${currentFilter === s ? 'active' : ''}" onclick="setFilter('${s}')">${s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}</button>`
+                `<button class="filter-btn ${currentFilter === s ? 'active' : ''}" onclick="setFilter('${s}')">${statusLabels[s]}</button>`
             ).join('');
         }
 
@@ -565,7 +565,7 @@
                 <div class="card-header">
                     <div>
                         <div class="card-meta">
-                            <span class="badge badge-${s.status}">${s.status}</span>
+                            <span class="badge badge-${s.status}">${s.status === 'approved' ? 'on map' : s.status}</span>
                             <span class="badge badge-source">${s.source}</span>
                             <span class="card-date">${dateStr}</span>
                             ${s.submitted_by ? `<span class="card-date">by ${s.submitted_by}</span>` : ''}
@@ -654,10 +654,7 @@
                     <button class="btn btn-duplicate" onclick="updateStatus(${s.id}, 'duplicate')">Duplicate</button>
                 `;
             } else if (s.status === 'approved') {
-                btns = `<span style="color:#4ade80;font-size:0.85rem;">Added to map</span>`;
-            } else if (s.status === 'merged') {
-                btns = `<span style="color:#f59e0b;font-size:0.85rem;">Merged into existing event</span>
-                    <button class="btn btn-enrich" onclick="updateStatus(${s.id}, 'enriched')">Re-open</button>`;
+                btns = `<span style="color:#4ade80;font-size:0.85rem;">On map</span>`;
             } else if (s.status === 'rejected') {
                 btns = `
                     <button class="btn btn-enrich" onclick="updateStatus(${s.id}, 'pending')">Re-open</button>
