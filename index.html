@@ -2061,7 +2061,15 @@ async function initData() {
   // Fetch events
   const eventsData = await fetchEvents();
   events = eventsData;
-  
+
+  // Normalize month format: convert "2026-07" → "Jul" etc.
+  events.forEach(e => {
+    if (e.month && e.month.match(/^\d{4}-\d{2}$/)) {
+      const mIdx = parseInt(e.month.split('-')[1], 10) - 1;
+      e.month = MO[mIdx] || e.month;
+    }
+  });
+
   // Fetch star counts
   await fetchStarCounts();
   
