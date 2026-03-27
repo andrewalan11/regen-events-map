@@ -288,7 +288,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <button class="btn btn-online" id="onlineBtn" onclick="toggleOnlineOverlay()">🌐 Online Events (<span id="onlineCount">0</span>)</button>
   <button class="btn" id="typesBtn" onclick="toggleTypesPanel()" style="background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55">🏷️ Event Types</button>
   <button class="btn btn-favs" id="favsBtn" onclick="toggleStarredPanel()">★ Starred (0)</button>
-  <button class="btn" id="ignBtn" onclick="toggleIgnoredPanel()" style="background:#55555522;color:#888;border-color:#55555555">👁 Ignored (0)</button>
+  <button class="btn" id="ignBtn" onclick="toggleIgnoredPanel()" style="background:#55555522;color:#888;border-color:#55555555">Ignored (0)</button>
   <button class="btn btn-issues" id="issuesBtn" onclick="togglePanel('issues')" style="display:none">Issues (0)</button>
   <button class="btn" id="tlToggleTop" onclick="toggleTimeline()" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">📋 Timeline</button>
   <button class="btn" onclick="togglePanel('about')" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">ℹ️ About</button>
@@ -303,7 +303,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <span>☆ Star to save favorites</span>
     <span class="clickable" onclick="openExportModal()">📅 Export to calendar</span>
     <span class="clickable" onclick="openRouteModal()">🗺 Plan a route</span>
-    <span>👁 Ignore to hide</span>
+    <span>— Ignore to hide</span>
   </div>
 </div>
 <div class="filters" id="filterBar" style="padding-top:0px">
@@ -342,7 +342,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <div class="ignored-panel" id="ignoredPanel">
     <div class="tp-header">
-      <span style="font-weight:600;color:#888;font-size:12px">👁 Ignored</span>
+      <span style="font-weight:600;color:#888;font-size:12px">— Ignored</span>
       <button onclick="toggleIgnoredPanel()" style="background:none;border:none;color:#888;cursor:pointer;font-size:14px;padding:2px 6px" title="Close ignored">✕</button>
     </div>
     <div class="ip-inline-list" id="ignoredList"></div>
@@ -806,7 +806,7 @@ function popupHtml(ev, idx) {
     : '';
 
   const desc = ev.long_description || ev.description;
-  return `${img}<div class="pi">${badge}<h3>${ev.name}</h3><div class="dates">${ev.dates} ${durBadge}</div><div class="loc">${ev.location} ${mapsLink}</div>${venue}<div class="desc">${desc}</div>${beaconBanner}${tags}${url ? '<br>' + url : ''}<div class="pa"><button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ Interested' : '☆ Interested'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '🚫 Ignored' : '👁 Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
+  return `${img}<div class="pi">${badge}<h3>${ev.name}</h3><div class="dates">${ev.dates} ${durBadge}</div><div class="loc">${ev.location} ${mapsLink}</div>${venue}<div class="desc">${desc}</div>${beaconBanner}${tags}${url ? '<br>' + url : ''}<div class="pa"><button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ Interested' : '☆ Interested'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '✓ Ignored' : '— Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
 }
 
 function tipHtml(ev) {
@@ -945,7 +945,7 @@ function renderTimeline(visible) {
         </div>
         <div class="tl-actions">
           <button class="${isStar ? 'active-star' : ''}" data-action="star" data-idx="${evIdx}" title="${isStar ? 'Remove star' : 'Star this event'}">${isStar ? '★' : '☆'}</button>
-          <button data-action="ignore" data-idx="${evIdx}" title="Ignore this event">${isIgn ? '🚫' : '👁'}</button>
+          <button data-action="ignore" data-idx="${evIdx}" title="Ignore this event">—</button>
         </div>
       `;
       
@@ -1016,7 +1016,7 @@ function hideTlTip() {
 // === BUTTON STATE ===
 function updateBtns() {
   document.getElementById('favsBtn').textContent = `Starred (${userStars.size})`;
-  document.getElementById('ignBtn').textContent = `👁 Ignored (${ignored.size})`;
+  document.getElementById('ignBtn').textContent = `Ignored (${ignored.size})`;
   if (issues.length > 0) {
     document.getElementById('issuesBtn').style.display = 'inline-block';
     document.getElementById('issuesBtn').textContent = `Issues (${issues.length})`;
@@ -1224,7 +1224,7 @@ function renderOnlineOverlay() {
         </div>
         <div class="ol-actions">
           <button class="${isStar ? 'active-star' : ''}" data-action="star" title="${isStar ? 'Remove star' : 'Star this event'}">${isStar ? '★' : '☆'}</button>
-          <button data-action="ignore" title="Ignore this event">${isIgn ? '🚫' : '👁'}</button>
+          <button data-action="ignore" title="Ignore this event">—</button>
         </div>
       `;
       card.querySelector('[data-action="star"]').addEventListener('click', (e) => {
@@ -1608,9 +1608,6 @@ function renderFavsPanel() {
         if (m._evId === ev.id) m.openPopup();
       });
     });
-    item.addEventListener('mouseenter', (e) => showTlTip(ev, e));
-    item.addEventListener('mousemove', (e) => moveTlTip(e));
-    item.addEventListener('mouseleave', hideTlTip);
     list.appendChild(item);
   });
 }
