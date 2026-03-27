@@ -844,14 +844,16 @@ function getVisible() {
     return { ev, i, region, inRegion };
   }).filter(({ ev }) => {
     if (ev.is_online) return false; // online events shown in overlay, not on map
+    if (searchQuery) {
+      // Search overrides month/region/tag filters
+      const q = searchQuery.toLowerCase();
+      const evTags = ev.tags || [];
+      const haystack = `${ev.name} ${ev.location} ${ev.description} ${evTags.join(' ')} ${ev.venue || ''}`.toLowerCase();
+      return haystack.includes(q);
+    }
     if (!activeMonths.has(ev.month)) return false;
     const evTags = ev.tags || [];
     if (evTags.length > 0 && !evTags.some(t => activeTags.has(t))) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const haystack = `${ev.name} ${ev.location} ${ev.description} ${evTags.join(' ')} ${ev.venue || ''}`.toLowerCase();
-      if (!haystack.includes(q)) return false;
-    }
     return true;
   });
 }
