@@ -412,6 +412,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<div class="modal-overlay" id="reportModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:420px">
+    <h2 style="color:#e63946;font-size:16px">⚠ Report an Issue</h2>
+    <div id="reportModalEventName" style="margin-top:8px;font-size:13px;color:#ccc"></div>
+    <textarea id="reportModalText" placeholder="Describe the issue (wrong dates, broken link, incorrect location, etc.)" style="width:100%;margin-top:10px;padding:8px;border-radius:6px;border:1px solid #333;background:#1a1a2e;color:#eee;font-size:13px;min-height:80px;resize:vertical;font-family:inherit"></textarea>
+    <div class="mbtn" style="margin-top:14px;display:flex;gap:8px">
+      <button class="cancel" onclick="document.getElementById('reportModal').style.display='none'">Cancel</button>
+      <button onclick="submitReport()" style="padding:6px 16px;border-radius:6px;border:1px solid #e6394666;background:#e6394633;color:#e63946;cursor:pointer;font-weight:600">Submit Report</button>
+    </div>
+  </div>
+</div>
+
 <!-- Issues Panel -->
 <div class="side-panel" id="issuesPanel">
   <div class="sp-header"><h2 style="color:#e63946">Bug Reports</h2><button class="sp-close" onclick="togglePanel('issues')">&times;</button></div>
@@ -785,7 +797,7 @@ function popupHtml(ev, idx) {
     const ic = TI[t] || '';
     return `<span class="tag" style="background:${c}44;color:${c};border:1px solid ${c}66">${ic} ${t}</span>`;
   }).join('');
-  const url = ev.url ? `<a href="https://${ev.url}" target="_blank">${ev.url}</a>` : '';
+  const url = ev.url ? `<a href="${ev.url.startsWith('http') ? ev.url : 'https://'+ev.url}" target="_blank">${ev.url.replace(/^https?:\/\/(www\.)?/,'').split('/')[0]}</a>` : '';
   const mapsLink = `<a href="https://www.google.com/maps?q=${ev.lat},${ev.lng}" target="_blank" style="font-size:9px;color:#457b9d;margin-left:4px">open in maps</a>`;
   const venue = ev.venue ? `<div class="venue">📍 ${ev.venue}</div>` : '';
   const isStar = userStars.has(ev.id);
@@ -1257,30 +1269,34 @@ function updateOnlineCount() {
 }
 
 // === REPORT ISSUE ===
+let _reportIdx = null;
 function reportIssue(idx) {
+  _reportIdx = idx;
   const ev = events[idx];
-  const issue = prompt(`Report issue with "${ev.name}":`, '');
-  if (!issue) return;
-  
+  document.getElementById('reportModalEventName').textContent = `Event: ${ev.name}`;
+  document.getElementById('reportModalText').value = '';
+  document.getElementById('reportModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('reportModalText').focus(), 100);
+}
+function submitReport() {
+  const text = document.getElementById('reportModalText').value.trim();
+  if (!text) { toast('Please describe the issue', '#e63946'); return; }
+  const ev = events[_reportIdx];
   const issueObj = {
     event_id: ev.id,
     event_name: ev.name,
-    issue_text: issue,
+    issue_text: text,
     created_by: userName || 'anonymous',
     created_at: new Date().toISOString()
   };
-  
-  // Save to Supabase
-  sb
-    .from('issues')
-    .insert([issueObj])
-    .then(() => {
-      issues.push(issueObj);
-      persist();
-      updateBtns();
-      toast(`Issue reported!`);
-    })
-    .catch(e => toast('Error saving issue: ' + e.message, '#e63946'));
+  sb.from('issues').insert([issueObj]).then(r => {
+    if (r.error) { toast('Error: ' + r.error.message, '#e63946'); return; }
+    issues.push(issueObj);
+    persist();
+    updateBtns();
+    toast('Issue reported — thank you!');
+    document.getElementById('reportModal').style.display = 'none';
+  });
 }
 
 // === SEARCH ===
