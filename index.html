@@ -288,6 +288,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="search-box"><input type="text" id="searchInput" placeholder="Search events..." oninput="onSearch()"></div>
   <button class="btn btn-add" onclick="openAddModal()">+ Suggest Event</button>
   <button class="btn btn-online" id="onlineBtn" onclick="toggleOnlineOverlay()">🌐 Online Events (<span id="onlineCount">0</span>)</button>
+  <button class="btn" id="singleDayBtn" onclick="toggleSingleDay()" style="background:#e9c46a22;color:#e9c46a;border-color:#e9c46a55">📅 Single-day</button>
   <button class="btn" id="typesBtn" onclick="toggleTypesPanel()" style="background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55">🏷️ Event Types</button>
   <button class="btn btn-favs" id="favsBtn" onclick="toggleStarredPanel()">★ Starred (0)</button>
   <button class="btn" id="ignBtn" onclick="toggleIgnoredPanel()" style="background:#55555522;color:#888;border-color:#55555555">👁 Ignored (0)</button>
@@ -567,6 +568,7 @@ const issues = [];
 let ALL_TAGS = [];
 const activeTags = new Set();
 let searchQuery = '';
+let hideSingleDay = false;
 let clusterGroup;
 
 // === GEO-REGIONS ===
@@ -854,6 +856,7 @@ function getVisible() {
     if (!activeMonths.has(ev.month)) return false;
     const evTags = ev.tags || [];
     if (evTags.length > 0 && !evTags.some(t => activeTags.has(t))) return false;
+    if (hideSingleDay && isSingleDay(ev)) return false;
     return true;
   });
 }
@@ -1301,6 +1304,32 @@ function submitReport() {
     toast('Issue reported — thank you!');
     document.getElementById('reportModal').style.display = 'none';
   });
+}
+
+// === SINGLE-DAY TOGGLE ===
+function isSingleDay(ev) {
+  if (!ev.dates) return false;
+  // Multi-day events contain – or - between numbers, or "TBD", or "Starting"
+  const d = ev.dates;
+  if (d.toLowerCase().includes('tbd') || d.toLowerCase().includes('starting')) return false;
+  return !d.match(/\d\s*[–\-]\s*\d/) && !d.match(/[–\-]\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i);
+}
+
+function toggleSingleDay() {
+  hideSingleDay = !hideSingleDay;
+  const btn = document.getElementById('singleDayBtn');
+  if (hideSingleDay) {
+    btn.style.background = '#55555522';
+    btn.style.color = '#888';
+    btn.style.borderColor = '#55555555';
+    btn.textContent = '📅 Single-day (hidden)';
+  } else {
+    btn.style.background = '#e9c46a22';
+    btn.style.color = '#e9c46a';
+    btn.style.borderColor = '#e9c46a55';
+    btn.textContent = '📅 Single-day';
+  }
+  render();
 }
 
 // === SEARCH ===
@@ -2089,12 +2118,16 @@ async function initData() {
   const eventsData = await fetchEvents();
   events = eventsData;
 
-  // Normalize month format: convert "2026-07" → "Jul" etc.
+  // Normalize month format: "2026-07" → "Jul", "August" → "Aug", etc.
+  const FULL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   events.forEach(e => {
-    if (e.month && e.month.match(/^\d{4}-\d{2}$/)) {
+    if (!e.month) return;
+    if (e.month.match(/^\d{4}-\d{2}$/)) {
       const mIdx = parseInt(e.month.split('-')[1], 10) - 1;
       e.month = MO[mIdx] || e.month;
     }
+    const fIdx = FULL_MONTHS.indexOf(e.month);
+    if (fIdx !== -1) e.month = MO[fIdx];
   });
 
   // Fetch star counts
