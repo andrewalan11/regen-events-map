@@ -1776,7 +1776,7 @@ function copyFavsList() {
 // === EXPORT ICS ===
 function parseEventDates(dates, month) {
   const monthIdx = MO.indexOf(month);
-  const startMonthNum = monthIdx >= 0 ? monthIdx + 3 : 1;
+  const startMonthNum = monthIdx >= 0 ? monthIdx + 1 : 1;
   const startMatch = dates.match(/(\d+)/);
   const startDay = startMatch ? parseInt(startMatch[1]) : 1;
 
@@ -1785,7 +1785,7 @@ function parseEventDates(dates, month) {
   if (crossMatch) {
     const endMonthStr = crossMatch[2].substring(0, 3);
     const endMonthIdx = MO.indexOf(endMonthStr);
-    const endMonthNum = endMonthIdx >= 0 ? endMonthIdx + 3 : startMonthNum;
+    const endMonthNum = endMonthIdx >= 0 ? endMonthIdx + 1 : startMonthNum;
     const endDay = parseInt(crossMatch[3]);
     const endDate = new Date(2026, endMonthNum - 1, endDay + 1); // exclusive
     return {
