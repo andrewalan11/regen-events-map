@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Events & Gatherings 2026 — Map</title>
 
 <!-- Favicon (SVG inline) -->
@@ -35,8 +35,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a1a2e;color:#e0e0e0;overflow:hidden;height:100vh;padding-top:env(safe-area-inset-top,0)}
-.top-bar{padding:8px 16px;padding-top:max(8px,env(safe-area-inset-top,8px));background:#16213e;border-bottom:1px solid #0f3460;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a1a2e;color:#e0e0e0;overflow:hidden;height:100vh}
+.top-bar{padding:8px 16px;background:#16213e;border-bottom:1px solid #0f3460;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .top-bar h1{font-size:16px;color:#e0e0e0;font-weight:600;white-space:nowrap}
 .search-box{flex:1;min-width:180px;max-width:320px;position:relative}
 .search-box input{width:100%;padding:5px 10px 5px 28px;border-radius:14px;border:1px solid #333;background:#0f0f2a;color:#e0e0e0;font-size:12px;outline:none}
@@ -66,36 +66,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .timeline.hidden{width:0;overflow:hidden;opacity:0;border:none}
 .tl-toggle{position:absolute;right:0;top:50%;transform:translateY(-50%);background:#12122a;border:1px solid #0f3460;color:#888;border-radius:4px 0 0 4px;padding:8px 5px;cursor:pointer;font-size:12px;z-index:10;line-height:1}
 .tl-toggle:hover{color:#fff;background:#1a1a3a}
-.region-groups{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
-.rg-btn{font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none;background:#2a9d8f;color:#fff}
-.rg-btn.off{background:transparent;color:#2a9d8f;border-color:#2a9d8f}
-/* rg-expand removed — continent click now expands sub-regions directly */
-.rg-sub-row{display:none;width:100%;padding:2px 0 0 0;gap:3px;flex-wrap:wrap;align-items:center}
-.rg-sub-row.open{display:flex}
-.rg-sub{font-size:9px;padding:2px 6px;border-radius:8px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none;background:#2a9d8f99;color:#fff}
-.rg-sub.off{background:transparent;color:#2a9d8f;border-color:#2a9d8f88;opacity:.7}
-.rg-sep{color:#333;margin:0 2px;font-size:10px}
-.types-panel{width:0;overflow:hidden;background:#12122a;border-left:1px solid #0f3460;display:flex;flex-direction:column;flex-shrink:0;transition:width .3s;opacity:0}
-.types-panel.open{width:180px;opacity:1}
-.tp-header{padding:10px 12px;border-bottom:1px solid #0f3460;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
-.tp-list{flex:1;overflow-y:auto;padding:4px 0}
-.tp-item{padding:6px 12px;cursor:pointer;user-select:none;transition:background .15s;font-size:11px;font-weight:600;border-bottom:1px solid #0f346022}
-.tp-item:hover{background:#2a9d8f11}
-.tp-item.active{background:#2a9d8f22;color:#2a9d8f}
-.tp-item.inactive{color:#555}
-.starred-panel{width:0;overflow:hidden;background:#12122a;border-left:1px solid #0f3460;display:flex;flex-direction:column;flex-shrink:0;transition:width .3s;opacity:0}
-.starred-panel.open{width:220px;opacity:1}
-.ignored-panel{width:0;overflow:hidden;background:#12122a;border-left:1px solid #0f3460;display:flex;flex-direction:column;flex-shrink:0;transition:width .3s;opacity:0}
-.ignored-panel.open{width:200px;opacity:1}
-.ip-inline-list{flex:1;overflow-y:auto;padding:4px 0}
-.ip-inline-actions{padding:6px;border-top:1px solid #0f3460;display:flex;flex-wrap:wrap;gap:3px}
-.sp-inline-list{flex:1;overflow-y:auto;padding:4px 0}
-.sp-inline-actions{padding:6px;border-top:1px solid #0f3460;display:flex;flex-wrap:wrap;gap:3px}
-.sp-inline-btn{font-size:9px;padding:3px 6px;border-radius:6px;cursor:pointer;border:1px solid #444;background:#333;color:#ccc;white-space:nowrap}
-.sp-inline-btn:hover{background:#444}
-.sp-unstar{background:none;border:none;color:#e9c46a;cursor:pointer;font-size:14px;padding:4px 6px;opacity:.4;transition:opacity .15s;flex-shrink:0;align-self:center}
-.sp-item:hover .sp-unstar{opacity:1}
-.sp-unstar:hover{color:#e63946!important;opacity:1}
+.region-sep{color:#333;margin:0 4px;font-size:10px}
+.r-label{font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none;background:#2a9d8f;color:#fff;margin-left:1px}
+.r-label.off{background:transparent;color:#2a9d8f;border-color:#2a9d8f}
 .tl-header{padding:10px 14px;border-bottom:1px solid #0f3460;font-size:12px;color:#888;display:flex;justify-content:space-between;align-items:center}
 .tl-header span{font-weight:600;color:#ccc}
 .tl-scroll{flex:1;overflow-y:auto;padding:0}
@@ -112,9 +85,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tl-loc{font-size:10px;color:#777;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tl-stars{font-size:9px;color:#e9c46a;margin-top:2px}
 .tl-actions{display:flex;gap:4px;flex-shrink:0;align-self:center}
-.tl-actions button{background:none;border:none;cursor:pointer;font-size:16px;opacity:.7;transition:opacity .15s,color .15s;padding:2px 4px;color:#888}
-.tl-actions button:hover{opacity:1;color:#ccc}
-.tl-actions button.active-star{opacity:1;color:#e9c46a;filter:none;text-shadow:0 0 6px #e9c46a55}
+.tl-actions button{background:none;border:none;cursor:pointer;font-size:14px;opacity:.4;transition:opacity .15s;padding:2px}
+.tl-actions button:hover{opacity:1}
+.tl-actions button.active-star{opacity:1;filter:none}
 .tl-empty{padding:30px 14px;text-align:center;color:#555;font-size:12px}
 .tl-tip{position:fixed;z-index:9999;pointer-events:none;background:#1e1e3a;border:1px solid #333;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.7);max-width:300px;overflow:hidden;opacity:0;transition:opacity .15s}
 .tl-tip.show{opacity:1}
@@ -127,7 +100,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tl-tip .ttp-tags{display:flex;flex-wrap:wrap;gap:3px}
 .tl-tip .ttp-tag{font-size:8px;padding:1px 5px;border-radius:5px;white-space:nowrap}
 .tl-tip .ttp-stars{font-size:9px;color:#e9c46a;margin-top:4px}
-.filter-hints{margin-left:80px;display:flex;gap:12px;align-items:center;font-size:9px;color:#555;flex-shrink:0}
+.filter-hints{margin-left:auto;display:flex;gap:12px;align-items:center;font-size:9px;color:#555;flex-shrink:0}
 .filter-hints span{white-space:nowrap}
 .filter-hints span.clickable{cursor:pointer;transition:color .15s}.filter-hints span.clickable:hover{color:#e9c46a}
 
@@ -222,58 +195,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sp-close:hover{color:#fff}
 .sp-list{flex:1;overflow-y:auto;padding:6px 0}
 .sp-empty{padding:40px 18px;text-align:center;color:#555;font-size:12px}
-.sp-item{padding:8px 12px;border-bottom:1px solid #0f346033;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:8px}
+.sp-item{padding:10px 18px;border-bottom:1px solid #0f346033;cursor:pointer;transition:background .15s}
 .sp-item:hover{background:#1a1a3a}
-.sp-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
-.sp-info{flex:1;min-width:0}
-.sp-item .sin{font-size:11px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp-item .sin{font-size:12px;font-weight:600;color:#fff}
 .sp-item .sid{font-size:10px;color:#e9c46a;margin-top:1px}
-.sp-item .sil{font-size:9px;color:#777;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sp-item .sil{font-size:10px;color:#777;margin-top:1px}
 .sp-item .sir{float:right;background:none;border:none;color:#555;cursor:pointer;font-size:13px}
 .sp-item .sir:hover{color:#e63946}
 .sp-btn{margin:10px 18px;padding:7px;border-radius:6px;cursor:pointer;font-size:11px;text-align:center;flex-shrink:0;border:1px solid}
-
-/* Online Events Overlay */
-.online-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:2500;display:none;align-items:center;justify-content:center}
-.online-overlay.open{display:flex}
-.online-panel{background:#12122a;border-radius:14px;width:90vw;max-width:900px;height:80vh;display:flex;flex-direction:column;box-shadow:0 12px 48px rgba(0,0,0,.7);overflow:hidden}
-.online-header{padding:14px 20px;border-bottom:1px solid #0f3460;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;background:#16213e}
-.online-header h2{font-size:15px;color:#2a9d8f}
-.online-header .sp-close{background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px 8px}
-.online-header .sp-close:hover{color:#fff}
-.ol-starred-btn{font-size:10px;padding:4px 10px;border-radius:8px;cursor:pointer;border:1px solid #444;background:#333;color:#888;white-space:nowrap}
-.ol-starred-btn:hover{border-color:#e9c46a55;color:#e9c46a}
-.ol-starred-btn.active{background:#e9c46a22;color:#e9c46a;border-color:#e9c46a55}
-.online-body{display:flex;flex:1;overflow:hidden}
-.online-tags{width:200px;border-right:1px solid #0f3460;padding:12px;overflow-y:auto;flex-shrink:0;display:flex;flex-direction:column;gap:4px}
-.online-tags .ot-label{font-size:10px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-.online-tags .ot-btns{display:flex;gap:4px;margin-bottom:8px}
-.online-tags .ot-chip{font-size:10px;padding:4px 10px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid #2a9d8f55;background:#2a9d8f22;color:#2a9d8f;user-select:none}
-.online-tags .ot-chip:hover{opacity:.85}
-.online-tags .ot-chip.active{background:#2a9d8f;color:#fff}
-.online-timeline{flex:1;overflow-y:auto;padding:0}
-.online-timeline .tl-month{padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;position:sticky;top:0;z-index:10;backdrop-filter:blur(8px)}
-.online-timeline .ol-event{padding:12px 16px;border-bottom:1px solid #ffffff08;transition:background .15s;display:flex;gap:12px;align-items:flex-start}
-.online-timeline .ol-event:hover{background:#1a1a3a}
-.online-timeline .ol-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.online-timeline .ol-info{flex:1;min-width:0}
-.online-timeline .ol-name{font-size:13px;font-weight:600;color:#fff}
-.online-timeline .ol-dates{font-size:10px;color:#e9c46a;margin-top:2px}
-.online-timeline .ol-desc{font-size:11px;color:#999;margin-top:4px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.online-timeline .ol-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
-.online-timeline .ol-tag{font-size:8px;padding:1px 5px;border-radius:5px;white-space:nowrap;background:#ffffff11;color:#999;border:1px solid #ffffff15}
-.online-timeline .ol-link{margin-top:6px}
-.online-timeline .ol-link a{color:#2a9d8f;font-size:11px;text-decoration:none}
-.online-timeline .ol-link a:hover{text-decoration:underline}
-.online-timeline .ol-stars{font-size:10px;color:#e9c46a;margin-top:4px}
-.online-timeline .ol-actions{display:flex;flex-direction:column;gap:4px;flex-shrink:0;margin-left:4px}
-.online-timeline .ol-actions button{background:none;border:1px solid #333;border-radius:6px;width:28px;height:28px;cursor:pointer;color:#888;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s}
-.online-timeline .ol-actions button:hover{border-color:#2a9d8f;color:#2a9d8f;background:#2a9d8f22}
-.online-timeline .ol-actions .active-star{color:#e9c46a;border-color:#e9c46a55;background:#e9c46a22}
-.online-timeline .ol-event.starred-ev{background:#e9c46a0a}
-.online-timeline .ol-event.ignored-ev{opacity:.35}
-.online-empty{padding:40px 20px;text-align:center;color:#555;font-size:12px}
-.btn-online{background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55}
 </style>
 </head>
 <body>
@@ -283,30 +212,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="spinner-text">Loading events...</div>
 </div>
 
-<div class="top-bar">
-  <h1>Events & Gatherings 2026</h1>
-  <div class="search-box"><input type="text" id="searchInput" placeholder="Search events..." oninput="onSearch()"></div>
-  <button class="btn btn-add" onclick="openAddModal()">+ Suggest Event</button>
-  <button class="btn btn-online" id="onlineBtn" onclick="toggleOnlineOverlay()">🌐 Online Events (<span id="onlineCount">0</span>)</button>
-  <button class="btn" id="singleDayBtn" onclick="toggleSingleDay()" style="background:#e9c46a22;color:#e9c46a;border-color:#e9c46a55">📅 Single-day</button>
-  <button class="btn" id="typesBtn" onclick="toggleTypesPanel()" style="background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55">🏷️ Event Types</button>
-  <button class="btn btn-favs" id="favsBtn" onclick="toggleStarredPanel()">★ Starred (0)</button>
-  <button class="btn" id="ignBtn" onclick="toggleIgnoredPanel()" style="background:#55555522;color:#888;border-color:#55555555">👁 Ignored (0)</button>
-  <button class="btn btn-issues" id="issuesBtn" onclick="togglePanel('issues')" style="display:none">Issues (0)</button>
-  <button class="btn" id="tlToggleTop" onclick="toggleTimeline()" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">📋 Timeline</button>
-  <button class="btn" onclick="togglePanel('about')" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">ℹ️ About</button>
+<div class="top-bar" style="justify-content:space-between">
+  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+    <h1>Events & Gatherings 2026</h1>
+    <div class="search-box"><input type="text" id="searchInput" placeholder="Search events..." oninput="onSearch()"></div>
+    <button class="btn btn-add" onclick="openAddModal()">+ Suggest Event</button>
+  </div>
+  <div class="top-btns" style="justify-content:center;margin-left:0">
+    <button class="btn" id="typesBtn" onclick="togglePanel('types')" style="background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55">🏷️ Types</button>
+    <button class="btn btn-favs" id="favsBtn" onclick="togglePanel('favs')">Starred (0)</button>
+    <button class="btn" id="ignBtn" onclick="togglePanel('ignored')" style="background:#55555522;color:#888;border-color:#55555555">Ignored (0)</button>
+    <button class="btn btn-issues" id="issuesBtn" onclick="togglePanel('issues')" style="display:none">Issues (0)</button>
+  </div>
+  <div style="flex-shrink:0;display:flex;gap:4px">
+    <button class="btn" id="tlToggleTop" onclick="toggleTimeline()" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">📋 Timeline</button>
+    <button class="btn" onclick="togglePanel('about')" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">ℹ️ About</button>
+  </div>
 </div>
-<div class="filters region-bar" style="border-bottom:none;padding-bottom:2px">
+<div class="filters" style="border-bottom:none;padding-bottom:4px">
   <span class="fl">Regions:</span>
   <button class="btn" onclick="toggleAllRegions(true)" style="font-size:9px;padding:2px 6px">All</button>
   <button class="btn" onclick="toggleAllRegions(false)" style="font-size:9px;padding:2px 6px">None</button>
-  <div id="regionFilters" class="region-groups"></div>
-  <div id="regionSubRow" class="rg-sub-row"></div>
+  <span id="regionFilters"></span>
   <div class="filter-hints">
     <span>☆ Star to save favorites</span>
-    <span class="clickable" onclick="openExportModal()">📅 Export to calendar</span>
-    <span class="clickable" onclick="openRouteModal()">🗺 Plan a route</span>
-    <span>👁 Ignore to hide</span>
+    <span class="clickable" onclick="togglePanel('favs')">📅 Export to calendar</span>
+    <span class="clickable" onclick="togglePanel('favs')">🗺 Plan a route</span>
+    <span>— Ignore to hide</span>
   </div>
 </div>
 <div class="filters" id="filterBar" style="padding-top:0px">
@@ -319,40 +251,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="main" style="position:relative">
   <div id="map"></div>
-  <div class="types-panel" id="typesPanel">
-    <div class="tp-header">
-      <span style="font-weight:600;color:#2a9d8f;font-size:12px">🏷️ Event Types</span>
-      <div style="display:flex;gap:4px">
-        <button class="btn" onclick="setAllTypes(true)" style="font-size:9px;padding:2px 6px">All</button>
-        <button class="btn" onclick="setAllTypes(false)" style="font-size:9px;padding:2px 6px">None</button>
-        <button onclick="toggleTypesPanel()" style="background:none;border:none;color:#888;cursor:pointer;font-size:14px;padding:2px 6px" title="Close types">✕</button>
-      </div>
-    </div>
-    <div class="tp-list" id="typesList"></div>
-  </div>
-  <div class="starred-panel" id="starredPanel">
-    <div class="tp-header">
-      <span style="font-weight:600;color:#e9c46a;font-size:12px">★ Starred</span>
-      <button onclick="toggleStarredPanel()" style="background:none;border:none;color:#888;cursor:pointer;font-size:14px;padding:2px 6px" title="Close starred">✕</button>
-    </div>
-    <div class="sp-inline-list" id="favsList"></div>
-    <div class="sp-inline-actions">
-      <button class="sp-inline-btn" onclick="copyFavsList()">📋 Copy list</button>
-      <button class="sp-inline-btn" onclick="exportICS()">📅 Export .ics</button>
-      <button class="sp-inline-btn" onclick="openRoutePage()">🗺️ Route</button>
-      <button class="sp-inline-btn" onclick="exportKML()">📍 KML</button>
-    </div>
-  </div>
-  <div class="ignored-panel" id="ignoredPanel">
-    <div class="tp-header">
-      <span style="font-weight:600;color:#888;font-size:12px">👁 Ignored</span>
-      <button onclick="toggleIgnoredPanel()" style="background:none;border:none;color:#888;cursor:pointer;font-size:14px;padding:2px 6px" title="Close ignored">✕</button>
-    </div>
-    <div class="ip-inline-list" id="ignoredList"></div>
-    <div class="ip-inline-actions">
-      <button class="sp-inline-btn" onclick="clearIgnored()">Clear all</button>
-    </div>
-  </div>
   <div class="timeline" id="timeline">
     <div class="tl-header"><span>Timeline (<span id="tlCount">0</span>)</span><button onclick="toggleTimeline()" style="background:none;border:none;color:#888;cursor:pointer;font-size:14px;padding:2px 6px" title="Collapse timeline">✕</button></div>
     <div class="tl-scroll" id="tlScroll"></div>
@@ -393,38 +291,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
-<!-- Export to Calendar Modal -->
-<div class="modal-overlay" id="exportModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
-  <div class="modal" style="max-width:420px">
-    <h2 style="color:#e9c46a;font-size:16px">📅 Export to Calendar</h2>
-    <div id="exportModalBody" style="margin-top:12px"></div>
-    <div class="mbtn" style="margin-top:14px">
-      <button class="cancel" onclick="document.getElementById('exportModal').style.display='none'">Close</button>
-    </div>
-  </div>
+<!-- Ignored Panel -->
+<div class="side-panel" id="ignoredPanel">
+  <div class="sp-header"><h2 style="color:#888">Ignored Events</h2><button class="sp-close" onclick="togglePanel('ignored')">&times;</button></div>
+  <div class="sp-list" id="ignoredList"></div>
+  <button class="sp-btn" onclick="clearIgnored()" style="background:#33333322;color:#666;border-color:#44444455">Clear all ignored</button>
 </div>
 
-<!-- Plan a Route Modal -->
-<div class="modal-overlay" id="routeModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
-  <div class="modal" style="max-width:420px">
-    <h2 style="color:#e9c46a;font-size:16px">🗺 Plan a Route</h2>
-    <div id="routeModalBody" style="margin-top:12px"></div>
-    <div class="mbtn" style="margin-top:14px">
-      <button class="cancel" onclick="document.getElementById('routeModal').style.display='none'">Close</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="reportModal" style="display:none" onclick="if(event.target===this)this.style.display='none'">
-  <div class="modal" style="max-width:420px">
-    <h2 style="color:#e63946;font-size:16px">⚠ Report an Issue</h2>
-    <div id="reportModalEventName" style="margin-top:8px;font-size:13px;color:#ccc"></div>
-    <textarea id="reportModalText" placeholder="Describe the issue (wrong dates, broken link, incorrect location, etc.)" style="width:100%;margin-top:10px;padding:8px;border-radius:6px;border:1px solid #333;background:#1a1a2e;color:#eee;font-size:13px;min-height:80px;resize:vertical;font-family:inherit"></textarea>
-    <div class="mbtn" style="margin-top:14px;display:flex;gap:8px">
-      <button class="cancel" onclick="document.getElementById('reportModal').style.display='none'">Cancel</button>
-      <button onclick="submitReport()" style="padding:6px 16px;border-radius:6px;border:1px solid #e6394666;background:#e6394633;color:#e63946;cursor:pointer;font-weight:600">Submit Report</button>
-    </div>
-  </div>
+<!-- Starred Panel -->
+<div class="side-panel" id="favsPanel">
+  <div class="sp-header"><h2 style="color:#e9c46a">Your Starred Events</h2><button class="sp-close" onclick="togglePanel('favs')">&times;</button></div>
+  <div class="sp-list" id="favsList"></div>
+  <button class="sp-btn" onclick="copyFavsList()" style="background:#2a9d8f33;color:#2a9d8f;border-color:#2a9d8f55">Copy list to clipboard</button>
+  <button class="sp-btn" onclick="exportICS()" style="background:#6bbe4533;color:#6bbe45;border-color:#6bbe4555;margin-top:4px">📅 Export .ics calendar file</button>
+  <button class="sp-btn" onclick="openRoutePage()" style="background:#457b9d33;color:#457b9d;border-color:#457b9d55;margin-top:4px">🗺️ View route itinerary + Google Maps</button>
+  <button class="sp-btn" onclick="exportKML()" style="background:#e8951833;color:#e89518;border-color:#e8951855;margin-top:4px">📍 Export KML for Google My Maps</button>
 </div>
 
 <!-- Issues Panel -->
@@ -465,29 +346,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <!-- Types Filter Panel -->
-
-<!-- Online Events Overlay -->
-<div class="online-overlay" id="onlineOverlay" onclick="if(event.target===this)toggleOnlineOverlay()">
-  <div class="online-panel">
-    <div class="online-header">
-      <h2>🌐 Online Events</h2>
-      <div style="display:flex;align-items:center;gap:8px">
-        <button class="btn ol-starred-btn" id="olStarredBtn" onclick="toggleOnlineStarredFilter()">★ Starred</button>
-        <button class="sp-close" onclick="toggleOnlineOverlay()">&times;</button>
-      </div>
-    </div>
-    <div class="online-body">
-      <div class="online-tags" id="onlineTags">
-        <div class="ot-label">Filter by tag</div>
-        <div class="ot-btns">
-          <button class="btn" onclick="setOnlineTags(true)" style="font-size:9px;padding:2px 6px">All</button>
-          <button class="btn" onclick="setOnlineTags(false)" style="font-size:9px;padding:2px 6px">None</button>
-        </div>
-        <div id="onlineTagChips"></div>
-      </div>
-      <div class="online-timeline" id="onlineTimeline"></div>
-    </div>
+<div class="side-panel" id="typesPanel" style="z-index:2001;">
+  <div class="sp-header"><h2 style="color:#2a9d8f">Event Types</h2><button class="sp-close" onclick="togglePanel('types')">&times;</button></div>
+  <div style="padding:8px 18px;border-bottom:1px solid #0f346033;display:flex;gap:6px">
+    <button class="btn" onclick="setAllTypes(true)" style="font-size:10px;padding:3px 8px">All on</button>
+    <button class="btn" onclick="setAllTypes(false)" style="font-size:10px;padding:3px 8px">All off</button>
   </div>
+  <div class="sp-list" id="typesList" style="padding:8px 0"></div>
 </div>
 
 <script>
@@ -507,7 +372,7 @@ const sb = window.supabase.createClient(
 );
 
 // === COLORS & ICONS ===
-const TI = {'ecovillage':'🛖','permaculture':'🌱','bioregional':'🌍','bioregionalism':'🌍','climate':'☁️','systems change':'🦋','web3':'⛓️','Web3':'⛓️','governance':'🏛️','regen ag':'🌾','festival':'🎪','commons':'🤝','transformation':'✨','UPgame':'🔮','primitive skills':'🏹','craft':'🧶','healing':'💚','rewilding':'🐺','gathering':'🧠','retreat':'🧘','impact':'💡','futures':'🔭','cultural':'🎭','hacker camp':'💻','burning man':'🔥','wellbeing':'🌸','food systems':'🍎','AI':'🤖','entrepreneurship':'🚀','regen':'♻️','regen economics':'💰','networking':'🔗','regeneration':'♻️','community':'👥','Europe':'🇪🇺','intergenerational':'🌳','youth':'🌱','solarpunk':'☀️','biodiversity':'🦋','conservation':'🌿','sustainability':'🌎','policy':'📜','transition':'🔄','public-goods':'🏗️','funding':'💸','open-source':'📖'};
+const TI = {'ecovillage':'🛖','permaculture':'🌱','bioregional':'🌍','climate':'☁️','systems change':'🦋','web3':'⛓️','governance':'🏛️','regen ag':'🌾','festival':'🎪','commons':'🤝','transformation':'✨','UPgame':'🔮','primitive skills':'🏹','craft':'🧶','healing':'💚','rewilding':'🐺','gathering':'🧠','retreat':'🧘','impact':'💡','futures':'🔭','cultural':'🎭','hacker camp':'💻','burning man':'🔥','wellbeing':'🌸','food systems':'🍎','AI':'🤖','entrepreneurship':'🚀','regen':'♻️','regen economics':'💰'};
 function gi(ev){for(const t of(ev.tags||[])){if(TI[t])return TI[t]}return'📍'}
 
 // === DYNAMIC COLOR SHIFTING ===
@@ -568,67 +433,27 @@ const issues = [];
 let ALL_TAGS = [];
 const activeTags = new Set();
 let searchQuery = '';
-let hideSingleDay = false;
 let clusterGroup;
 
 // === GEO-REGIONS ===
-// === HIERARCHICAL REGION / SUB-REGION SYSTEM ===
-const REGION_HIERARCHY = {
-  'Europe': {
-    emoji: '🇪🇺', color: '#4a90d9',
-    expandable: true,
-    subs: ['Iberian', 'Mediterranean', 'Western Europe', 'Central Europe', 'Nordic', 'Eastern Europe', 'British Isles']
-  },
-  'N. America': {
-    emoji: '🌎', color: '#2a9d8f',
-    expandable: true,
-    subs: ['West Coast', 'Mountain & Central', 'East Coast', 'Mexico & Caribbean']
-  },
-  'C/S America': { emoji: '🌎', color: '#e76f51', expandable: false, subs: ['C/S America'] },
-  'Africa': { emoji: '🌍', color: '#e9c46a', expandable: false, subs: ['Africa'] },
-  'Asia': { emoji: '🌏', color: '#e63946', expandable: false, subs: ['Asia'] },
-  'Oceania': { emoji: '🏝️', color: '#9b59b6', expandable: false, subs: ['Oceania'] }
+const REGIONS = {
+  'N. America': { latMin: 15, latMax: 72, lngMin: -170, lngMax: -50 },
+  'C/S America': { latMin: -56, latMax: 15, lngMin: -120, lngMax: -30 },
+  'Europe': { latMin: 35, latMax: 72, lngMin: -25, lngMax: 45 },
+  'Africa': { latMin: -35, latMax: 37, lngMin: -20, lngMax: 55 },
+  'Asia': { latMin: -10, latMax: 72, lngMin: 45, lngMax: 180 },
+  'Oceania': { latMin: -50, latMax: 0, lngMin: 100, lngMax: 180 }
 };
-
-// Collect all sub-region names
-const ALL_SUBS = [];
-Object.values(REGION_HIERARCHY).forEach(r => r.subs.forEach(s => ALL_SUBS.push(s)));
-const activeRegions = new Set(ALL_SUBS);
-let expandedRegion = null; // track which parent is expanded
+const activeRegions = new Set(Object.keys(REGIONS));
 
 function getRegion(lat, lng) {
-  // Europe sub-regions (check first — priority over Africa overlap)
-  if (lat >= 35 && lat <= 72 && lng >= -25 && lng <= 45) {
-    if (lat >= 55 && lng >= -10 && lng < 5) return 'British Isles';
-    if (lat >= 55 && lng >= 5 && lng <= 30) return 'Nordic';
-    if (lat >= 35 && lat < 44 && lng >= -10 && lng <= 4) return 'Iberian';
-    if (lat >= 35 && lat < 46 && lng >= 4 && lng <= 20) return 'Mediterranean';
-    if (lat >= 44 && lat < 56 && lng >= -5 && lng <= 8) return 'Western Europe';
-    if (lat >= 44 && lat < 56 && lng >= 8 && lng <= 20) return 'Central Europe';
-    if (lng >= 18 && lng <= 45) return 'Eastern Europe';
-    // Catch-all for edge cases in Europe bounds
-    if (lat >= 56) return 'Nordic';
-    return 'Central Europe';
-  }
-  // N. America sub-regions
-  if (lat >= 15 && lat <= 72 && lng >= -170 && lng <= -50) {
-    if (lat < 25) return 'Mexico & Caribbean';
-    if (lng >= -130 && lng <= -115) return 'West Coast';
-    if (lng >= -80 && lng <= -50) return 'East Coast';
-    return 'Mountain & Central';
-  }
-  // Other
+  // Check in priority order (Europe before Africa for overlap zone)
+  if (lat >= 35 && lat <= 72 && lng >= -25 && lng <= 45) return 'Europe';
+  if (lat >= 15 && lat <= 72 && lng >= -170 && lng <= -50) return 'N. America';
   if (lat >= -56 && lat <= 15 && lng >= -120 && lng <= -30) return 'C/S America';
   if (lat >= -35 && lat <= 37 && lng >= -20 && lng <= 55) return 'Africa';
   if (lat >= -10 && lat <= 72 && lng >= 45 && lng <= 180) return 'Asia';
   if (lat >= -50 && lat <= 0 && lng >= 100 && lng <= 180) return 'Oceania';
-  return 'C/S America'; // fallback
-}
-
-function getParentRegion(subRegion) {
-  for (const [parent, data] of Object.entries(REGION_HIERARCHY)) {
-    if (data.subs.includes(subRegion)) return parent;
-  }
   return 'Other';
 }
 let userName = '';
@@ -660,12 +485,7 @@ function syncUserStars() {
 
 function persist() {
   try {
-    const s = {
-      ignoredNames: [...ignored].map(i => events[i]?.name).filter(Boolean),
-      issues,
-      activeMonths: [...activeMonths],
-      activeRegions: [...activeRegions]
-    };
+    const s = { ignoredNames: [...ignored].map(i => events[i]?.name).filter(Boolean), issues };
     localStorage.setItem(LS_KEY, JSON.stringify(s));
   } catch(e) {}
 }
@@ -682,29 +502,6 @@ function restore() {
       if (i !== undefined) ignored.add(i);
     });
     if (s.issues) s.issues.forEach(iss => issues.push(iss));
-    if (s.activeMonths) {
-      activeMonths.clear();
-      s.activeMonths.forEach(m => activeMonths.add(m));
-    }
-    if (s.activeRegions) {
-      // Migrate old parent region names to sub-regions
-      const oldParents = new Set(['N. America', 'C/S America', 'Europe', 'Africa', 'Asia', 'Oceania']);
-      const hasOldFormat = s.activeRegions.some(r => oldParents.has(r));
-      if (hasOldFormat) {
-        // Old format — expand parent names to all their subs, keep valid sub names
-        activeRegions.clear();
-        s.activeRegions.forEach(r => {
-          if (REGION_HIERARCHY[r]) {
-            REGION_HIERARCHY[r].subs.forEach(s => activeRegions.add(s));
-          } else if (ALL_SUBS.includes(r)) {
-            activeRegions.add(r);
-          }
-        });
-      } else {
-        activeRegions.clear();
-        s.activeRegions.forEach(r => activeRegions.add(r));
-      }
-    }
   } catch(e) {}
 }
 
@@ -801,7 +598,7 @@ function popupHtml(ev, idx) {
     const ic = TI[t] || '';
     return `<span class="tag" style="background:${c}44;color:${c};border:1px solid ${c}66">${ic} ${t}</span>`;
   }).join('');
-  const url = ev.url ? `<a href="${ev.url.startsWith('http') ? ev.url : 'https://'+ev.url}" target="_blank">${ev.url.replace(/^https?:\/\/(www\.)?/,'').split('/')[0]}</a>` : '';
+  const url = ev.url ? `<a href="https://${ev.url}" target="_blank">${ev.url}</a>` : '';
   const mapsLink = `<a href="https://www.google.com/maps?q=${ev.lat},${ev.lng}" target="_blank" style="font-size:9px;color:#457b9d;margin-left:4px">open in maps</a>`;
   const venue = ev.venue ? `<div class="venue">📍 ${ev.venue}</div>` : '';
   const isStar = userStars.has(ev.id);
@@ -821,8 +618,7 @@ function popupHtml(ev, idx) {
       </div>`
     : '';
 
-  const desc = ev.long_description || ev.description;
-  return `${img}<div class="pi">${badge}<h3>${ev.name}</h3><div class="dates">${ev.dates} ${durBadge}</div><div class="loc">${ev.location} ${mapsLink}</div>${venue}<div class="desc">${desc}</div>${beaconBanner}${tags}${url ? '<br>' + url : ''}<div class="pa"><button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ Interested' : '☆ Interested'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '🚫 Ignored' : '👁 Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
+  return `${img}<div class="pi">${badge}<h3>${ev.name}</h3><div class="dates">${ev.dates} ${durBadge}</div><div class="loc">${ev.location} ${mapsLink}</div>${venue}<div class="desc">${ev.description}</div>${beaconBanner}${tags}${url ? '<br>' + url : ''}<div class="pa"><button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ Interested' : '☆ Interested'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '✓ Ignored' : '— Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
 }
 
 function tipHtml(ev) {
@@ -835,8 +631,7 @@ function tipHtml(ev) {
   const starCount = starData ? starData.count : 0;
   const starDisplay = starCount > 1 ? `<div style="margin-top:4px;font-size:9px;color:#e9c46a;font-weight:600">⭐ ${starCount} interested</div>` : '';
   
-  const more = ev.long_description ? `<div style="margin-top:3px;font-size:8px;color:#2a9d8f">click for more</div>` : '';
-  return `${img}<div class="tb"><div class="tn">${ev.name}</div><div class="td">${ev.dates} · ${ev.location}</div><div class="tds">${ev.description}</div><div class="tt">${tags}</div>${starDisplay}${more}</div>`;
+  return `${img}<div class="tb"><div class="tn">${ev.name}</div><div class="td">${ev.dates} · ${ev.location}</div><div class="tds">${ev.description}</div><div class="tt">${tags}</div>${starDisplay}</div>`;
 }
 
 function getVisible() {
@@ -845,18 +640,14 @@ function getVisible() {
     const inRegion = activeRegions.has(region);
     return { ev, i, region, inRegion };
   }).filter(({ ev }) => {
-    if (ev.is_online) return false; // online events shown in overlay, not on map
-    if (searchQuery) {
-      // Search overrides month/region/tag filters
-      const q = searchQuery.toLowerCase();
-      const evTags = ev.tags || [];
-      const haystack = `${ev.name} ${ev.location} ${ev.description} ${evTags.join(' ')} ${ev.venue || ''}`.toLowerCase();
-      return haystack.includes(q);
-    }
     if (!activeMonths.has(ev.month)) return false;
     const evTags = ev.tags || [];
     if (evTags.length > 0 && !evTags.some(t => activeTags.has(t))) return false;
-    if (hideSingleDay && isSingleDay(ev)) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const haystack = `${ev.name} ${ev.location} ${ev.description} ${evTags.join(' ')} ${ev.venue || ''}`.toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
     return true;
   });
 }
@@ -953,7 +744,6 @@ function renderTimeline(visible) {
       const starCount = starData ? starData.count : 0;
       const starText = starCount > 1 ? `<div class="tl-stars">⭐ ${starCount} interested</div>` : '';
       
-      const evIdx = events.indexOf(ev);
       item.innerHTML = `
         <div class="tl-icon" style="background:${c};color:#1a1a2e">${gi(ev)}</div>
         <div class="tl-info">
@@ -962,28 +752,14 @@ function renderTimeline(visible) {
           <div class="tl-loc">${ev.location}</div>
           ${starText}
         </div>
-        <div class="tl-actions">
-          <button class="${isStar ? 'active-star' : ''}" data-action="star" data-idx="${evIdx}" title="${isStar ? 'Remove star' : 'Star this event'}">${isStar ? '★' : '☆'}</button>
-          <button data-action="ignore" data-idx="${evIdx}" title="Ignore this event">${isIgn ? '🚫' : '👁'}</button>
-        </div>
       `;
       
-      item.addEventListener('click', (e) => {
-        if (e.target.closest('.tl-actions')) return; // don't zoom if clicking action buttons
+      item.addEventListener('click', () => {
+        const idx = events.indexOf(ev);
         map.setView([ev.lat, ev.lng], 8);
         clusterGroup.getLayers().forEach(m => {
           if (m._evId === ev.id) m.openPopup();
         });
-      });
-
-      // Star/ignore button handlers
-      item.querySelector('[data-action="star"]').addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleStar(evIdx);
-      });
-      item.querySelector('[data-action="ignore"]').addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleIgnore(evIdx);
       });
 
       item.addEventListener('mouseenter', (e) => showTlTip(ev, e));
@@ -1003,11 +779,7 @@ function renderTimeline(visible) {
 }
 
 // === TIMELINE TOOLTIP ===
-let _tipEvId = null;
 function showTlTip(ev, e) {
-  // On touch: tap same item again to dismiss
-  if ('ontouchstart' in window && _tipEvId === ev.id) { hideTlTip(); return; }
-  _tipEvId = ev.id;
   const tip = document.getElementById('tlTip');
   const c = MC[ev.month] || '#888';
   const img = ev.image_url ? `<img class="ttp-img" src="${ev.image_url}" onerror="this.style.display='none'">` : '';
@@ -1016,8 +788,7 @@ function showTlTip(ev, e) {
   const starData = starCounts.get(ev.id);
   const starCount = starData ? starData.count : 0;
   const starText = starCount > 1 ? `<div class="ttp-stars">⭐ ${starCount} interested</div>` : '';
-  const more = ev.long_description ? `<div style="margin-top:3px;font-size:8px;color:#2a9d8f">click for more</div>` : '';
-  tip.innerHTML = `${img}<div class="ttp-body"><div class="ttp-name">${ev.name}</div><div class="ttp-dates">${ev.dates} · ${duration}</div><div class="ttp-loc">${ev.location}${ev.venue ? ' · ' + ev.venue : ''}</div><div class="ttp-desc">${ev.description}</div><div class="ttp-tags">${tags}</div>${starText}${more}</div>`;
+  tip.innerHTML = `${img}<div class="ttp-body"><div class="ttp-name">${ev.name}</div><div class="ttp-dates">${ev.dates} · ${duration}</div><div class="ttp-loc">${ev.location}${ev.venue ? ' · ' + ev.venue : ''}</div><div class="ttp-desc">${ev.description}</div><div class="ttp-tags">${tags}</div>${starText}</div>`;
   moveTlTip(e);
   tip.classList.add('show');
 }
@@ -1033,18 +804,13 @@ function moveTlTip(e) {
   tip.style.top = y + 'px';
 }
 function hideTlTip() {
-  _tipEvId = null;
   document.getElementById('tlTip').classList.remove('show');
 }
-// Dismiss tooltip on any tap outside on mobile
-document.addEventListener('touchstart', (e) => {
-  if (!e.target.closest('.tl-event') && !e.target.closest('.sp-item')) hideTlTip();
-});
 
 // === BUTTON STATE ===
 function updateBtns() {
   document.getElementById('favsBtn').textContent = `Starred (${userStars.size})`;
-  document.getElementById('ignBtn').textContent = `👁 Ignored (${ignored.size})`;
+  document.getElementById('ignBtn').textContent = `Ignored (${ignored.size})`;
   if (issues.length > 0) {
     document.getElementById('issuesBtn').style.display = 'inline-block';
     document.getElementById('issuesBtn').textContent = `Issues (${issues.length})`;
@@ -1088,6 +854,7 @@ async function starEvent(eventId) {
     userStars.add(eventId);
     await fetchStarCounts();
     render();
+    toast(`Added to your resonance beacons!`);
   } catch (e) {
     toast('Error starring event', '#e63946');
   }
@@ -1109,6 +876,7 @@ async function unstarEvent(eventId) {
     userStars.delete(eventId);
     await fetchStarCounts();
     render();
+    toast(`Removed from your resonance beacons`);
   } catch (e) {
     toast('Error unstarring event', '#e63946');
   }
@@ -1125,220 +893,31 @@ function toggleIgnore(idx) {
   persist();
 }
 
-// === ONLINE EVENTS OVERLAY ===
-const onlineActiveTags = new Set();
-let onlineTagsInitialized = false;
-let onlineStarredOnly = false;
-
-function toggleOnlineStarredFilter() {
-  onlineStarredOnly = !onlineStarredOnly;
-  document.getElementById('olStarredBtn').classList.toggle('active', onlineStarredOnly);
-  renderOnlineOverlay();
-}
-
-function toggleOnlineOverlay() {
-  const overlay = document.getElementById('onlineOverlay');
-  const isOpen = overlay.classList.contains('open');
-  if (isOpen) {
-    overlay.classList.remove('open');
-  } else {
-    overlay.classList.add('open');
-    renderOnlineOverlay();
-  }
-}
-
-function getOnlineEvents() {
-  return events.filter(ev => ev.is_online);
-}
-
-function renderOnlineOverlay() {
-  const onlineEvts = getOnlineEvents();
-
-  // Collect all tags from online events
-  const tagSet = new Set();
-  onlineEvts.forEach(ev => (ev.tags || []).forEach(t => tagSet.add(t)));
-  const allOnlineTags = [...tagSet].sort();
-
-  // Initialize active tags on first render
-  if (!onlineTagsInitialized) {
-    allOnlineTags.forEach(t => onlineActiveTags.add(t));
-    onlineTagsInitialized = true;
-  }
-
-  // Render tag chips
-  const chipsContainer = document.getElementById('onlineTagChips');
-  chipsContainer.innerHTML = '';
-  allOnlineTags.forEach(tag => {
-    const chip = document.createElement('div');
-    chip.className = 'ot-chip' + (onlineActiveTags.has(tag) ? ' active' : '');
-    chip.textContent = (TI[tag] || '') + ' ' + tag;
-    chip.onclick = () => {
-      if (onlineActiveTags.has(tag)) onlineActiveTags.delete(tag);
-      else onlineActiveTags.add(tag);
-      renderOnlineOverlay();
-    };
-    chipsContainer.appendChild(chip);
-  });
-
-  // Filter online events by active tags + starred filter
-  const filtered = onlineEvts.filter(ev => {
-    if (onlineStarredOnly && !userStars.has(ev.id)) return false;
-    const evTags = ev.tags || [];
-    if (evTags.length === 0) return true;
-    return evTags.some(t => onlineActiveTags.has(t));
-  });
-
-  // Render timeline
-  const timeline = document.getElementById('onlineTimeline');
-  timeline.innerHTML = '';
-
-  if (filtered.length === 0) {
-    timeline.innerHTML = `<div class="online-empty">${onlineStarredOnly ? 'No starred online events yet. Star some events to see them here!' : 'No online events match your filters.'}</div>`;
-    return;
-  }
-
-  // Group by month — convert "2026-03" to "Mar" etc.
-  const byMonth = {};
-  filtered.forEach(ev => {
-    let m = ev.month || 'TBD';
-    // Convert YYYY-MM format to short month name
-    if (m.match(/^\d{4}-\d{2}$/)) {
-      const mIdx = parseInt(m.split('-')[1], 10) - 1;
-      m = MO[mIdx] || m;
-    }
-    if (!byMonth[m]) byMonth[m] = [];
-    byMonth[m].push(ev);
-  });
-
-  MO.forEach(m => {
-    if (!byMonth[m]) return;
-    const header = document.createElement('div');
-    header.className = 'tl-month';
-    header.style.background = MC[m] || '#555';
-    const mIdx = MO.indexOf(m);
-    const mSlot = mIdx - NOW_MONTH;
-    header.style.color = (mIdx < NOW_MONTH) ? '#999' : (LIGHT_TEXT_SLOTS.has(mSlot) ? '#1a1a2e' : '#fff');
-    header.textContent = m;
-    timeline.appendChild(header);
-
-    byMonth[m].sort((a, b) => {
-      const da = parseInt(a.dates?.match(/\d+/)?.[0] || 0);
-      const db = parseInt(b.dates?.match(/\d+/)?.[0] || 0);
-      return da - db;
-    });
-
-    byMonth[m].forEach(ev => {
-      const card = document.createElement('div');
-      const evIdx = events.indexOf(ev);
-      const isStar = userStars.has(ev.id);
-      const isIgn = ignored.has(evIdx);
-      card.className = `ol-event${isStar ? ' starred-ev' : ''}${isIgn ? ' ignored-ev' : ''}`;
-      const c = MC[m] || '#888';
-      const icon = gi(ev);
-      const tagsHtml = (ev.tags || []).map(t => `<span class="ol-tag">${TI[t] || ''} ${t}</span>`).join('');
-      const linkHtml = ev.url ? `<div class="ol-link"><a href="${ev.url.startsWith('http') ? ev.url : 'https://'+ev.url}" target="_blank">🔗 ${ev.url.replace(/^https?:\/\/(www\.)?/,'').split('/')[0]}</a></div>` : '';
-      const starData = starCounts.get(ev.id);
-      const starCount = starData ? starData.count : 0;
-      const starText = starCount > 1 ? `<div class="ol-stars">⭐ ${starCount} interested</div>` : '';
-      card.innerHTML = `
-        <div class="ol-icon" style="background:${c}22;border:2px solid ${c}">${icon}</div>
-        <div class="ol-info">
-          <div class="ol-name">${ev.name}</div>
-          <div class="ol-dates">${ev.dates || 'TBD'}</div>
-          <div class="ol-desc">${ev.description || ''}</div>
-          <div class="ol-tags">${tagsHtml}</div>
-          ${starText}
-          ${linkHtml}
-        </div>
-        <div class="ol-actions">
-          <button class="${isStar ? 'active-star' : ''}" data-action="star" title="${isStar ? 'Remove star' : 'Star this event'}">${isStar ? '★' : '☆'}</button>
-          <button data-action="ignore" title="Ignore this event">${isIgn ? '🚫' : '👁'}</button>
-        </div>
-      `;
-      card.querySelector('[data-action="star"]').addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleStar(evIdx);
-        renderOnlineOverlay();
-      });
-      card.querySelector('[data-action="ignore"]').addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleIgnore(evIdx);
-        renderOnlineOverlay();
-      });
-      timeline.appendChild(card);
-    });
-  });
-}
-
-function setOnlineTags(allOn) {
-  const onlineEvts = getOnlineEvents();
-  onlineActiveTags.clear();
-  if (allOn) {
-    onlineEvts.forEach(ev => (ev.tags || []).forEach(t => onlineActiveTags.add(t)));
-  }
-  renderOnlineOverlay();
-}
-
-function updateOnlineCount() {
-  const count = events.filter(ev => ev.is_online).length;
-  document.getElementById('onlineCount').textContent = count;
-}
-
 // === REPORT ISSUE ===
-let _reportIdx = null;
 function reportIssue(idx) {
-  _reportIdx = idx;
   const ev = events[idx];
-  document.getElementById('reportModalEventName').textContent = `Event: ${ev.name}`;
-  document.getElementById('reportModalText').value = '';
-  document.getElementById('reportModal').style.display = 'flex';
-  setTimeout(() => document.getElementById('reportModalText').focus(), 100);
-}
-function submitReport() {
-  const text = document.getElementById('reportModalText').value.trim();
-  if (!text) { toast('Please describe the issue', '#e63946'); return; }
-  const ev = events[_reportIdx];
+  const issue = prompt(`Report issue with "${ev.name}":`, '');
+  if (!issue) return;
+  
   const issueObj = {
     event_id: ev.id,
     event_name: ev.name,
-    issue_text: text,
+    issue_text: issue,
     created_by: userName || 'anonymous',
     created_at: new Date().toISOString()
   };
-  sb.from('issues').insert([issueObj]).then(r => {
-    if (r.error) { toast('Error: ' + r.error.message, '#e63946'); return; }
-    issues.push(issueObj);
-    persist();
-    updateBtns();
-    toast('Issue reported — thank you!');
-    document.getElementById('reportModal').style.display = 'none';
-  });
-}
-
-// === SINGLE-DAY TOGGLE ===
-function isSingleDay(ev) {
-  if (!ev.dates) return false;
-  // Multi-day events contain – or - between numbers, or "TBD", or "Starting"
-  const d = ev.dates;
-  if (d.toLowerCase().includes('tbd') || d.toLowerCase().includes('starting')) return false;
-  return !d.match(/\d\s*[–\-]\s*\d/) && !d.match(/[–\-]\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i);
-}
-
-function toggleSingleDay() {
-  hideSingleDay = !hideSingleDay;
-  const btn = document.getElementById('singleDayBtn');
-  if (hideSingleDay) {
-    btn.style.background = '#55555522';
-    btn.style.color = '#888';
-    btn.style.borderColor = '#55555555';
-    btn.textContent = '📅 Single-day (hidden)';
-  } else {
-    btn.style.background = '#e9c46a22';
-    btn.style.color = '#e9c46a';
-    btn.style.borderColor = '#e9c46a55';
-    btn.textContent = '📅 Single-day';
-  }
-  render();
+  
+  // Save to Supabase
+  sb
+    .from('issues')
+    .insert([issueObj])
+    .then(() => {
+      issues.push(issueObj);
+      persist();
+      updateBtns();
+      toast(`Issue reported!`);
+    })
+    .catch(e => toast('Error saving issue: ' + e.message, '#e63946'));
 }
 
 // === SEARCH ===
@@ -1369,7 +948,6 @@ function initMonthFilters() {
         activeMonths.add(m);
         label.classList.remove('off');
       }
-      persist();
       render();
     });
     filterBar.appendChild(label);
@@ -1389,152 +967,43 @@ function toggleAll(on) {
       l.classList.add('off');
     }
   });
-  persist();
   render();
 }
 
-// === REGION FILTERS (HIERARCHICAL) ===
+// === REGION FILTERS ===
 function initRegionFilters() {
   const container = document.getElementById('regionFilters');
   container.innerHTML = '';
-
-  Object.entries(REGION_HIERARCHY).forEach(([parentName, data], idx) => {
-    const c = data.color;
-    const btn = document.createElement('span');
-    btn.className = 'rg-btn';
-    btn.dataset.parent = parentName;
-    btn.dataset.color = c;
-    const noneOn = data.subs.every(s => !activeRegions.has(s));
-    if (noneOn) {
-      btn.classList.add('off');
-      btn.style.cssText = `background:transparent;color:${c};border-color:${c}`;
-    } else {
-      btn.style.cssText = `background:${c};color:#fff;border-color:transparent`;
-    }
-    const arrow = data.expandable ? (expandedRegion === parentName ? ' ▾' : ' ▸') : '';
-    btn.textContent = `${data.emoji} ${parentName}${arrow}`;
-
-    btn.addEventListener('click', () => {
-      if (data.expandable) {
-        // Toggle expand/collapse — show sub-regions
-        if (expandedRegion === parentName) {
-          expandedRegion = null;
-        } else {
-          expandedRegion = parentName;
-        }
-        renderSubRow();
-        // Update arrows on all expandable buttons
-        document.querySelectorAll('.rg-btn[data-parent]').forEach(b => {
-          const pn = b.dataset.parent;
-          const d = REGION_HIERARCHY[pn];
-          if (d && d.expandable) {
-            const a = expandedRegion === pn ? ' ▾' : ' ▸';
-            b.textContent = `${d.emoji} ${pn}${a}`;
-          }
-        });
+  Object.keys(REGIONS).forEach(r => {
+    const label = document.createElement('label');
+    label.className = 'r-label';
+    label.textContent = r;
+    label.addEventListener('click', e => {
+      e.preventDefault();
+      if (activeRegions.has(r)) {
+        activeRegions.delete(r);
+        label.classList.add('off');
       } else {
-        // Simple toggle on/off for non-expandable continents
-        const currentlyAllOn = data.subs.every(s => activeRegions.has(s));
-        data.subs.forEach(s => {
-          if (currentlyAllOn) activeRegions.delete(s);
-          else activeRegions.add(s);
-        });
-        refreshRegionUI();
-        persist();
-        render();
+        activeRegions.add(r);
+        label.classList.remove('off');
       }
-    });
-    container.appendChild(btn);
-  });
-
-  renderSubRow();
-}
-
-function renderSubRow() {
-  const subRow = document.getElementById('regionSubRow');
-  subRow.innerHTML = '';
-  subRow.classList.toggle('open', !!expandedRegion);
-  if (!expandedRegion) return;
-
-  const data = REGION_HIERARCHY[expandedRegion];
-  if (!data) return;
-
-  const c = data.color || '#2a9d8f';
-
-  // All / None toggle for the expanded continent
-  const allBtn = document.createElement('span');
-  allBtn.className = 'rg-sub';
-  allBtn.textContent = 'All';
-  allBtn.style.cssText = `background:${c}44;color:${c};border-color:${c}55;font-weight:700;font-size:8px;padding:2px 5px`;
-  allBtn.addEventListener('click', () => {
-    const allOn = data.subs.every(s => activeRegions.has(s));
-    data.subs.forEach(s => { if (allOn) activeRegions.delete(s); else activeRegions.add(s); });
-    refreshRegionUI();
-    renderSubRow();
-    persist();
-    render();
-  });
-  subRow.appendChild(allBtn);
-
-  data.subs.forEach(subName => {
-    const chip = document.createElement('span');
-    chip.className = 'rg-sub';
-    chip.dataset.sub = subName;
-    chip.dataset.color = c;
-    chip.textContent = subName;
-    const isOff = !activeRegions.has(subName);
-    if (isOff) {
-      chip.classList.add('off');
-      chip.style.cssText = `background:transparent;color:${c};border-color:${c}88;opacity:.7`;
-    } else {
-      chip.style.cssText = `background:${c}99;color:#fff;border-color:transparent`;
-    }
-    chip.addEventListener('click', () => {
-      if (activeRegions.has(subName)) activeRegions.delete(subName);
-      else activeRegions.add(subName);
-      refreshRegionUI();
-      persist();
       render();
     });
-    subRow.appendChild(chip);
-  });
-}
-
-function refreshRegionUI() {
-  // Update parent buttons with colors
-  document.querySelectorAll('.rg-btn[data-parent]').forEach(btn => {
-    const parentName = btn.dataset.parent;
-    const data = REGION_HIERARCHY[parentName];
-    if (!data) return;
-    const c = data.color;
-    const noneOn = data.subs.every(s => !activeRegions.has(s));
-    btn.classList.toggle('off', noneOn);
-    if (noneOn) {
-      btn.style.cssText = `background:transparent;color:${c};border-color:${c}`;
-    } else {
-      btn.style.cssText = `background:${c};color:#fff;border-color:transparent`;
-    }
-  });
-  // Update sub-region chips with parent color
-  document.querySelectorAll('.rg-sub[data-sub]').forEach(el => {
-    const isOff = !activeRegions.has(el.dataset.sub);
-    el.classList.toggle('off', isOff);
-    const c = el.dataset.color || '#2a9d8f';
-    if (isOff) {
-      el.style.cssText = `background:transparent;color:${c};border-color:${c}88;opacity:.7`;
-    } else {
-      el.style.cssText = `background:${c}99;color:#fff;border-color:transparent`;
-    }
+    container.appendChild(label);
   });
 }
 
 function toggleAllRegions(on) {
-  ALL_SUBS.forEach(s => {
-    if (on) activeRegions.add(s);
-    else activeRegions.delete(s);
+  document.querySelectorAll('.r-label').forEach(l => {
+    const r = l.textContent;
+    if (on) {
+      activeRegions.add(r);
+      l.classList.remove('off');
+    } else {
+      activeRegions.delete(r);
+      l.classList.add('off');
+    }
   });
-  refreshRegionUI();
-  persist();
   render();
 }
 
@@ -1555,49 +1024,34 @@ function toggleTimeline() {
 // === TYPE FILTERS ===
 function initTypeFilters() {
   const typesList = document.getElementById('typesList');
-  if (!typesList) return;
   typesList.innerHTML = '';
-
+  
   ALL_TAGS.forEach(tag => {
     const item = document.createElement('div');
+    item.style.padding = '8px 18px';
+    item.style.borderBottom = '1px solid #0f346033';
+    item.style.cursor = 'pointer';
+    item.style.userSelect = 'none';
+    
     const isActive = activeTags.has(tag);
-    item.className = 'tp-item ' + (isActive ? 'active' : 'inactive');
-    item.dataset.tag = tag;
+    item.style.background = isActive ? '#2a9d8f22' : 'transparent';
+    item.style.color = isActive ? '#2a9d8f' : '#888';
+    
     const icon = TI[tag] || '';
-    item.textContent = icon ? `${icon} ${tag}` : tag;
+    item.innerHTML = `<span style="font-size:12px;font-weight:600">${icon} ${tag}</span>`;
+    
     item.addEventListener('click', () => {
-      if (activeTags.has(tag)) activeTags.delete(tag);
-      else activeTags.add(tag);
-      refreshTypeUI();
+      if (activeTags.has(tag)) {
+        activeTags.delete(tag);
+      } else {
+        activeTags.add(tag);
+      }
+      initTypeFilters();
       render();
     });
+    
     typesList.appendChild(item);
   });
-}
-
-function refreshTypeUI() {
-  document.querySelectorAll('.tp-item[data-tag]').forEach(el => {
-    const active = activeTags.has(el.dataset.tag);
-    el.classList.toggle('active', active);
-    el.classList.toggle('inactive', !active);
-  });
-}
-
-function toggleTypesPanel() {
-  const panel = document.getElementById('typesPanel');
-  panel.classList.toggle('open');
-}
-
-function toggleStarredPanel() {
-  const panel = document.getElementById('starredPanel');
-  panel.classList.toggle('open');
-  if (panel.classList.contains('open')) renderFavsPanel();
-}
-
-function toggleIgnoredPanel() {
-  const panel = document.getElementById('ignoredPanel');
-  panel.classList.toggle('open');
-  if (panel.classList.contains('open')) renderIgnoredPanel();
 }
 
 function setAllTypes(on) {
@@ -1606,13 +1060,13 @@ function setAllTypes(on) {
   } else {
     activeTags.clear();
   }
-  refreshTypeUI();
+  initTypeFilters();
   render();
 }
 
 // === SIDE PANELS ===
 function togglePanel(panel) {
-  const panels = { issues: 'issuesPanel', about: 'aboutPanel' };
+  const panels = { favs: 'favsPanel', issues: 'issuesPanel', types: 'typesPanel', about: 'aboutPanel', ignored: 'ignoredPanel' };
   const el = document.getElementById(panels[panel]);
   if (!el) return;
   
@@ -1623,6 +1077,8 @@ function togglePanel(panel) {
     document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
     el.classList.add('open');
     
+    if (panel === 'favs') renderFavsPanel();
+    if (panel === 'ignored') renderIgnoredPanel();
     if (panel === 'issues') renderIssuesPanel();
   }
 }
@@ -1650,39 +1106,21 @@ function renderFavsPanel() {
   });
   
   starredEvents.forEach(ev => {
-    const c = MC[ev.month] || '#888';
     const item = document.createElement('div');
     item.className = 'sp-item';
-    item.style.position = 'relative';
     item.innerHTML = `
-      <div class="sp-icon" style="background:${c};color:#1a1a2e">${gi(ev)}</div>
-      <div class="sp-info">
-        <div class="sin">${ev.name}</div>
-        <div class="sid">${ev.dates}</div>
-        <div class="sil">${ev.location}</div>
-      </div>
-      <button class="sp-unstar" onclick="event.stopPropagation();unstarFromPanel(${ev.id})" title="Remove star">★</button>
+      <div class="sin">${ev.name}</div>
+      <div class="sid">${ev.dates}</div>
+      <div class="sil">${ev.location}</div>
     `;
     item.addEventListener('click', () => {
-      if (ev.is_online) return;
       map.setView([ev.lat, ev.lng], 8);
       clusterGroup.getLayers().forEach(m => {
         if (m._evId === ev.id) m.openPopup();
       });
     });
-    item.addEventListener('mouseenter', (e) => showTlTip(ev, e));
-    item.addEventListener('mousemove', (e) => moveTlTip(e));
-    item.addEventListener('mouseleave', hideTlTip);
     list.appendChild(item);
   });
-}
-
-function unstarFromPanel(evId) {
-  userStars.delete(evId);
-  persist();
-  render();
-  renderFavsPanel();
-  document.getElementById('favsBtn').textContent = '★ Starred (' + userStars.size + ')';
 }
 
 function renderIgnoredPanel() {
@@ -1699,9 +1137,8 @@ function renderIgnoredPanel() {
     item.className = 'sp-item';
     item.innerHTML = `<button class="sir" onclick="event.stopPropagation();unIgnore(${idx})">↩</button><div class="sin">${ev.name}</div><div class="sid">${ev.dates}</div><div class="sil">${ev.location}</div>`;
     item.addEventListener('click', () => {
-      if (!ev.is_online) {
-        map.setView([ev.lat, ev.lng], 8);
-      }
+      map.setView([ev.lat, ev.lng], 8);
+      togglePanel('ignored');
     });
     list.appendChild(item);
   });
@@ -1785,7 +1222,7 @@ function copyFavsList() {
 // === EXPORT ICS ===
 function parseEventDates(dates, month) {
   const monthIdx = MO.indexOf(month);
-  const startMonthNum = monthIdx >= 0 ? monthIdx + 1 : 1;
+  const startMonthNum = monthIdx >= 0 ? monthIdx + 3 : 1;
   const startMatch = dates.match(/(\d+)/);
   const startDay = startMatch ? parseInt(startMatch[1]) : 1;
 
@@ -1794,7 +1231,7 @@ function parseEventDates(dates, month) {
   if (crossMatch) {
     const endMonthStr = crossMatch[2].substring(0, 3);
     const endMonthIdx = MO.indexOf(endMonthStr);
-    const endMonthNum = endMonthIdx >= 0 ? endMonthIdx + 1 : startMonthNum;
+    const endMonthNum = endMonthIdx >= 0 ? endMonthIdx + 3 : startMonthNum;
     const endDay = parseInt(crossMatch[3]);
     const endDate = new Date(2026, endMonthNum - 1, endDay + 1); // exclusive
     return {
@@ -1986,52 +1423,6 @@ ${evs.map((e, i) => {
   toast(`Opened route page with ${evs.length} stops`);
 }
 
-// === EXPORT CALENDAR MODAL ===
-function openExportModal() {
-  const modal = document.getElementById('exportModal');
-  const body = document.getElementById('exportModalBody');
-  const starred = events.filter(e => userStars.has(e.id));
-
-  if (starred.length === 0) {
-    body.innerHTML = `
-      <p style="color:#888;font-size:13px;line-height:1.6;margin-bottom:12px">You haven't starred any events yet.</p>
-      <p style="color:#666;font-size:12px">Star events on the map or timeline by clicking the ☆ icon, then come back here to export them to your calendar.</p>
-    `;
-  } else {
-    body.innerHTML = `
-      <p style="color:#ccc;font-size:13px;line-height:1.6;margin-bottom:14px">You have <strong style="color:#e9c46a">${starred.length} starred event${starred.length === 1 ? '' : 's'}</strong> ready to export.</p>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <button onclick="exportICS();document.getElementById('exportModal').style.display='none'" style="padding:10px 16px;border-radius:8px;background:#2a9d8f;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:600;text-align:left">📅 Download .ics file<br><span style="font-size:10px;font-weight:400;opacity:.7">Works with Apple Calendar, Google Calendar, Outlook</span></button>
-        <button onclick="copyFavsList();document.getElementById('exportModal').style.display='none'" style="padding:10px 16px;border-radius:8px;background:#333;color:#ccc;border:1px solid #555;cursor:pointer;font-size:13px;font-weight:600;text-align:left">📋 Copy event list<br><span style="font-size:10px;font-weight:400;opacity:.7">Paste into notes, email, or chat</span></button>
-      </div>
-    `;
-  }
-  modal.style.display = 'flex';
-}
-
-// === ROUTE PLANNING MODAL ===
-function openRouteModal() {
-  const modal = document.getElementById('routeModal');
-  const body = document.getElementById('routeModalBody');
-  const starred = events.filter(e => userStars.has(e.id) && !e.is_online);
-
-  if (starred.length < 2) {
-    body.innerHTML = `
-      <p style="color:#888;font-size:13px;line-height:1.6;margin-bottom:12px">${starred.length === 0 ? "You haven't starred any in-person events yet." : "You need at least 2 starred in-person events to plan a route."}</p>
-      <p style="color:#666;font-size:12px">Star events on the map or timeline, then come back here to plan your travel route between them.</p>
-    `;
-  } else {
-    body.innerHTML = `
-      <p style="color:#ccc;font-size:13px;line-height:1.6;margin-bottom:14px">Plan a route between your <strong style="color:#e9c46a">${starred.length} starred in-person events</strong>.</p>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <button onclick="openRoutePage();document.getElementById('routeModal').style.display='none'" style="padding:10px 16px;border-radius:8px;background:#2a9d8f;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:600;text-align:left">🗺️ Open route page<br><span style="font-size:10px;font-weight:400;opacity:.7">Visual timeline + Google Maps link</span></button>
-        <button onclick="exportKML();document.getElementById('routeModal').style.display='none'" style="padding:10px 16px;border-radius:8px;background:#333;color:#ccc;border:1px solid #555;cursor:pointer;font-size:13px;font-weight:600;text-align:left">📍 Download KML file<br><span style="font-size:10px;font-weight:400;opacity:.7">Import into Google Earth or Maps</span></button>
-      </div>
-    `;
-  }
-  modal.style.display = 'flex';
-}
-
 // === ADD EVENT MODAL ===
 function openAddModal() {
   document.getElementById('addModal').classList.add('open');
@@ -2126,19 +1517,7 @@ async function initData() {
   // Fetch events
   const eventsData = await fetchEvents();
   events = eventsData;
-
-  // Normalize month format: "2026-07" → "Jul", "August" → "Aug", etc.
-  const FULL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  events.forEach(e => {
-    if (!e.month) return;
-    if (e.month.match(/^\d{4}-\d{2}$/)) {
-      const mIdx = parseInt(e.month.split('-')[1], 10) - 1;
-      e.month = MO[mIdx] || e.month;
-    }
-    const fIdx = FULL_MONTHS.indexOf(e.month);
-    if (fIdx !== -1) e.month = MO[fIdx];
-  });
-
+  
   // Fetch star counts
   await fetchStarCounts();
   
@@ -2159,11 +1538,10 @@ async function initData() {
   initMonthFilters();
   initRegionFilters();
   initTypeFilters();
-  updateOnlineCount();
-
+  
   // Initial render
   render();
-
+  
   hideSpinner();
 }
 

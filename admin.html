@@ -351,15 +351,19 @@
     <!-- Auth Gate -->
     <div id="auth-gate">
         <h2>Events Admin</h2>
-        <p style="color:#888;font-size:0.85rem;">Enter the admin passphrase to continue</p>
-        <input type="password" id="passphrase-input" placeholder="Passphrase" onkeydown="if(event.key==='Enter')checkAuth()">
-        <button onclick="checkAuth()">Unlock</button>
-        <p class="error-msg" id="auth-error">Incorrect passphrase</p>
+        <p style="color:#888;font-size:0.85rem;">Sign in to continue</p>
+        <input type="email" id="auth-email" placeholder="Email" onkeydown="if(event.key==='Enter')document.getElementById('auth-password').focus()">
+        <input type="password" id="auth-password" placeholder="Password" onkeydown="if(event.key==='Enter')checkAuth()">
+        <button onclick="checkAuth()">Sign In</button>
+        <p class="error-msg" id="auth-error">Invalid email or password</p>
     </div>
 
     <!-- Main App (hidden until authed) -->
     <div id="app-content">
-        <h1>Events Admin</h1>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h1>Events Admin</h1>
+            <button onclick="signOut()" style="padding:6px 16px;background:#333;color:#ccc;border:1px solid #555;border-radius:8px;cursor:pointer;font-size:0.8rem;">Sign Out</button>
+        </div>
         <p class="subtitle">Review and approve suggested events for the Regen Events Map</p>
 
         <div class="stats" id="stats"></div>
@@ -369,32 +373,27 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        // ── Auth ──
-        // SHA-256 hash of the passphrase (so it's not stored in plaintext in source)
-        // Default passphrase: "regenmap2026" — change the hash below if you want a different one
-        const PASSPHRASE_HASH = '8f14e45fceea167a5a36dedd4bea2543'; // md5 of regenmap2026
+        // ── Auth (Supabase email/password) ──
+        async function checkAuth() {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const errEl = document.getElementById('auth-error');
+            errEl.style.display = 'none';
 
-        // Simple hash function (not crypto-grade, just a gate)
-        function simpleHash(str) {
-            let hash = 0;
-            for (let i = 0; i < str.length; i++) {
-                const char = str.charCodeAt(i);
-                hash = ((hash << 5) - hash) + char;
-                hash |= 0;
+            if (!email || !password) {
+                errEl.textContent = 'Please enter email and password';
+                errEl.style.display = 'block';
+                return;
             }
-            return hash.toString(36);
-        }
 
-        function checkAuth() {
-            const input = document.getElementById('passphrase-input').value;
-            // Check against known passphrase directly (simple approach)
-            if (input === 'regenmap2026') {
-                sessionStorage.setItem('admin_auth', 'true');
-                showApp();
+            const { data, error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) {
+                errEl.textContent = error.message;
+                errEl.style.display = 'block';
+                document.getElementById('auth-password').value = '';
+                document.getElementById('auth-password').focus();
             } else {
-                document.getElementById('auth-error').style.display = 'block';
-                document.getElementById('passphrase-input').value = '';
-                document.getElementById('passphrase-input').focus();
+                showApp();
             }
         }
 
@@ -402,6 +401,14 @@
             document.getElementById('auth-gate').style.display = 'none';
             document.getElementById('app-content').style.display = 'block';
             loadSuggestions();
+        }
+
+        async function signOut() {
+            await sb.auth.signOut();
+            document.getElementById('app-content').style.display = 'none';
+            document.getElementById('auth-gate').style.display = 'flex';
+            document.getElementById('auth-email').value = '';
+            document.getElementById('auth-password').value = '';
         }
 
         const SUPABASE_URL = 'https://aurftdjjghtzeofqzezx.supabase.co';
@@ -997,11 +1004,11 @@
         }
 
         // ── Init ──
-        // Auto-unlock if already authed this session
+        // Check for existing Supabase session (persists across page reloads via localStorage)
         // (must be after sb client is created so loadSuggestions() works)
-        if (sessionStorage.getItem('admin_auth') === 'true') {
-            showApp();
-        }
+        sb.auth.getSession().then(({ data: { session } }) => {
+            if (session) showApp();
+        });
     </script>
 </body>
 </html>
