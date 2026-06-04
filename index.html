@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Events & Gatherings 2026 — Map</title>
+<title>Events & Gatherings — Map</title>
 
 <!-- Favicon (SVG inline) -->
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%231a1a2e'/><circle cx='50' cy='50' r='35' fill='%232a9d8f'/><text x='50' y='68' font-size='50' text-anchor='middle' font-family='sans-serif'>🌍</text></svg>" type="image/svg+xml">
@@ -49,6 +49,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .btn-add:hover{background:#2a9d8f55}
 .btn-favs{background:#e9c46a22;color:#e9c46a;border-color:#e9c46a55}
 .btn-favs.active{background:#e9c46a;color:#1a1a2e;font-weight:600}
+.yr-btn{background:#ffffff11;color:#888;border-color:#ffffff22;font-size:11px;padding:3px 8px;border-radius:6px}
+.yr-btn.active{background:#2a9d8f;color:#fff;border-color:#2a9d8f;font-weight:600}
 .btn-issues{background:#e6394622;color:#e63946;border-color:#e6394655}
 
 .filters{display:flex;flex-wrap:wrap;gap:3px;padding:6px 16px;background:#16213e;border-bottom:1px solid #0f3460;align-items:center}
@@ -203,6 +205,152 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sp-item .sir{float:right;background:none;border:none;color:#555;cursor:pointer;font-size:13px}
 .sp-item .sir:hover{color:#e63946}
 .sp-btn{margin:10px 18px;padding:7px;border-radius:6px;cursor:pointer;font-size:11px;text-align:center;flex-shrink:0;border:1px solid}
+
+/* === Desktop-only defaults for mobile elements === */
+.mobile-hamburger{display:none}
+.mobile-menu{display:none}
+.mobile-filter-toggle{display:none}
+.drag-handle{display:none}
+.mobile-timeline-btn{display:none}
+
+/* ================ MOBILE ================ */
+@media(max-width:768px){
+  body{overflow:hidden;height:100vh;height:100dvh;display:flex;flex-direction:column}
+
+  /* --- Top bar: title + hamburger only --- */
+  .top-bar{padding:6px 12px;flex-wrap:nowrap!important;gap:8px;justify-content:space-between!important;flex-shrink:0}
+  .mobile-filter-toggle{flex-shrink:0}
+  .filters{flex-shrink:0}
+  .top-bar>div:first-child .search-box,
+  .top-bar>div:first-child .btn-add,
+  .top-bar>div:first-child .year-toggle{display:none!important}
+  .top-bar>div.top-btns{display:none!important}
+  .top-bar>div:nth-child(3){display:none!important}
+  .top-bar h1{font-size:14px}
+
+  .mobile-hamburger{
+    display:flex!important;align-items:center;justify-content:center;
+    width:38px;height:38px;background:#333;border:1px solid #444;
+    border-radius:8px;color:#ccc;font-size:20px;cursor:pointer;flex-shrink:0
+  }
+  .mobile-hamburger:active{background:#444}
+
+  /* --- Mobile menu overlay --- */
+  .mobile-menu{
+    display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+    background:#16213eF8;z-index:3000;flex-direction:column;
+    overflow-y:auto;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)
+  }
+  .mobile-menu.open{display:flex}
+  .mm-header{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:12px 16px;border-bottom:1px solid #0f3460
+  }
+  .mm-header h2{font-size:16px;color:#e0e0e0;font-weight:600}
+  .mm-close{
+    width:38px;height:38px;background:none;border:1px solid #444;
+    border-radius:8px;color:#888;font-size:22px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center
+  }
+  .mm-close:active{color:#fff}
+  .mm-body{padding:16px;display:flex;flex-direction:column;gap:10px}
+  .mm-search{
+    width:100%;padding:12px 14px;border-radius:10px;
+    border:1px solid #333;background:#0f0f2a;color:#e0e0e0;
+    font-size:14px;outline:none
+  }
+  .mm-search:focus{border-color:#2a9d8f}
+  .mm-year-row{display:flex;gap:8px;justify-content:center}
+  .mm-year-row .yr-btn{flex:1;padding:10px;font-size:14px;text-align:center;border-radius:8px}
+  .mm-btn{
+    display:flex;align-items:center;gap:10px;
+    padding:14px 16px;border-radius:10px;font-size:14px;
+    cursor:pointer;border:1px solid #333;background:#0f0f2a;color:#ccc;
+    text-align:left;width:100%
+  }
+  .mm-btn:active{background:#1a1a3a}
+  .mm-btn .mm-icon{font-size:18px;width:24px;text-align:center;flex-shrink:0}
+  .mm-btn .mm-label{flex:1}
+  .mm-btn .mm-badge{font-size:11px;color:#888;flex-shrink:0}
+  .mm-btn-primary{background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f44}
+  .mm-btn-star{background:#e9c46a11;color:#e9c46a;border-color:#e9c46a33}
+
+  /* --- Filter toggle bar --- */
+  .mobile-filter-toggle{
+    display:flex!important;align-items:center;justify-content:space-between;
+    padding:8px 12px;background:#16213e;border-bottom:1px solid #0f3460;cursor:pointer
+  }
+  .mobile-filter-toggle span{font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .mobile-filter-toggle .mft-arrow{font-size:10px;color:#888;transition:transform .2s}
+  .mobile-filter-toggle.open .mft-arrow{transform:rotate(180deg)}
+
+  .filters{display:none!important;padding:4px 12px;overflow-x:auto;flex-wrap:nowrap!important;-webkit-overflow-scrolling:touch;gap:4px}
+  .filters.mobile-open{display:flex!important}
+  .filter-hints{display:none!important}
+  .filters label{flex-shrink:0;padding:6px 10px;font-size:11px}
+  .filters .fl{flex-shrink:0}
+  .filters .btn{flex-shrink:0}
+
+  /* --- Main: map fills remaining space --- */
+  .main{flex:1!important;height:auto!important;flex-direction:column;position:relative;min-height:0}
+  #map{flex:1;width:100%}
+
+  /* --- Timeline: bottom sheet --- */
+  .timeline{
+    position:fixed!important;bottom:0;left:0;right:0;
+    width:100%!important;height:55vh;max-height:70vh;
+    border-left:none!important;border-top:1px solid #0f3460;
+    border-radius:16px 16px 0 0;z-index:1500;
+    transform:translateY(100%);
+    transition:transform .3s ease!important
+  }
+  .timeline.sheet-peek{transform:translateY(calc(100% - 48px))}
+  .timeline.sheet-open{transform:translateY(0)}
+  .timeline.hidden{transform:translateY(100%)!important;opacity:1!important}
+  .drag-handle{
+    display:block!important;width:40px;height:4px;
+    background:#555;border-radius:2px;margin:8px auto 0;cursor:grab
+  }
+  .tl-toggle{display:none!important}
+
+  /* Mobile timeline FAB */
+  .mobile-timeline-btn{
+    display:flex!important;position:fixed;bottom:16px;right:16px;z-index:1400;
+    width:48px;height:48px;border-radius:50%;
+    background:#12122a;border:1px solid #0f3460;
+    align-items:center;justify-content:center;font-size:20px;
+    cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.5)
+  }
+  .mobile-timeline-btn:active{background:#1a1a3a}
+  .mobile-timeline-btn.active{background:#2a9d8f;border-color:#2a9d8f}
+
+  /* --- Side panels: full width --- */
+  .side-panel{width:100%!important;right:-100%!important}
+  .side-panel.open{right:0!important}
+
+  /* --- Modals: fit phone --- */
+  .modal{width:calc(100vw - 32px)!important;max-height:calc(100vh - 48px);margin:16px}
+  .user-modal{width:calc(100vw - 32px)!important;margin:16px}
+  .user-modal .buttons{flex-direction:column;gap:8px}
+  .user-modal button{width:100%;padding:12px 20px}
+
+  /* --- Popups --- */
+  .leaflet-popup-content{max-width:calc(100vw - 60px)!important}
+  .leaflet-popup-content .pi img{height:80px}
+  .pa button{padding:6px 12px;font-size:11px;min-height:36px}
+
+  /* --- Touch targets --- */
+  .r-label{padding:6px 10px;font-size:11px}
+  .tl-event{padding:12px 14px}
+  .tl-actions button{font-size:18px;padding:6px;min-width:36px;min-height:36px}
+
+  /* --- Toast --- */
+  .toast{left:50%;transform:translateX(-50%);bottom:70px;max-width:calc(100vw - 32px);text-align:center}
+
+  /* --- Leaflet controls: reposition --- */
+  .leaflet-top.leaflet-left{top:8px;left:8px}
+  .leaflet-control-zoom a{width:36px!important;height:36px!important;line-height:36px!important;font-size:18px!important}
+}
 </style>
 </head>
 <body>
@@ -214,7 +362,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="top-bar" style="justify-content:space-between">
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-    <h1>Events & Gatherings 2026</h1>
+    <h1 id="mainTitle">Events & Gatherings <span id="yearDisplay">2026</span></h1>
+    <div class="year-toggle" style="display:flex;gap:2px;margin-left:4px">
+      <button class="btn yr-btn active" data-year="2026" onclick="switchYear(2026)">2026</button>
+      <button class="btn yr-btn" data-year="2027" onclick="switchYear(2027)">2027</button>
+    </div>
     <div class="search-box"><input type="text" id="searchInput" placeholder="Search events..." oninput="onSearch()"></div>
     <button class="btn btn-add" onclick="openAddModal()">+ Suggest Event</button>
   </div>
@@ -228,6 +380,44 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="btn" id="tlToggleTop" onclick="toggleTimeline()" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">📋 Timeline</button>
     <button class="btn" onclick="togglePanel('about')" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">ℹ️ About</button>
   </div>
+  <button class="mobile-hamburger" onclick="toggleMobileMenu()">☰</button>
+</div>
+
+<!-- Mobile Menu Overlay -->
+<div class="mobile-menu" id="mobileMenu">
+  <div class="mm-header">
+    <h2>Events & Gatherings</h2>
+    <button class="mm-close" onclick="closeMobileMenu()">&times;</button>
+  </div>
+  <div class="mm-body">
+    <input class="mm-search" id="mobileSearchInput" type="text" placeholder="Search events..." oninput="onMobileSearch()">
+    <div class="mm-year-row">
+      <button class="btn yr-btn active" data-year="2026" onclick="mobileMenuAction(()=>switchYear(2026))">2026</button>
+      <button class="btn yr-btn" data-year="2027" onclick="mobileMenuAction(()=>switchYear(2027))">2027</button>
+    </div>
+    <button class="mm-btn mm-btn-primary" onclick="mobileMenuAction(()=>openAddModal())">
+      <span class="mm-icon">+</span><span class="mm-label">Suggest Event</span>
+    </button>
+    <button class="mm-btn" onclick="mobileMenuAction(()=>togglePanel('types'))">
+      <span class="mm-icon">🏷️</span><span class="mm-label">Event Types</span>
+    </button>
+    <button class="mm-btn mm-btn-star" id="mmStarBtn" onclick="mobileMenuAction(()=>togglePanel('favs'))">
+      <span class="mm-icon">⭐</span><span class="mm-label">Starred Events</span><span class="mm-badge" id="mmStarCount">0</span>
+    </button>
+    <button class="mm-btn" onclick="mobileMenuAction(()=>togglePanel('ignored'))">
+      <span class="mm-icon">—</span><span class="mm-label">Ignored Events</span><span class="mm-badge" id="mmIgnCount">0</span>
+    </button>
+    <button class="mm-btn" onclick="mobileMenuAction(()=>toggleMobileTimeline())">
+      <span class="mm-icon">📋</span><span class="mm-label">Timeline</span>
+    </button>
+    <button class="mm-btn" onclick="mobileMenuAction(()=>togglePanel('about'))">
+      <span class="mm-icon">ℹ️</span><span class="mm-label">About This Map</span>
+    </button>
+  </div>
+</div>
+<div class="mobile-filter-toggle" onclick="toggleMobileFilters()">
+  <span>Filters</span>
+  <span class="mft-arrow">▼</span>
 </div>
 <div class="filters" style="border-bottom:none;padding-bottom:4px">
   <span class="fl">Regions:</span>
@@ -252,10 +442,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="main" style="position:relative">
   <div id="map"></div>
   <div class="timeline" id="timeline">
+    <div class="drag-handle"></div>
     <div class="tl-header"><span>Timeline (<span id="tlCount">0</span>)</span><button onclick="toggleTimeline()" style="background:none;border:none;color:#888;cursor:pointer;font-size:14px;padding:2px 6px" title="Collapse timeline">✕</button></div>
     <div class="tl-scroll" id="tlScroll"></div>
   </div>
   <button class="tl-toggle" id="tlToggle" onclick="toggleTimeline()" title="Show timeline" style="display:none">▶</button>
+  <button class="mobile-timeline-btn" id="mobileTimelineBtn" onclick="toggleMobileTimeline()">📋</button>
 </div>
 
 <!-- User Name Modal (for stars) -->
@@ -320,8 +512,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="side-panel" id="aboutPanel" style="z-index:2001;">
   <div class="sp-header"><h2 style="color:#2a9d8f">About This Map</h2><button class="sp-close" onclick="togglePanel('about')">&times;</button></div>
   <div style="padding:18px;font-size:12px;color:#bbb;line-height:1.7;overflow-y:auto;flex:1">
-    <p style="font-size:14px;color:#fff;font-weight:600;margin-bottom:12px">Regen Events Map 2026</p>
-    <p>A community-curated map of regenerative gatherings, ecovillage festivals, bioregional congresses, permaculture convergences, and adjacent events happening around the world in 2026.</p>
+    <p style="font-size:14px;color:#fff;font-weight:600;margin-bottom:12px">Regen Events Map</p>
+    <p>A community-curated map of regenerative gatherings, ecovillage festivals, bioregional congresses, permaculture convergences, and adjacent events happening around the world.</p>
     <p style="margin-top:12px">This project emerged from the regenerative economy ecosystem — connecting communities working on bioregionalism, decentralized governance, community coordination, regenerative finance, and systems change.</p>
 
     <p style="font-size:13px;color:#e9c46a;font-weight:600;margin-top:20px;margin-bottom:6px">✨ Resonance Beacons</p>
@@ -434,6 +626,7 @@ let ALL_TAGS = [];
 const activeTags = new Set();
 let searchQuery = '';
 let clusterGroup;
+let selectedYear = new Date().getFullYear();
 
 // === GEO-REGIONS ===
 const REGIONS = {
@@ -461,7 +654,7 @@ let currentStarIndex = -1; // which event the user is trying to star
 let currentStarCallback = null; // callback after user enters name
 
 // === LOCAL STORAGE ===
-const LS_KEY = 'events-map-2026-state';
+function getLSKey() { return `events-map-${selectedYear}-state`; }
 const USER_KEY = 'events-map-userName';
 
 function loadUserName() {
@@ -486,13 +679,13 @@ function syncUserStars() {
 function persist() {
   try {
     const s = { ignoredNames: [...ignored].map(i => events[i]?.name).filter(Boolean), issues };
-    localStorage.setItem(LS_KEY, JSON.stringify(s));
+    localStorage.setItem(getLSKey(), JSON.stringify(s));
   } catch(e) {}
 }
 
 function restore() {
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = localStorage.getItem(getLSKey());
     if (!raw) return;
     const s = JSON.parse(raw);
     const nm = new Map();
@@ -603,7 +796,7 @@ function popupHtml(ev, idx) {
   const venue = ev.venue ? `<div class="venue">📍 ${ev.venue}</div>` : '';
   const isStar = userStars.has(ev.id);
   const isIgn = ignored.has(idx);
-  const badge = `<span style="display:inline-block;font-size:9px;padding:2px 7px;border-radius:8px;background:${c};color:#fff;font-weight:600;margin-bottom:4px">${ev.month} 2026</span>`;
+  const badge = `<span style="display:inline-block;font-size:9px;padding:2px 7px;border-radius:8px;background:${c};color:#fff;font-weight:600;margin-bottom:4px">${ev.month} ${selectedYear}</span>`;
   const duration = calcDuration(ev.dates);
   const durBadge = `<span style="font-size:10px;color:#888;margin-left:6px">(${duration})</span>`;
 
@@ -1248,10 +1441,10 @@ function parseEventDates(dates, month) {
     const endMonthIdx = MO.indexOf(endMonthStr);
     const endMonthNum = endMonthIdx >= 0 ? endMonthIdx + 3 : startMonthNum;
     const endDay = parseInt(crossMatch[3]);
-    const endDate = new Date(2026, endMonthNum - 1, endDay + 1); // exclusive
+    const endDate = new Date(selectedYear, endMonthNum - 1, endDay + 1); // exclusive
     return {
-      dtstart: `2026${String(startMonthNum).padStart(2,'0')}${String(startDay).padStart(2,'0')}`,
-      dtend: `2026${String(endDate.getMonth()+1).padStart(2,'0')}${String(endDate.getDate()).padStart(2,'0')}`
+      dtstart: `${selectedYear}${String(startMonthNum).padStart(2,'0')}${String(startDay).padStart(2,'0')}`,
+      dtend: `${selectedYear}${String(endDate.getMonth()+1).padStart(2,'0')}${String(endDate.getDate()).padStart(2,'0')}`
     };
   }
 
@@ -1259,18 +1452,18 @@ function parseEventDates(dates, month) {
   const rangeMatch = dates.match(/(\d+)\s*[–\-]\s*(\d+)/);
   if (rangeMatch) {
     const endDay = parseInt(rangeMatch[2]);
-    const endDate = new Date(2026, startMonthNum - 1, endDay + 1); // exclusive
+    const endDate = new Date(selectedYear, startMonthNum - 1, endDay + 1); // exclusive
     return {
-      dtstart: `2026${String(startMonthNum).padStart(2,'0')}${String(startDay).padStart(2,'0')}`,
-      dtend: `2026${String(endDate.getMonth()+1).padStart(2,'0')}${String(endDate.getDate()).padStart(2,'0')}`
+      dtstart: `${selectedYear}${String(startMonthNum).padStart(2,'0')}${String(startDay).padStart(2,'0')}`,
+      dtend: `${selectedYear}${String(endDate.getMonth()+1).padStart(2,'0')}${String(endDate.getDate()).padStart(2,'0')}`
     };
   }
 
   // Single day or TBD — 1-day event
-  const endDate = new Date(2026, startMonthNum - 1, startDay + 1);
+  const endDate = new Date(selectedYear, startMonthNum - 1, startDay + 1);
   return {
-    dtstart: `2026${String(startMonthNum).padStart(2,'0')}${String(startDay).padStart(2,'0')}`,
-    dtend: `2026${String(endDate.getMonth()+1).padStart(2,'0')}${String(endDate.getDate()).padStart(2,'0')}`
+    dtstart: `${selectedYear}${String(startMonthNum).padStart(2,'0')}${String(startDay).padStart(2,'0')}`,
+    dtend: `${selectedYear}${String(endDate.getMonth()+1).padStart(2,'0')}${String(endDate.getDate()).padStart(2,'0')}`
   };
 }
 
@@ -1290,11 +1483,11 @@ function exportICS() {
     return da - db;
   });
 
-  let ics = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Regen Events Map 2026//EN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-CALNAME:Regen Events 2026\nX-WR-TIMEZONE:UTC\n`;
+  let ics = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Regen Events Map ${selectedYear}//EN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-CALNAME:Regen Events ${selectedYear}\nX-WR-TIMEZONE:UTC\n`;
 
   starredEvents.forEach((ev, idx) => {
     const { dtstart, dtend } = parseEventDates(ev.dates, ev.month);
-    const uid = `${ev.id}-${idx}@regeneventsmap2026`;
+    const uid = `${ev.id}-${idx}@regeneventsmap${selectedYear}`;
     const emoji = gi(ev);
     const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(ev.venue || ev.location)}`;
     const eventUrl = ev.url ? `https://${ev.url}` : '';
@@ -1325,7 +1518,7 @@ function exportICS() {
   const blob = new Blob([ics], { type: 'text/calendar' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'regen-events-2026.ics';
+  a.download = `regen-events-${selectedYear}.ics`;
   a.click();
   URL.revokeObjectURL(a.href);
   toast(`Exported ${starredEvents.length} starred events to .ics!`);
@@ -1346,7 +1539,7 @@ function exportKML() {
     return 0;
   });
   
-  let kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n<name>Starred Events 2026 Route</name>\n<description>Regenerative gatherings route</description>\n`;
+  let kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n<name>Starred Events ${selectedYear} Route</name>\n<description>Regenerative gatherings route</description>\n`;
   kml += `<Style id="eventPin"><IconStyle><color>ff00c4e9</color><scale>1.2</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/ylw-stars.png</href></Icon></IconStyle></Style>\n`;
   
   // Route line
@@ -1367,7 +1560,7 @@ function exportKML() {
   const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'starred-events-2026-route.kml';
+  a.download = `starred-events-${selectedYear}-route.kml`;
   a.click();
   URL.revokeObjectURL(a.href);
   toast(`Exported ${starredEvents.length} events as KML with route line!`);
@@ -1401,7 +1594,7 @@ function openRoutePage() {
   let gmUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}`;
   if (wps) gmUrl += `&waypoints=${wps}`;
   
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Event Route 2026</title>
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Event Route ${selectedYear}</title>
 <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:#1a1a2e;color:#e0e0e0;padding:24px;max-width:800px;margin:0 auto}h1{font-size:22px;color:#e9c46a;margin-bottom:4px}
 .sub{font-size:12px;color:#888;margin-bottom:20px}
 .stop{display:flex;gap:14px;margin-bottom:0;position:relative}
@@ -1420,7 +1613,7 @@ function openRoutePage() {
 .gm{background:#2a9d8f;color:#fff}.gm:hover{background:#238b7e}
 .back{background:#333;color:#ccc;border:1px solid #555}.back:hover{background:#444}
 </style></head><body>
-<h1>Your 2026 Event Route</h1>
+<h1>Your ${selectedYear} Event Route</h1>
 <div class="sub">${evs.length} starred events in chronological order</div>
 ${evs.map((e, i) => {
   const c = MC[e.month] || '#888';
@@ -1478,21 +1671,57 @@ function suggestEvent() {
     .catch(e => toast('Error submitting: ' + e.message, '#e63946'));
 }
 
+// === YEAR SWITCHING ===
+async function switchYear(year) {
+  selectedYear = year;
+  document.getElementById('yearDisplay').textContent = year;
+  document.title = `Events & Gatherings ${year} — Map`;
+  document.querySelectorAll('.yr-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.year) === year);
+  });
+  // Re-fetch and re-render
+  showSpinner();
+  const eventsData = await fetchEvents();
+  events = eventsData;
+  await fetchStarCounts();
+  const allTags = new Set();
+  events.forEach(e => { if (e.tags && Array.isArray(e.tags)) e.tags.forEach(t => allTags.add(t)); });
+  ALL_TAGS = Array.from(allTags).sort();
+  activeTags.clear();
+  ALL_TAGS.forEach(t => activeTags.add(t));
+  initMonthFilters();
+  initRegionFilters();
+  initTypeFilters();
+  render();
+  hideSpinner();
+}
+
 // === FETCH DATA FROM SUPABASE ===
 async function fetchEvents() {
   try {
-    const { data, error } = await sb
+    let query = sb
       .from('events')
       .select('*')
       .order('month')
       .order('dates');
-    
+
+    // Filter by year if the column exists
+    query = query.eq('year', selectedYear);
+
+    const { data, error } = await query;
+
     if (error) {
+      // Fallback: if year column doesn't exist yet, fetch all
+      if (error.message && error.message.includes('year')) {
+        console.warn('Year column not found, fetching all events');
+        const fallback = await sb.from('events').select('*').order('month').order('dates');
+        return fallback.data || [];
+      }
       console.error('Error fetching events:', error);
       toast('Failed to load events from Supabase', '#e63946');
       return [];
     }
-    
+
     return data || [];
   } catch (e) {
     console.error('Fetch error:', e);
@@ -1528,7 +1757,14 @@ async function fetchStarCounts() {
 
 async function initData() {
   showSpinner();
-  
+
+  // Set initial year display
+  document.getElementById('yearDisplay').textContent = selectedYear;
+  document.querySelectorAll('.yr-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.year) === selectedYear);
+  });
+  document.title = `Events & Gatherings ${selectedYear} — Map`;
+
   // Fetch events
   const eventsData = await fetchEvents();
   events = eventsData;
@@ -1559,6 +1795,144 @@ async function initData() {
   
   hideSpinner();
 }
+
+// === MOBILE ===
+const isMobile = () => window.innerWidth <= 768;
+
+function toggleMobileMenu() {
+  document.getElementById('mobileMenu').classList.toggle('open');
+}
+function closeMobileMenu() {
+  document.getElementById('mobileMenu').classList.remove('open');
+}
+function mobileMenuAction(fn) {
+  closeMobileMenu();
+  fn();
+}
+function onMobileSearch() {
+  const val = document.getElementById('mobileSearchInput').value;
+  document.getElementById('searchInput').value = val;
+  onSearch();
+}
+function toggleMobileFilters() {
+  const btn = document.querySelector('.mobile-filter-toggle');
+  const filters = document.querySelectorAll('.filters');
+  const main = document.querySelector('.main');
+  btn.classList.toggle('open');
+  const isOpen = btn.classList.contains('open');
+  filters.forEach(f => f.classList.toggle('mobile-open', isOpen));
+  main.classList.toggle('filters-open', isOpen);
+  setTimeout(() => map.invalidateSize(), 100);
+}
+function toggleMobileTimeline() {
+  if (!isMobile()) { toggleTimeline(); return; }
+  const tl = document.getElementById('timeline');
+  const fab = document.getElementById('mobileTimelineBtn');
+  if (tl.classList.contains('sheet-open')) {
+    tl.classList.remove('sheet-open');
+    tl.classList.remove('sheet-peek');
+    fab.classList.remove('active');
+  } else {
+    tl.classList.remove('hidden');
+    tl.classList.add('sheet-open');
+    fab.classList.add('active');
+  }
+}
+
+// Override toggleTimeline on mobile
+const _origToggleTimeline = toggleTimeline;
+toggleTimeline = function() {
+  if (isMobile()) { toggleMobileTimeline(); return; }
+  _origToggleTimeline();
+};
+
+// Bottom sheet drag handling
+(function initBottomSheet() {
+  const tl = document.getElementById('timeline');
+  if (!tl) return;
+  let startY = 0, startH = 0, dragging = false;
+
+  function onTouchStart(e) {
+    if (!isMobile()) return;
+    const handle = e.target.closest('.drag-handle') || e.target.closest('.tl-header');
+    if (!handle) return;
+    dragging = true;
+    startY = e.touches[0].clientY;
+    tl.style.transition = 'none';
+  }
+  function onTouchMove(e) {
+    if (!dragging) return;
+    const dy = e.touches[0].clientY - startY;
+    const isOpen = tl.classList.contains('sheet-open');
+    if (isOpen) {
+      // Dragging down from open — move sheet down
+      if (dy > 0) {
+        tl.style.transform = `translateY(${dy}px)`;
+        e.preventDefault();
+      }
+    }
+  }
+  function onTouchEnd(e) {
+    if (!dragging) return;
+    dragging = false;
+    tl.style.transition = '';
+    const endY = e.changedTouches[0].clientY;
+    const dy = endY - startY;
+    tl.style.transform = '';
+    // If dragged down more than 80px, close
+    if (dy > 80 && tl.classList.contains('sheet-open')) {
+      tl.classList.remove('sheet-open');
+      document.getElementById('mobileTimelineBtn').classList.remove('active');
+    }
+  }
+
+  tl.addEventListener('touchstart', onTouchStart, { passive: true });
+  tl.addEventListener('touchmove', onTouchMove, { passive: false });
+  tl.addEventListener('touchend', onTouchEnd, { passive: true });
+})();
+
+// Update mobile menu badge counts
+function updateMobileBadges() {
+  const starEl = document.getElementById('mmStarCount');
+  const ignEl = document.getElementById('mmIgnCount');
+  if (starEl) starEl.textContent = userStars.size;
+  if (ignEl) ignEl.textContent = ignored.size;
+}
+
+// Patch render to update mobile badges
+const _origRender = typeof render === 'function' ? render : null;
+if (_origRender) {
+  const _patchedRender = render;
+  // We'll hook into it after initData runs
+}
+
+// Sync mobile year buttons with desktop
+const _origSwitchYear = switchYear;
+switchYear = async function(year) {
+  await _origSwitchYear(year);
+  // Sync mobile menu year buttons
+  document.querySelectorAll('.mm-year-row .yr-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.year) === year);
+  });
+};
+
+// Hook to update mobile badges after renders
+const _mobObserver = new MutationObserver(() => {
+  const fBtn = document.getElementById('favsBtn');
+  if (fBtn) {
+    const m = fBtn.textContent.match(/\d+/);
+    const starEl = document.getElementById('mmStarCount');
+    if (starEl && m) starEl.textContent = m[0];
+  }
+  const iBtn = document.getElementById('ignBtn');
+  if (iBtn) {
+    const m = iBtn.textContent.match(/\d+/);
+    const ignEl = document.getElementById('mmIgnCount');
+    if (ignEl && m) ignEl.textContent = m[0];
+  }
+});
+_mobObserver.observe(document.getElementById('favsBtn'), { childList: true, characterData: true, subtree: true });
+_mobObserver.observe(document.getElementById('ignBtn'), { childList: true, characterData: true, subtree: true });
 
 // === INIT ===
 loadUserName();
