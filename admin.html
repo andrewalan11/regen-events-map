@@ -1121,6 +1121,7 @@
         function editEvent(id, field, value) {
             if (!eventEdits[id]) eventEdits[id] = {};
             eventEdits[id][field] = value;
+            autoSaveEvent(id);
         }
 
         function toggleEventTag(id, tag, el) {
@@ -1136,6 +1137,7 @@
             }
             if (!eventEdits[id]) eventEdits[id] = {};
             eventEdits[id].tags = [...ev.tags];
+            autoSaveEvent(id);
         }
 
         function addEventCustomTag(id) {
@@ -1156,18 +1158,27 @@
                     ALL_TAGS.map(t => `<span class="tag-chip ${ev.tags.includes(t) ? 'selected' : ''}" onclick="toggleEventTag(${id}, '${t}', this)">${t}</span>`).join('') +
                     ev.tags.filter(t => !ALL_TAGS.includes(t)).map(t => `<span class="tag-chip selected" onclick="toggleEventTag(${id}, '${esc(t)}', this)">${esc(t)}</span>`).join('');
             }
+            autoSaveEvent(id);
+        }
+
+        // Auto-save with debounce so rapid edits don't spam the API
+        const autoSaveTimers = {};
+        function autoSaveEvent(id) {
+            if (autoSaveTimers[id]) clearTimeout(autoSaveTimers[id]);
+            autoSaveTimers[id] = setTimeout(() => saveEventChanges(id), 800);
         }
 
         async function saveEventChanges(id) {
+            if (autoSaveTimers[id]) { clearTimeout(autoSaveTimers[id]); delete autoSaveTimers[id]; }
             const edits = eventEdits[id];
-            if (!edits || Object.keys(edits).length === 0) { toast('No changes to save'); return; }
+            if (!edits || Object.keys(edits).length === 0) return;
             const { error } = await sb.from('events').update(edits).eq('id', id);
             if (error) { toast('Error saving: ' + error.message, true); return; }
             // Update local data
             const ev = allEvents.find(e => e.id === id);
             Object.assign(ev, edits);
             delete eventEdits[id];
-            toast(`"${ev.name}" saved`);
+            toast(`Saved`);
         }
 
         function confirmDeleteEvent(id, name) {
