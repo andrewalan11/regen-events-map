@@ -306,6 +306,132 @@
         .stat-card.merged .number { color: #f59e0b; }
         .suggestion-card.status-merged { border-left: 3px solid #f59e0b; }
 
+        /* Tab bar */
+        .tab-bar {
+            display: flex;
+            gap: 0;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #333;
+        }
+        .tab-btn {
+            padding: 10px 24px;
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { color: #ccc; }
+        .tab-btn.active { color: #4ade80; border-bottom-color: #4ade80; }
+
+        /* Events tab */
+        .events-search {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .events-search input {
+            flex: 1;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 8px 14px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+        }
+        .events-search input:focus { outline: none; border-color: #4ade80; }
+        .event-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            transition: border-color 0.2s;
+        }
+        .event-card:hover { border-color: #555; }
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .event-header h3 { color: #e0e0e0; font-size: 1rem; margin: 0; }
+        .event-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+        .event-detail label {
+            display: block;
+            font-size: 0.7rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+        .event-detail input,
+        .event-detail textarea {
+            width: 100%;
+            background: #111;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            padding: 6px 10px;
+            color: #e0e0e0;
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+        .event-detail textarea { resize: vertical; min-height: 50px; }
+        .event-detail input:focus,
+        .event-detail textarea:focus { outline: none; border-color: #4ade80; }
+        .event-detail.full-width { grid-column: 1 / -1; }
+        .event-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            align-items: center;
+        }
+        .btn-delete { background: #333; color: #f87171; border: 1px solid #f8717144; }
+        .btn-delete:hover { background: #f8717122; }
+        .event-count {
+            color: #888;
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+        }
+
+        /* Custom tag input */
+        .custom-tag-row {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+            align-items: center;
+        }
+        .custom-tag-row input {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 4px 10px;
+            color: #e0e0e0;
+            font-size: 0.8rem;
+            width: 160px;
+        }
+        .custom-tag-row input:focus { outline: none; border-color: #4ade80; }
+        .btn-add-tag {
+            padding: 4px 12px;
+            background: #333;
+            color: #4ade80;
+            border: 1px solid #4ade8044;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        .btn-add-tag:hover { background: #4ade8022; }
+
         /* Compare & Update modal */
         .merge-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -367,8 +493,21 @@
         <p class="subtitle">Review and approve suggested events for the Regen Events Map</p>
 
         <div class="stats" id="stats"></div>
-        <div class="filter-bar" id="filters"></div>
-        <div id="suggestions-list"></div>
+        <div class="tab-bar">
+            <button class="tab-btn active" onclick="switchTab('suggestions')" id="tab-suggestions">Suggestions</button>
+            <button class="tab-btn" onclick="switchTab('events')" id="tab-events">Events</button>
+        </div>
+        <div id="suggestions-tab">
+            <div class="filter-bar" id="filters"></div>
+            <div id="suggestions-list"></div>
+        </div>
+        <div id="events-tab" style="display:none;">
+            <div class="events-search">
+                <input type="text" id="events-search" placeholder="Search events by name, location, or tag..." oninput="renderEventsTab()">
+            </div>
+            <div class="event-count" id="event-count"></div>
+            <div id="events-list"></div>
+        </div>
     </div>
     <div class="toast" id="toast"></div>
 
@@ -447,6 +586,7 @@
             if (evResult.error) { toast('Error loading events: ' + evResult.error.message, true); return; }
             suggestions = sugResult.data;
             existingEvents = evResult.data || [];
+            document.getElementById('tab-events').textContent = `Events (${existingEvents.length})`;
             renderStats();
             renderFilters();
             renderList();
@@ -638,8 +778,13 @@
                     </div>
                     <div class="enriched-field full-width">
                         <label>Tags</label>
-                        <div class="tag-select">
+                        <div class="tag-select" id="tags-${s.id}">
                             ${ALL_TAGS.map(t => `<span class="tag-chip ${tags.includes(t) ? 'selected' : ''}" onclick="toggleTag(${s.id}, '${t}', this)">${t}</span>`).join('')}
+                            ${(tags.filter(t => !ALL_TAGS.includes(t))).map(t => `<span class="tag-chip selected" onclick="toggleTag(${s.id}, '${esc(t)}', this)">${esc(t)}</span>`).join('')}
+                        </div>
+                        <div class="custom-tag-row">
+                            <input type="text" id="new-tag-${s.id}" placeholder="New tag..." onkeydown="if(event.key==='Enter')addCustomTag(${s.id})">
+                            <button class="btn-add-tag" onclick="addCustomTag(${s.id})">+ Add</button>
                         </div>
                     </div>
                 </div>
@@ -846,6 +991,200 @@
             const status = document.getElementById(`geo-status-${id}`);
             status.innerHTML = `✅ Updated <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" style="color:#60a5fa;font-size:0.7rem;">verify on map</a>`;
             status.style.color = '#4ade80';
+        }
+
+        // ── Custom tag ──
+        function addCustomTag(id) {
+            const input = document.getElementById(`new-tag-${id}`);
+            const tag = input.value.trim().toLowerCase();
+            if (!tag) return;
+            const s = suggestions.find(s => s.id === id);
+            if (!s.enriched_data) s.enriched_data = {};
+            if (!s.enriched_data.tags) s.enriched_data.tags = [];
+            if (s.enriched_data.tags.includes(tag)) { input.value = ''; return; }
+            s.enriched_data.tags.push(tag);
+            input.value = '';
+            // Re-render the tag select for this card
+            const tagContainer = document.getElementById(`tags-${id}`);
+            if (tagContainer) {
+                const tags = s.enriched_data.tags;
+                const allKnown = ALL_TAGS;
+                tagContainer.innerHTML =
+                    allKnown.map(t => `<span class="tag-chip ${tags.includes(t) ? 'selected' : ''}" onclick="toggleTag(${id}, '${t}', this)">${t}</span>`).join('') +
+                    tags.filter(t => !allKnown.includes(t)).map(t => `<span class="tag-chip selected" onclick="toggleTag(${id}, '${esc(t)}', this)">${esc(t)}</span>`).join('');
+            }
+        }
+
+        // ── Tab switching ──
+        let currentTab = 'suggestions';
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('tab-suggestions').classList.toggle('active', tab === 'suggestions');
+            document.getElementById('tab-events').classList.toggle('active', tab === 'events');
+            document.getElementById('suggestions-tab').style.display = tab === 'suggestions' ? '' : 'none';
+            document.getElementById('events-tab').style.display = tab === 'events' ? '' : 'none';
+            if (tab === 'events') {
+                loadAllEvents();
+            }
+        }
+
+        // ── Events tab ──
+        let allEvents = [];
+        let eventEdits = {}; // { eventId: { field: newValue } }
+
+        async function loadAllEvents() {
+            const { data, error } = await sb.from('events').select('*').order('name');
+            if (error) { toast('Error loading events: ' + error.message, true); return; }
+            allEvents = data || [];
+            eventEdits = {};
+            renderEventsTab();
+        }
+
+        function renderEventsTab() {
+            const query = (document.getElementById('events-search').value || '').toLowerCase();
+            let filtered = allEvents;
+            if (query) {
+                filtered = allEvents.filter(ev =>
+                    (ev.name || '').toLowerCase().includes(query) ||
+                    (ev.location || '').toLowerCase().includes(query) ||
+                    (ev.tags || []).some(t => t.toLowerCase().includes(query))
+                );
+            }
+            document.getElementById('event-count').textContent = `${filtered.length} of ${allEvents.length} events`;
+            document.getElementById('events-list').innerHTML = filtered.map(ev => renderEventCard(ev)).join('');
+        }
+
+        function renderEventCard(ev) {
+            const tags = ev.tags || [];
+            return `
+            <div class="event-card" id="ev-card-${ev.id}">
+                <div class="event-header">
+                    <h3>${esc(ev.name)}</h3>
+                    <span style="color:#666;font-size:0.8rem;">#${ev.id}</span>
+                </div>
+                <div class="event-details">
+                    <div class="event-detail">
+                        <label>Name</label>
+                        <input type="text" value="${esc(ev.name)}" onchange="editEvent(${ev.id}, 'name', this.value)">
+                    </div>
+                    <div class="event-detail">
+                        <label>Dates</label>
+                        <input type="text" value="${esc(ev.dates || '')}" onchange="editEvent(${ev.id}, 'dates', this.value)">
+                    </div>
+                    <div class="event-detail">
+                        <label>Month</label>
+                        <select onchange="editEvent(${ev.id}, 'month', this.value)">
+                            <option value="">--</option>
+                            ${MONTHS.map(m => `<option value="${m}" ${ev.month === m ? 'selected' : ''}>${m}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="event-detail">
+                        <label>Location</label>
+                        <input type="text" value="${esc(ev.location || '')}" onchange="editEvent(${ev.id}, 'location', this.value)">
+                    </div>
+                    <div class="event-detail">
+                        <label>Lat</label>
+                        <input type="number" step="0.001" value="${ev.lat || ''}" onchange="editEvent(${ev.id}, 'lat', parseFloat(this.value))">
+                    </div>
+                    <div class="event-detail">
+                        <label>Lng</label>
+                        <input type="number" step="0.001" value="${ev.lng || ''}" onchange="editEvent(${ev.id}, 'lng', parseFloat(this.value))">
+                    </div>
+                    <div class="event-detail full-width">
+                        <label>Description</label>
+                        <textarea onchange="editEvent(${ev.id}, 'description', this.value)">${esc(ev.description || '')}</textarea>
+                    </div>
+                    <div class="event-detail full-width">
+                        <label>URL</label>
+                        <input type="text" value="${esc(ev.url || '')}" onchange="editEvent(${ev.id}, 'url', this.value)">
+                    </div>
+                    <div class="event-detail full-width">
+                        <label>Tags</label>
+                        <div class="tag-select" id="ev-tags-${ev.id}">
+                            ${ALL_TAGS.map(t => `<span class="tag-chip ${tags.includes(t) ? 'selected' : ''}" onclick="toggleEventTag(${ev.id}, '${t}', this)">${t}</span>`).join('')}
+                            ${tags.filter(t => !ALL_TAGS.includes(t)).map(t => `<span class="tag-chip selected" onclick="toggleEventTag(${ev.id}, '${esc(t)}', this)">${esc(t)}</span>`).join('')}
+                        </div>
+                        <div class="custom-tag-row">
+                            <input type="text" id="ev-new-tag-${ev.id}" placeholder="New tag..." onkeydown="if(event.key==='Enter')addEventCustomTag(${ev.id})">
+                            <button class="btn-add-tag" onclick="addEventCustomTag(${ev.id})">+ Add</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="event-actions">
+                    <button class="btn btn-save" onclick="saveEventChanges(${ev.id})">Save Changes</button>
+                    <button class="btn btn-delete" onclick="confirmDeleteEvent(${ev.id}, '${esc(ev.name).replace(/'/g, "\\'")}')">Delete</button>
+                    ${ev.url ? `<a href="https://${ev.url}" target="_blank" class="btn btn-visit">Visit</a>` : ''}
+                </div>
+            </div>`;
+        }
+
+        function editEvent(id, field, value) {
+            if (!eventEdits[id]) eventEdits[id] = {};
+            eventEdits[id][field] = value;
+        }
+
+        function toggleEventTag(id, tag, el) {
+            const ev = allEvents.find(e => e.id === id);
+            if (!ev.tags) ev.tags = [];
+            const idx = ev.tags.indexOf(tag);
+            if (idx > -1) {
+                ev.tags.splice(idx, 1);
+                el.classList.remove('selected');
+            } else {
+                ev.tags.push(tag);
+                el.classList.add('selected');
+            }
+            if (!eventEdits[id]) eventEdits[id] = {};
+            eventEdits[id].tags = [...ev.tags];
+        }
+
+        function addEventCustomTag(id) {
+            const input = document.getElementById(`ev-new-tag-${id}`);
+            const tag = input.value.trim().toLowerCase();
+            if (!tag) return;
+            const ev = allEvents.find(e => e.id === id);
+            if (!ev.tags) ev.tags = [];
+            if (ev.tags.includes(tag)) { input.value = ''; return; }
+            ev.tags.push(tag);
+            if (!eventEdits[id]) eventEdits[id] = {};
+            eventEdits[id].tags = [...ev.tags];
+            input.value = '';
+            // Re-render tags
+            const tagContainer = document.getElementById(`ev-tags-${id}`);
+            if (tagContainer) {
+                tagContainer.innerHTML =
+                    ALL_TAGS.map(t => `<span class="tag-chip ${ev.tags.includes(t) ? 'selected' : ''}" onclick="toggleEventTag(${id}, '${t}', this)">${t}</span>`).join('') +
+                    ev.tags.filter(t => !ALL_TAGS.includes(t)).map(t => `<span class="tag-chip selected" onclick="toggleEventTag(${id}, '${esc(t)}', this)">${esc(t)}</span>`).join('');
+            }
+        }
+
+        async function saveEventChanges(id) {
+            const edits = eventEdits[id];
+            if (!edits || Object.keys(edits).length === 0) { toast('No changes to save'); return; }
+            const { error } = await sb.from('events').update(edits).eq('id', id);
+            if (error) { toast('Error saving: ' + error.message, true); return; }
+            // Update local data
+            const ev = allEvents.find(e => e.id === id);
+            Object.assign(ev, edits);
+            delete eventEdits[id];
+            toast(`"${ev.name}" saved`);
+        }
+
+        function confirmDeleteEvent(id, name) {
+            if (!confirm(`Delete "${name}" (id ${id}) from the map? This cannot be undone.`)) return;
+            deleteEvent(id);
+        }
+
+        async function deleteEvent(id) {
+            const ev = allEvents.find(e => e.id === id);
+            const { error } = await sb.from('events').delete().eq('id', id);
+            if (error) { toast('Error deleting: ' + error.message, true); return; }
+            allEvents = allEvents.filter(e => e.id !== id);
+            // Also remove from existingEvents cache
+            existingEvents = existingEvents.filter(e => e.id !== id);
+            toast(`"${ev.name}" deleted from map`);
+            renderEventsTab();
+            renderStats();
         }
 
         // ── Helpers ──

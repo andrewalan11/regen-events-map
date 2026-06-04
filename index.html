@@ -744,6 +744,7 @@ function renderTimeline(visible) {
       const starCount = starData ? starData.count : 0;
       const starText = starCount > 1 ? `<div class="tl-stars">⭐ ${starCount} interested</div>` : '';
       
+      const evIdx = events.indexOf(ev);
       item.innerHTML = `
         <div class="tl-icon" style="background:${c};color:#1a1a2e">${gi(ev)}</div>
         <div class="tl-info">
@@ -752,14 +753,28 @@ function renderTimeline(visible) {
           <div class="tl-loc">${ev.location}</div>
           ${starText}
         </div>
+        <div class="tl-actions">
+          <button class="${isStar ? 'active-star' : ''}" data-action="star" data-idx="${evIdx}" title="${isStar ? 'Remove star' : 'Star this event'}">${isStar ? '★' : '☆'}</button>
+          <button data-action="ignore" data-idx="${evIdx}" title="Ignore this event">—</button>
+        </div>
       `;
       
-      item.addEventListener('click', () => {
-        const idx = events.indexOf(ev);
+      item.addEventListener('click', (e) => {
+        if (e.target.closest('.tl-actions')) return; // don't zoom if clicking action buttons
         map.setView([ev.lat, ev.lng], 8);
         clusterGroup.getLayers().forEach(m => {
           if (m._evId === ev.id) m.openPopup();
         });
+      });
+
+      // Star/ignore button handlers
+      item.querySelector('[data-action="star"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleStar(evIdx);
+      });
+      item.querySelector('[data-action="ignore"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleIgnore(evIdx);
       });
 
       item.addEventListener('mouseenter', (e) => showTlTip(ev, e));
