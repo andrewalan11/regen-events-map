@@ -566,7 +566,14 @@ const sb = window.supabase.createClient(
 );
 
 // === COLORS & ICONS ===
-const TI = {'ecovillage':'🛖','permaculture':'🌱','bioregional':'🌍','climate':'☁️','systems change':'🦋','web3':'⛓️','governance':'🏛️','regen ag':'🌾','festival':'🎪','commons':'🤝','transformation':'✨','UPgame':'🔮','primitive skills':'🏹','craft':'🧶','healing':'💚','rewilding':'🐺','gathering':'🧠','retreat':'🧘','impact':'💡','futures':'🔭','cultural':'🎭','hacker camp':'💻','burning man':'🔥','wellbeing':'🌸','food systems':'🍎','AI':'🤖','entrepreneurship':'🚀','regen':'♻️','regen economics':'💰'};
+// Hardcoded fallbacks; overridden by Supabase tag_icons table
+let TI = {'ecovillage':'🛖','permaculture':'🌱','bioregional':'🌍','climate':'☁️','systems change':'🦋','web3':'⛓️','governance':'🏛️','regen ag':'🌾','festival':'🎪','commons':'🤝','transformation':'✨','UPgame':'🔮','primitive skills':'🏹','craft':'🧶','healing':'💚','rewilding':'🐺','gathering':'🧠','retreat':'🧘','impact':'💡','futures':'🔭','cultural':'🎭','hacker camp':'💻','burning man':'🔥','wellbeing':'🌸','food systems':'🍎','AI':'🤖','entrepreneurship':'🚀','regen':'♻️','regen economics':'💰'};
+async function fetchTagIcons(){
+  try{
+    const{data,error}=await sb.from('tag_icons').select('tag,icon');
+    if(!error&&data){data.forEach(r=>{TI[r.tag]=r.icon});}
+  }catch(e){console.warn('Tag icons fetch failed, using defaults');}
+}
 function gi(ev){for(const t of(ev.tags||[])){if(TI[t])return TI[t]}return'📍'}
 
 // === DYNAMIC COLOR SHIFTING ===
@@ -1685,7 +1692,7 @@ async function switchYear(year) {
   showSpinner();
   const eventsData = await fetchEvents();
   events = eventsData;
-  await fetchStarCounts();
+  await Promise.all([fetchStarCounts(), fetchTagIcons()]);
   const allTags = new Set();
   events.forEach(e => { if (e.tags && Array.isArray(e.tags)) e.tags.forEach(t => allTags.add(t)); });
   ALL_TAGS = Array.from(allTags).sort();
@@ -1771,9 +1778,9 @@ async function initData() {
   const eventsData = await fetchEvents();
   events = eventsData;
   
-  // Fetch star counts
-  await fetchStarCounts();
-  
+  // Fetch star counts and tag icons
+  await Promise.all([fetchStarCounts(), fetchTagIcons()]);
+
   // Collect all tags
   const allTags = new Set();
   events.forEach(e => {

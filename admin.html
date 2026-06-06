@@ -403,6 +403,153 @@
             font-size: 0.85rem;
             margin-bottom: 12px;
         }
+        /* Tag filter bar */
+        .tag-filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+        .tag-filter-bar .label {
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 4px;
+        }
+        .tag-filter-chip {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            background: #222;
+            color: #888;
+            border: 1px solid #333;
+            transition: all 0.15s;
+        }
+        .tag-filter-chip.active {
+            background: #4ade8022;
+            color: #4ade80;
+            border-color: #4ade8066;
+        }
+        .tag-filter-chip:hover { border-color: #555; }
+        /* Bulk operations */
+        .bulk-bar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+        .bulk-bar .label { font-size: 0.8rem; color: #aaa; }
+        .bulk-bar select, .bulk-bar input {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 4px 8px;
+            color: #e0e0e0;
+            font-size: 0.8rem;
+        }
+        .bulk-bar button {
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border: none;
+        }
+        .bulk-bar .btn-apply { background: #4ade8033; color: #4ade80; }
+        .bulk-bar .btn-remove { background: #f8717122; color: #f87171; }
+        .event-card .bulk-check {
+            margin-right: 8px;
+            accent-color: #4ade80;
+        }
+        /* Tag management modal */
+        .tag-mgmt-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .tag-mgmt-modal.show { display: flex; }
+        .tag-mgmt-content {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .tag-mgmt-content h3 { color: #e0e0e0; margin: 0 0 16px; }
+        .tag-mgmt-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .tag-mgmt-row input, .tag-mgmt-row select {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 6px 10px;
+            color: #e0e0e0;
+            font-size: 0.85rem;
+            flex: 1;
+        }
+        .tag-mgmt-row button {
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border: none;
+            background: #4ade8033;
+            color: #4ade80;
+        }
+        .tag-icon-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            font-size: 1.1rem;
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .icon-picker-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 8px;
+            padding: 8px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+        .icon-picker-grid span {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.1s;
+        }
+        .icon-picker-grid span:hover { background: #333; }
 
         /* Custom tag input */
         .custom-tag-row {
@@ -504,9 +651,48 @@
         <div id="events-tab" style="display:none;">
             <div class="events-search">
                 <input type="text" id="events-search" placeholder="Search events by name, location, or tag..." oninput="renderEventsTab()">
+                <button onclick="openTagManager()" style="background:#333;color:#aaa;border:1px solid #444;border-radius:8px;padding:8px 14px;font-size:0.8rem;cursor:pointer;white-space:nowrap;">Manage Tags</button>
+            </div>
+            <div id="tag-filter-bar" class="tag-filter-bar"></div>
+            <div class="bulk-bar" id="bulk-bar" style="display:none;">
+                <span class="label"><span id="bulk-count">0</span> selected</span>
+                <select id="bulk-tag-select"></select>
+                <button class="btn-apply" onclick="bulkAddTag()">+ Add Tag</button>
+                <button class="btn-remove" onclick="bulkRemoveTag()">- Remove Tag</button>
+                <button style="background:#333;color:#aaa;" onclick="clearBulkSelection()">Clear</button>
             </div>
             <div class="event-count" id="event-count"></div>
             <div id="events-list"></div>
+        </div>
+
+        <!-- Tag management modal -->
+        <div class="tag-mgmt-modal" id="tag-mgmt-modal" onclick="if(event.target===this)closeTagManager()">
+            <div class="tag-mgmt-content">
+                <h3>Tag Manager</h3>
+                <div style="margin-bottom:16px;">
+                    <label style="font-size:0.75rem;color:#666;text-transform:uppercase;">Rename Tag</label>
+                    <div class="tag-mgmt-row">
+                        <select id="rename-tag-from"><option value="">Select tag...</option></select>
+                        <span style="color:#666;">-></span>
+                        <input type="text" id="rename-tag-to" placeholder="New name...">
+                        <button onclick="renameTag()">Rename</button>
+                    </div>
+                </div>
+                <div style="margin-bottom:16px;">
+                    <label style="font-size:0.75rem;color:#666;text-transform:uppercase;">Delete Tag from All Events</label>
+                    <div class="tag-mgmt-row">
+                        <select id="delete-tag-select"><option value="">Select tag...</option></select>
+                        <button onclick="deleteTagGlobally()" style="background:#f8717122;color:#f87171;">Delete</button>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem;color:#666;text-transform:uppercase;">Tag Icons</label>
+                    <div id="tag-icon-list"></div>
+                </div>
+                <div style="margin-top:16px;text-align:right;">
+                    <button onclick="closeTagManager()" style="background:#333;color:#aaa;padding:6px 14px;border-radius:6px;border:none;cursor:pointer;">Close</button>
+                </div>
+            </div>
         </div>
     </div>
     <div class="toast" id="toast"></div>
@@ -554,13 +740,23 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1cmZ0ZGpqZ2h0emVvZnF6ZXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5OTA4MzUsImV4cCI6MjA4OTU2NjgzNX0.PeOisRNczOCYOgyiKL8lNDA0ZNiwhzBhqQWDYx6DtMo';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const ALL_TAGS = [
+        const DEFAULT_TAGS = [
             'regen','bioregional','ecovillage','permaculture','commons','climate',
             'systems change','governance','web3','transformation','festival',
             'gathering','retreat','impact','futures','regen ag','regen economics',
             'healing','wellbeing','craft','primitive skills','rewilding',
-            'cultural','food systems','entrepreneurship','hacker camp','burning man','UPgame'
-        ].sort();
+            'cultural','food systems','entrepreneurship','hacker camp','burning man','UPgame',
+            'music','yoga','dance','herbalism','tantra'
+        ];
+        let ALL_TAGS = [...DEFAULT_TAGS].sort();
+
+        function rebuildAllTags(eventsList) {
+            const tagSet = new Set(DEFAULT_TAGS);
+            (eventsList || []).forEach(ev => {
+                (ev.tags || []).forEach(t => tagSet.add(t));
+            });
+            ALL_TAGS = Array.from(tagSet).sort();
+        }
 
         const MONTHS = ['Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -580,12 +776,13 @@
         async function loadSuggestions() {
             const [sugResult, evResult] = await Promise.all([
                 sb.from('suggestions').select('*').order('created_at', { ascending: false }),
-                sb.from('events').select('id,name,dates,month,location')
+                sb.from('events').select('id,name,dates,month,location,tags')
             ]);
             if (sugResult.error) { toast('Error loading suggestions: ' + sugResult.error.message, true); return; }
             if (evResult.error) { toast('Error loading events: ' + evResult.error.message, true); return; }
             suggestions = sugResult.data;
             existingEvents = evResult.data || [];
+            rebuildAllTags(existingEvents);
             document.getElementById('tab-events').textContent = `Events (${existingEvents.length})`;
             renderStats();
             renderFilters();
@@ -1003,6 +1200,7 @@
             if (!s.enriched_data.tags) s.enriched_data.tags = [];
             if (s.enriched_data.tags.includes(tag)) { input.value = ''; return; }
             s.enriched_data.tags.push(tag);
+            if (!ALL_TAGS.includes(tag)) { ALL_TAGS.push(tag); ALL_TAGS.sort(); ensureTagIcon(tag); }
             input.value = '';
             // Re-render the tag select for this card
             const tagContainer = document.getElementById(`tags-${id}`);
@@ -1036,22 +1234,48 @@
             const { data, error } = await sb.from('events').select('*').order('name');
             if (error) { toast('Error loading events: ' + error.message, true); return; }
             allEvents = data || [];
+            rebuildAllTags(allEvents);
             eventEdits = {};
             renderEventsTab();
         }
+
+        let activeTagFilter = null;
+        let bulkSelected = new Set();
 
         function renderEventsTab() {
             const query = (document.getElementById('events-search').value || '').toLowerCase();
             let filtered = allEvents;
             if (query) {
-                filtered = allEvents.filter(ev =>
+                filtered = filtered.filter(ev =>
                     (ev.name || '').toLowerCase().includes(query) ||
                     (ev.location || '').toLowerCase().includes(query) ||
                     (ev.tags || []).some(t => t.toLowerCase().includes(query))
                 );
             }
+            if (activeTagFilter) {
+                filtered = filtered.filter(ev => (ev.tags || []).includes(activeTagFilter));
+            }
+            renderTagFilterBar();
+            renderBulkBar();
             document.getElementById('event-count').textContent = `${filtered.length} of ${allEvents.length} events`;
             document.getElementById('events-list').innerHTML = filtered.map(ev => renderEventCard(ev)).join('');
+        }
+
+        function renderTagFilterBar() {
+            const tagCounts = {};
+            allEvents.forEach(ev => (ev.tags || []).forEach(t => { tagCounts[t] = (tagCounts[t] || 0) + 1; }));
+            const sortedTags = Object.keys(tagCounts).sort();
+            const bar = document.getElementById('tag-filter-bar');
+            bar.innerHTML = '<span class="label">Filter:</span>' +
+                `<span class="tag-filter-chip ${!activeTagFilter ? 'active' : ''}" onclick="setTagFilter(null)">All</span>` +
+                sortedTags.map(t =>
+                    `<span class="tag-filter-chip ${activeTagFilter === t ? 'active' : ''}" onclick="setTagFilter('${t}')">${getTagIcon(t)} ${t} (${tagCounts[t]})</span>`
+                ).join('');
+        }
+
+        function setTagFilter(tag) {
+            activeTagFilter = tag;
+            renderEventsTab();
         }
 
         function renderEventCard(ev) {
@@ -1059,6 +1283,7 @@
             return `
             <div class="event-card" id="ev-card-${ev.id}">
                 <div class="event-header">
+                    <input type="checkbox" class="bulk-check" ${bulkSelected.has(ev.id) ? 'checked' : ''} onchange="toggleBulkSelect(${ev.id}, this.checked)">
                     <h3>${esc(ev.name)}</h3>
                     <span style="color:#666;font-size:0.8rem;">#${ev.id}</span>
                 </div>
@@ -1148,6 +1373,7 @@
             if (!ev.tags) ev.tags = [];
             if (ev.tags.includes(tag)) { input.value = ''; return; }
             ev.tags.push(tag);
+            if (!ALL_TAGS.includes(tag)) { ALL_TAGS.push(tag); ALL_TAGS.sort(); ensureTagIcon(tag); }
             if (!eventEdits[id]) eventEdits[id] = {};
             eventEdits[id].tags = [...ev.tags];
             input.value = '';
@@ -1197,6 +1423,267 @@
             renderEventsTab();
             renderStats();
         }
+
+        // ── Bulk tag operations ──
+        function toggleBulkSelect(id, checked) {
+            if (checked) bulkSelected.add(id);
+            else bulkSelected.delete(id);
+            renderBulkBar();
+        }
+
+        function renderBulkBar() {
+            const bar = document.getElementById('bulk-bar');
+            const count = bulkSelected.size;
+            bar.style.display = count > 0 ? 'flex' : 'none';
+            document.getElementById('bulk-count').textContent = count;
+            const sel = document.getElementById('bulk-tag-select');
+            sel.innerHTML = '<option value="">Select tag...</option>' +
+                ALL_TAGS.map(t => `<option value="${t}">${t}</option>`).join('');
+        }
+
+        function clearBulkSelection() {
+            bulkSelected.clear();
+            renderEventsTab();
+        }
+
+        async function bulkAddTag() {
+            const tag = document.getElementById('bulk-tag-select').value;
+            if (!tag) { toast('Select a tag first', true); return; }
+            const ids = Array.from(bulkSelected);
+            let count = 0;
+            for (const id of ids) {
+                const ev = allEvents.find(e => e.id === id);
+                if (!ev.tags) ev.tags = [];
+                if (ev.tags.includes(tag)) continue;
+                ev.tags.push(tag);
+                const { error } = await sb.from('events').update({ tags: ev.tags }).eq('id', id);
+                if (error) { toast(`Error on event ${id}: ${error.message}`, true); return; }
+                count++;
+            }
+            toast(`Added "${tag}" to ${count} event${count !== 1 ? 's' : ''}`);
+            bulkSelected.clear();
+            renderEventsTab();
+        }
+
+        async function bulkRemoveTag() {
+            const tag = document.getElementById('bulk-tag-select').value;
+            if (!tag) { toast('Select a tag first', true); return; }
+            const ids = Array.from(bulkSelected);
+            let count = 0;
+            for (const id of ids) {
+                const ev = allEvents.find(e => e.id === id);
+                if (!ev.tags || !ev.tags.includes(tag)) continue;
+                ev.tags = ev.tags.filter(t => t !== tag);
+                const { error } = await sb.from('events').update({ tags: ev.tags }).eq('id', id);
+                if (error) { toast(`Error on event ${id}: ${error.message}`, true); return; }
+                count++;
+            }
+            toast(`Removed "${tag}" from ${count} event${count !== 1 ? 's' : ''}`);
+            bulkSelected.clear();
+            renderEventsTab();
+        }
+
+        // ── Tag rename ──
+        async function renameTag() {
+            const fromTag = document.getElementById('rename-tag-from').value;
+            const toTag = document.getElementById('rename-tag-to').value.trim().toLowerCase();
+            if (!fromTag) { toast('Select a tag to rename', true); return; }
+            if (!toTag) { toast('Enter a new name', true); return; }
+            if (fromTag === toTag) { toast('Names are the same', true); return; }
+            if (!confirm(`Rename "${fromTag}" to "${toTag}" across all events?`)) return;
+
+            const affected = allEvents.filter(ev => (ev.tags || []).includes(fromTag));
+            let count = 0;
+            for (const ev of affected) {
+                const newTags = ev.tags.map(t => t === fromTag ? toTag : t);
+                // Deduplicate in case toTag already existed
+                const dedupedTags = [...new Set(newTags)];
+                const { error } = await sb.from('events').update({ tags: dedupedTags }).eq('id', ev.id);
+                if (error) { toast(`Error on event ${ev.id}: ${error.message}`, true); return; }
+                ev.tags = dedupedTags;
+                count++;
+            }
+
+            // Update ALL_TAGS
+            rebuildAllTags(allEvents);
+            // Update tag icons if the old tag had one
+            if (TAG_ICONS[fromTag] && !TAG_ICONS[toTag]) {
+                TAG_ICONS[toTag] = TAG_ICONS[fromTag];
+                delete TAG_ICONS[fromTag];
+                await saveTagIcon(toTag, TAG_ICONS[toTag]);
+                await sb.from('tag_icons').delete().eq('tag', fromTag);
+            }
+
+            toast(`Renamed "${fromTag}" to "${toTag}" on ${count} event${count !== 1 ? 's' : ''}`);
+            closeTagManager();
+            renderEventsTab();
+        }
+
+        // ── Delete tag globally ──
+        async function deleteTagGlobally() {
+            const tag = document.getElementById('delete-tag-select').value;
+            if (!tag) { toast('Select a tag first', true); return; }
+            const affected = allEvents.filter(ev => (ev.tags || []).includes(tag));
+            if (!confirm(`Remove "${tag}" from ${affected.length} event${affected.length !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+
+            let count = 0;
+            for (const ev of affected) {
+                ev.tags = (ev.tags || []).filter(t => t !== tag);
+                const { error } = await sb.from('events').update({ tags: ev.tags }).eq('id', ev.id);
+                if (error) { toast(`Error on event ${ev.id}: ${error.message}`, true); return; }
+                count++;
+            }
+
+            // Remove icon from DB
+            await sb.from('tag_icons').delete().eq('tag', tag);
+            delete TAG_ICONS[tag];
+
+            rebuildAllTags(allEvents);
+            toast(`Removed "${tag}" from ${count} event${count !== 1 ? 's' : ''}`);
+            closeTagManager();
+            renderEventsTab();
+        }
+
+        // ── Tag manager modal ──
+        function openTagManager() {
+            const modal = document.getElementById('tag-mgmt-modal');
+            modal.classList.add('show');
+
+            // Populate rename dropdown
+            const sel = document.getElementById('rename-tag-from');
+            sel.innerHTML = '<option value="">Select tag...</option>' +
+                ALL_TAGS.map(t => `<option value="${t}">${t}</option>`).join('');
+            document.getElementById('rename-tag-to').value = '';
+
+            // Populate delete dropdown
+            const delSel = document.getElementById('delete-tag-select');
+            delSel.innerHTML = '<option value="">Select tag...</option>' +
+                ALL_TAGS.map(t => `<option value="${t}">${t}</option>`).join('');
+
+            // Populate icon list
+            renderTagIconList();
+        }
+
+        function closeTagManager() {
+            document.getElementById('tag-mgmt-modal').classList.remove('show');
+        }
+
+        // ── Tag icons ──
+        const ICON_PALETTE = [
+            '📍','🌱','🌍','🛖','☁️','🦋','⛓️','🏛️','🌾','🎪','🤝','✨','🔮',
+            '🏹','🧶','💚','🐺','🧠','🧘','💡','🔭','🎭','💻','🔥','🌸',
+            '🍎','🤖','🚀','♻️','💰','🎵','💃','🌿','🔱','🏕️','🎨','📚',
+            '🌊','🔬','🌻','🐝','🌈','🕊️','⚡','🎯','🫀','🪴','🌄','🏔️',
+            '🗺️','🎤','🧬','🪵','🌙','☀️','🦅','🐢','🍄','🫂','🎓','🧭'
+        ];
+
+        // Default icon mapping (matches index.html TI)
+        const DEFAULT_ICONS = {
+            'ecovillage':'🛖','permaculture':'🌱','bioregional':'🌍','climate':'☁️',
+            'systems change':'🦋','web3':'⛓️','governance':'🏛️','regen ag':'🌾',
+            'festival':'🎪','commons':'🤝','transformation':'✨','UPgame':'🔮',
+            'primitive skills':'🏹','craft':'🧶','healing':'💚','rewilding':'🐺',
+            'gathering':'🧠','retreat':'🧘','impact':'💡','futures':'🔭',
+            'cultural':'🎭','hacker camp':'💻','burning man':'🔥','wellbeing':'🌸',
+            'food systems':'🍎','AI':'🤖','entrepreneurship':'🚀','regen':'♻️',
+            'regen economics':'💰','music':'🎵','yoga':'🧘','dance':'💃',
+            'herbalism':'🌿','tantra':'🔱'
+        };
+
+        // Smart defaults for tags without an explicit icon
+        const SMART_DEFAULTS = {
+            'nature':'🌿','water':'🌊','ocean':'🌊','solar':'☀️','energy':'⚡',
+            'community':'🫂','education':'🎓','science':'🔬','art':'🎨',
+            'forest':'🪵','mountain':'🏔️','garden':'🪴','bee':'🐝','bird':'🦅',
+            'mushroom':'🍄','moon':'🌙','sunrise':'🌄','map':'🗺️','speak':'🎤',
+            'book':'📚','camp':'🏕️','bio':'🧬','compass':'🧭','heart':'🫀',
+            'rainbow':'🌈','peace':'🕊️','flower':'🌻','turtle':'🐢','sun':'☀️'
+        };
+
+        let TAG_ICONS = {};
+
+        async function loadTagIcons() {
+            const { data, error } = await sb.from('tag_icons').select('tag, icon');
+            if (error) { console.error('Error loading tag icons:', error.message); return; }
+            TAG_ICONS = {};
+            (data || []).forEach(row => { TAG_ICONS[row.tag] = row.icon; });
+        }
+
+        async function ensureTagIcon(tag) {
+            if (TAG_ICONS[tag]) return; // already has a DB icon
+            const icon = getTagIcon(tag); // will use SMART_DEFAULTS or fall back to 📍
+            TAG_ICONS[tag] = icon;
+            await saveTagIcon(tag, icon);
+        }
+
+        async function saveTagIcon(tag, icon) {
+            const { error } = await sb.from('tag_icons').upsert(
+                { tag, icon, updated_at: new Date().toISOString() },
+                { onConflict: 'tag' }
+            );
+            if (error) { toast('Error saving icon: ' + error.message, true); }
+        }
+
+        function getTagIcon(tag) {
+            if (TAG_ICONS[tag]) return TAG_ICONS[tag];
+            if (DEFAULT_ICONS[tag]) return DEFAULT_ICONS[tag];
+            // Try smart matching
+            const lower = tag.toLowerCase();
+            for (const [key, icon] of Object.entries(SMART_DEFAULTS)) {
+                if (lower.includes(key)) return icon;
+            }
+            return '📍';
+        }
+
+        let iconPickerOpenFor = null;
+
+        function renderTagIconList() {
+            const container = document.getElementById('tag-icon-list');
+            container.innerHTML = ALL_TAGS.map(tag => {
+                const icon = getTagIcon(tag);
+                return `
+                    <div class="tag-mgmt-row" style="margin-bottom:4px;">
+                        <span class="tag-icon-btn" onclick="openIconPicker('${esc(tag)}')" title="Click to change">${icon}</span>
+                        <span style="color:#ccc;font-size:0.85rem;flex:1;">${esc(tag)}</span>
+                    </div>`;
+            }).join('');
+
+            if (iconPickerOpenFor) {
+                const pickerHtml = `
+                    <div id="icon-picker-panel" style="margin:8px 0;">
+                        <div style="font-size:0.75rem;color:#888;margin-bottom:4px;">Pick icon for "${esc(iconPickerOpenFor)}":</div>
+                        <div class="icon-picker-grid">
+                            ${ICON_PALETTE.map(icon =>
+                                `<span onclick="setTagIcon('${esc(iconPickerOpenFor)}', '${icon}')">${icon}</span>`
+                            ).join('')}
+                        </div>
+                    </div>`;
+                // Insert picker after the matching row
+                const rows = container.querySelectorAll('.tag-mgmt-row');
+                for (const row of rows) {
+                    if (row.querySelector('span:nth-child(2)')?.textContent === iconPickerOpenFor) {
+                        row.insertAdjacentHTML('afterend', pickerHtml);
+                        break;
+                    }
+                }
+            }
+        }
+
+        function openIconPicker(tag) {
+            iconPickerOpenFor = iconPickerOpenFor === tag ? null : tag;
+            renderTagIconList();
+        }
+
+        async function setTagIcon(tag, icon) {
+            TAG_ICONS[tag] = icon;
+            await saveTagIcon(tag, icon);
+            iconPickerOpenFor = null;
+            renderTagIconList();
+            toast(`Icon for "${tag}" set to ${icon}`);
+        }
+
+        // Load icons on init
+        loadTagIcons();
 
         // ── Helpers ──
         function esc(str) {
