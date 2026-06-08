@@ -1804,15 +1804,27 @@
             const { data: ev, error: fetchErr } = await sb.from('events').select('*').eq('id', eventId).single();
             if (fetchErr || !ev) { toast('Error loading event', true); return; }
 
-            // Build update object from selections
+            // Build update object from selections — explicitly write the chosen
+            // value for every differing field so the picked side always wins
             const update = {};
             const fields = ['name','dates','month','location','lat','lng','description','url','tags'];
             fields.forEach(f => {
-                if (mergeSelections[f] === 'suggestion') {
-                    let sugVal = ed[f];
-                    if (f === 'url') sugVal = (sugVal || s.url || '').replace(/^https?:\/\//, '');
-                    if (sugVal !== undefined && sugVal !== null && sugVal !== '') {
-                        update[f] = sugVal;
+                const pick = mergeSelections[f];
+                if (pick === 'suggestion') {
+                    let val = ed[f];
+                    if (f === 'url') val = (val || s.url || '').replace(/^https?:\/\//, '');
+                    if (f === 'tags') val = Array.isArray(val) ? val : (val ? [val] : []);
+                    if (val !== undefined && val !== null && val !== '') {
+                        update[f] = val;
+                    }
+                } else if (pick === 'existing') {
+                    // Explicitly write the existing value so the chosen side is
+                    // guaranteed to stick even if another field's update triggers
+                    // unexpected behavior
+                    let val = ev[f];
+                    if (f === 'tags') val = Array.isArray(val) ? val : (val ? [val] : []);
+                    if (val !== undefined && val !== null) {
+                        update[f] = val;
                     }
                 }
             });
