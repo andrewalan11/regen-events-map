@@ -627,6 +627,7 @@ const activeMonths = new Set(MO.filter(m => !PAST_MONTHS.has(m)));
 
 // === EVENT DATA & STATE ===
 let events = [];
+const evUrl = u => !u ? '' : (/^https?:\/\//i.test(u) ? u : 'https://' + u);
 let starCounts = new Map();
 let userStars = new Set();
 const ignored = new Set();
@@ -800,7 +801,7 @@ function popupHtml(ev, idx) {
     const ic = TI[t] || '';
     return `<span class="tag" style="background:${c}44;color:${c};border:1px solid ${c}66">${ic} ${t}</span>`;
   }).join('');
-  const url = ev.url ? `<a href="https://${ev.url}" target="_blank">${ev.url}</a>` : '';
+  const url = ev.url ? `<a href="${evUrl(ev.url)}" target="_blank">${ev.url}</a>` : '';
   const mapsLink = `<a href="https://www.google.com/maps?q=${ev.lat},${ev.lng}" target="_blank" style="font-size:9px;color:#457b9d;margin-left:4px">open in maps</a>`;
   const venue = ev.venue ? `<div class="venue">📍 ${ev.venue}</div>` : '';
   const isStar = userStars.has(ev.id);
@@ -1499,7 +1500,7 @@ function exportICS() {
     const uid = `${ev.id}-${idx}@regeneventsmap${selectedYear}`;
     const emoji = gi(ev);
     const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(ev.venue || ev.location)}`;
-    const eventUrl = ev.url ? `https://${ev.url}` : '';
+    const eventUrl = evUrl(ev.url);
 
     // Build description with URL + Google Maps link
     let desc = ev.description || '';
@@ -1561,7 +1562,7 @@ function exportKML() {
   // Pins
   starredEvents.forEach((ev, n) => {
     const desc = `${ev.dates}\n${ev.location}\n${ev.description}${ev.url ? '\n' + ev.url : ''}`;
-    kml += `<Placemark><name>${n + 1}. ${ev.name}</name><description><![CDATA[<b>${ev.dates}</b><br>${ev.location}<br>${ev.description}${ev.url ? '<br><a href="https://' + ev.url + '">' + ev.url + '</a>' : ''}]]></description><styleUrl>#eventPin</styleUrl><Point><coordinates>${ev.lng},${ev.lat},0</coordinates></Point></Placemark>\n`;
+    kml += `<Placemark><name>${n + 1}. ${ev.name}</name><description><![CDATA[<b>${ev.dates}</b><br>${ev.location}<br>${ev.description}${ev.url ? '<br><a href="' + evUrl(ev.url) + '">' + ev.url + '</a>' : ''}]]></description><styleUrl>#eventPin</styleUrl><Point><coordinates>${ev.lng},${ev.lat},0</coordinates></Point></Placemark>\n`;
   });
   
   kml += `</Document>\n</kml>`;
@@ -1627,7 +1628,7 @@ function openRoutePage() {
 ${evs.map((e, i) => {
   const c = MC[e.month] || '#888';
   const isLast = i === evs.length - 1;
-  return `<div class="stop"><div class="line"><div class="dot" style="background:${c}">${e.num}</div>${isLast ? '' : '<div class="connector"></div>'}</div><div class="info"><h3>${e.title}</h3><div class="dates">${e.dates}</div><div class="loc">${e.location}</div><div class="desc">${e.description}</div>${e.url ? '<a href="https://' + e.url + '" target="_blank">' + e.url + '</a>' : ''}</div></div>`;
+  return `<div class="stop"><div class="line"><div class="dot" style="background:${c}">${e.num}</div>${isLast ? '' : '<div class="connector"></div>'}</div><div class="info"><h3>${e.title}</h3><div class="dates">${e.dates}</div><div class="loc">${e.location}</div><div class="desc">${e.description}</div>${e.url ? '<a href="' + evUrl(e.url) + '" target="_blank">' + e.url + '</a>' : ''}</div></div>`;
 }).join('')}
 <div class="actions">
 <a class="gm" href="${gmUrl}" target="_blank">Open route in Google Maps</a>
@@ -1724,14 +1725,14 @@ async function fetchEvents() {
       if (error.message && error.message.includes('year')) {
         console.warn('Year column not found, fetching all events');
         const fallback = await sb.from('events').select('*').order('month').order('dates');
-        return fallback.data || [];
+        return (fallback.data || []).filter(e => e.active !== false);
       }
       console.error('Error fetching events:', error);
       toast('Failed to load events from Supabase', '#e63946');
       return [];
     }
 
-    return data || [];
+    return (data || []).filter(e => e.active !== false);
   } catch (e) {
     console.error('Fetch error:', e);
     toast('Failed to load events', '#e63946');
