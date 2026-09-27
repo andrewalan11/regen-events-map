@@ -10,8 +10,8 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%231a1a2e'/><text x='50' y='68' font-size='55' text-anchor='middle'>🌍</text></svg>">
 
 <!-- Open Graph / Social sharing -->
-<meta property="og:title" content="Regen Events Map 2026">
-<meta property="og:description" content="Interactive map of 58+ regenerative gatherings, ecovillage festivals, bioregional congresses, and community events worldwide. Star your favorites, plan your route.">
+<meta property="og:title" content="Regen Events Map">
+<meta property="og:description" content="Interactive map of regenerative gatherings, ecovillage festivals, bioregional congresses, and community events worldwide. Star your favorites, plan your route.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://andrewalan11.github.io/regen-events-map">
 <meta property="og:image" content="https://andrewalan11.github.io/regen-events-map/og-image.jpg">
@@ -20,8 +20,8 @@
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Regen Events Map 2026">
-<meta name="twitter:description" content="Interactive map of 58+ regenerative gatherings worldwide. Star events, see who's going, plan your route.">
+<meta name="twitter:title" content="Regen Events Map">
+<meta name="twitter:description" content="Interactive map of regenerative gatherings worldwide. Star events, see who's going, plan your route.">
 <meta name="twitter:image" content="https://andrewalan11.github.io/regen-events-map/og-image.jpg">
 
 <meta name="description" content="Interactive map of regenerative gatherings, ecovillage festivals, bioregional congresses, and community events for 2026. Powered by Supabase.">
@@ -628,6 +628,7 @@ const activeMonths = new Set(MO.filter(m => !PAST_MONTHS.has(m)));
 // === EVENT DATA & STATE ===
 let events = [];
 const evUrl = u => !u ? '' : (/^https?:\/\//i.test(u) ? u : 'https://' + u);
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 let starCounts = new Map();
 let userStars = new Set();
 const ignored = new Set();
@@ -771,11 +772,11 @@ function mkIcon(color, isIgn, isStar, ev) {
   const op = isIgn ? 0.25 : 1;
   const fill = isIgn ? '#555' : color;
   const em = gi(ev);
-  const lb = ev.name.length > 16 ? ev.name.slice(0, 14) + '...' : ev.name;
+  const lb = esc(ev.name.length > 16 ? ev.name.slice(0, 14) + '...' : ev.name);
   const ring = isStar ? `<div style="position:absolute;top:-7px;left:-7px;width:50px;height:50px;border-radius:50%;border:2px solid #e9c46a;box-shadow:0 0 10px 2px rgba(233,196,106,.4);pointer-events:none"></div>` : '';
   const bdr = isStar ? '2.5px solid #e9c46a' : '2px solid rgba(255,255,255,.6)';
   const glow = isStar ? 'box-shadow:0 2px 8px rgba(0,0,0,.4),0 0 14px 3px rgba(233,196,106,.35);' : 'box-shadow:0 2px 8px rgba(0,0,0,.4);';
-  const dt = ev.dates || '';
+  const dt = esc(ev.dates || '');
   return L.divIcon({
     className: 'cm',
     html: `<div style="position:relative;opacity:${op};text-align:center">${ring}<div style="width:36px;height:36px;border-radius:50%;background:${fill};border:${bdr};display:flex;align-items:center;justify-content:center;font-size:16px;${glow}cursor:pointer;position:relative;z-index:1">${em}</div><div style="font-size:8px;color:${isStar ? '#e9c46a' : '#ccc'};text-shadow:0 1px 3px #000,0 0 6px #000;margin-top:1px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;${isStar ? 'font-weight:600' : ''}">${lb}</div><div style="font-size:7px;color:${fill};text-shadow:0 1px 3px #000,0 0 6px #000;white-space:nowrap;pointer-events:none;opacity:.9">${dt}</div></div>`,
@@ -799,11 +800,11 @@ function popupHtml(ev, idx) {
   const img = ev.image_url ? `<img src="${ev.image_url}" alt="" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:8px" onerror="this.style.display='none'">` : '';
   const tags = (ev.tags || []).filter(t => t !== 'sold-out').map(t => {
     const ic = TI[t] || '';
-    return `<span class="tag" style="background:${c}44;color:${c};border:1px solid ${c}66">${ic} ${t}</span>`;
+    return `<span class="tag" style="background:${c}44;color:${c};border:1px solid ${c}66">${ic} ${esc(t)}</span>`;
   }).join('');
-  const url = ev.url ? `<a href="${evUrl(ev.url)}" target="_blank">${ev.url}</a>` : '';
+  const url = ev.url ? `<a href="${esc(evUrl(ev.url))}" target="_blank">${esc(ev.url)}</a>` : '';
   const mapsLink = `<a href="https://www.google.com/maps?q=${ev.lat},${ev.lng}" target="_blank" style="font-size:9px;color:#457b9d;margin-left:4px">open in maps</a>`;
-  const venue = ev.venue ? `<div class="venue">📍 ${ev.venue}</div>` : '';
+  const venue = ev.venue ? `<div class="venue">📍 ${esc(ev.venue)}</div>` : '';
   const isStar = userStars.has(ev.id);
   const isIgn = ignored.has(idx);
   const badge = `<span style="display:inline-block;font-size:9px;padding:2px 7px;border-radius:8px;background:${c};color:#fff;font-weight:600;margin-bottom:4px">${ev.month} ${selectedYear}</span>`;
@@ -818,24 +819,24 @@ function popupHtml(ev, idx) {
   const beaconBanner = starCount > 1
     ? `<div style="margin:8px 0;padding:8px 12px;background:#e9c46a11;border:1px solid #e9c46a33;border-radius:8px">
         <div style="font-size:12px;color:#e9c46a;font-weight:600">✨ ${starCount} ${starCount === 1 ? 'person interested' : 'people interested'}</div>
-        ${stargazers ? `<div style="font-size:10px;color:#aaa;margin-top:3px">${stargazers}</div>` : ''}
+        ${stargazers ? `<div style="font-size:10px;color:#aaa;margin-top:3px">${esc(stargazers)}</div>` : ''}
       </div>`
     : '';
 
-  return `${img}<div class="pi">${badge}${soldOut}<h3>${ev.name}</h3><div class="dates">${ev.dates} ${durBadge}</div><div class="loc">${ev.location} ${mapsLink}</div>${venue}<div class="desc">${ev.description}</div>${beaconBanner}${tags}${url ? '<br>' + url : ''}<div class="pa"><button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ Interested' : '☆ Interested'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '✓ Ignored' : '— Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
+  return `${img}<div class="pi">${badge}${soldOut}<h3>${esc(ev.name)}</h3><div class="dates">${esc(ev.dates)} ${durBadge}</div><div class="loc">${esc(ev.location)} ${mapsLink}</div>${venue}<div class="desc">${esc(ev.description)}</div>${beaconBanner}${tags}${url ? '<br>' + url : ''}<div class="pa"><button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ Interested' : '☆ Interested'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '✓ Ignored' : '— Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
 }
 
 function tipHtml(ev) {
   const c = MC[ev.month] || '#888';
   const img = ev.image_url ? `<img class="ti" src="${ev.image_url}" alt="" onerror="this.style.display='none'">` : `<div class="tp" style="background:linear-gradient(135deg,${c}44,${c}22)">${gi(ev)}</div>`;
-  const tags = (ev.tags || []).map(t => `<span class="ttg">${TI[t] || ''} ${t}</span>`).join('');
+  const tags = (ev.tags || []).map(t => `<span class="ttg">${TI[t] || ''} ${esc(t)}</span>`).join('');
   
   // Show star count in tooltip
   const starData = starCounts.get(ev.id);
   const starCount = starData ? starData.count : 0;
   const starDisplay = starCount > 1 ? `<div style="margin-top:4px;font-size:9px;color:#e9c46a;font-weight:600">⭐ ${starCount} interested</div>` : '';
   
-  return `${img}<div class="tb"><div class="tn">${ev.name}</div><div class="td">${ev.dates} · ${ev.location}</div><div class="tds">${ev.description}</div><div class="tt">${tags}</div>${starDisplay}</div>`;
+  return `${img}<div class="tb"><div class="tn">${esc(ev.name)}</div><div class="td">${esc(ev.dates)} · ${esc(ev.location)}</div><div class="tds">${esc(ev.description)}</div><div class="tt">${tags}</div>${starDisplay}</div>`;
 }
 
 function getVisible() {
@@ -952,9 +953,9 @@ function renderTimeline(visible) {
       item.innerHTML = `
         <div class="tl-icon" style="background:${c};color:#1a1a2e">${gi(ev)}</div>
         <div class="tl-info">
-          <div class="tl-name">${ev.name}</div>
-          <div class="tl-dates">${ev.dates}</div>
-          <div class="tl-loc">${ev.location}</div>
+          <div class="tl-name">${esc(ev.name)}</div>
+          <div class="tl-dates">${esc(ev.dates)}</div>
+          <div class="tl-loc">${esc(ev.location)}</div>
           ${starText}
         </div>
         <div class="tl-actions">
@@ -1002,12 +1003,12 @@ function showTlTip(ev, e) {
   const tip = document.getElementById('tlTip');
   const c = MC[ev.month] || '#888';
   const img = ev.image_url ? `<img class="ttp-img" src="${ev.image_url}" onerror="this.style.display='none'">` : '';
-  const tags = (ev.tags || []).map(t => `<span class="ttp-tag" style="background:${c}44;color:${c};border:1px solid ${c}66">${TI[t] || ''} ${t}</span>`).join('');
+  const tags = (ev.tags || []).map(t => `<span class="ttp-tag" style="background:${c}44;color:${c};border:1px solid ${c}66">${TI[t] || ''} ${esc(t)}</span>`).join('');
   const duration = calcDuration(ev.dates);
   const starData = starCounts.get(ev.id);
   const starCount = starData ? starData.count : 0;
   const starText = starCount > 1 ? `<div class="ttp-stars">⭐ ${starCount} interested</div>` : '';
-  tip.innerHTML = `${img}<div class="ttp-body"><div class="ttp-name">${ev.name}</div><div class="ttp-dates">${ev.dates} · ${duration}</div><div class="ttp-loc">${ev.location}${ev.venue ? ' · ' + ev.venue : ''}</div><div class="ttp-desc">${ev.description}</div><div class="ttp-tags">${tags}</div>${starText}</div>`;
+  tip.innerHTML = `${img}<div class="ttp-body"><div class="ttp-name">${esc(ev.name)}</div><div class="ttp-dates">${esc(ev.dates)} · ${duration}</div><div class="ttp-loc">${esc(ev.location)}${ev.venue ? ' · ' + esc(ev.venue) : ''}</div><div class="ttp-desc">${esc(ev.description)}</div><div class="ttp-tags">${tags}</div>${starText}</div>`;
   moveTlTip(e);
   tip.classList.add('show');
 }
@@ -1328,9 +1329,9 @@ function renderFavsPanel() {
     const item = document.createElement('div');
     item.className = 'sp-item';
     item.innerHTML = `
-      <div class="sin">${ev.name}</div>
-      <div class="sid">${ev.dates}</div>
-      <div class="sil">${ev.location}</div>
+      <div class="sin">${esc(ev.name)}</div>
+      <div class="sid">${esc(ev.dates)}</div>
+      <div class="sil">${esc(ev.location)}</div>
     `;
     item.addEventListener('click', () => {
       map.setView([ev.lat, ev.lng], 8);
@@ -1354,7 +1355,7 @@ function renderIgnoredPanel() {
     if (!ev) return;
     const item = document.createElement('div');
     item.className = 'sp-item';
-    item.innerHTML = `<button class="sir" onclick="event.stopPropagation();unIgnore(${idx})">↩</button><div class="sin">${ev.name}</div><div class="sid">${ev.dates}</div><div class="sil">${ev.location}</div>`;
+    item.innerHTML = `<button class="sir" onclick="event.stopPropagation();unIgnore(${idx})">↩</button><div class="sin">${esc(ev.name)}</div><div class="sid">${esc(ev.dates)}</div><div class="sil">${esc(ev.location)}</div>`;
     item.addEventListener('click', () => {
       map.setView([ev.lat, ev.lng], 8);
       togglePanel('ignored');
@@ -1393,8 +1394,8 @@ function renderIssuesPanel() {
     const item = document.createElement('div');
     item.className = 'sp-item';
     item.innerHTML = `
-      <div class="sin">${iss.event_name}</div>
-      <div class="sil">${iss.issue_text}</div>
+      <div class="sin">${esc(iss.event_name)}</div>
+      <div class="sil">${esc(iss.issue_text)}</div>
       <div style="font-size:9px;color:#666;margin-top:3px">by ${iss.created_by}</div>
       <button class="sir" onclick="removeIssue(${i})">×</button>
     `;
@@ -1441,7 +1442,7 @@ function copyFavsList() {
 // === EXPORT ICS ===
 function parseEventDates(dates, month) {
   const monthIdx = MO.indexOf(month);
-  const startMonthNum = monthIdx >= 0 ? monthIdx + 3 : 1;
+  const startMonthNum = monthIdx >= 0 ? monthIdx + 1 : 1;
   const startMatch = dates.match(/(\d+)/);
   const startDay = startMatch ? parseInt(startMatch[1]) : 1;
 
@@ -1450,7 +1451,7 @@ function parseEventDates(dates, month) {
   if (crossMatch) {
     const endMonthStr = crossMatch[2].substring(0, 3);
     const endMonthIdx = MO.indexOf(endMonthStr);
-    const endMonthNum = endMonthIdx >= 0 ? endMonthIdx + 3 : startMonthNum;
+    const endMonthNum = endMonthIdx >= 0 ? endMonthIdx + 1 : startMonthNum;
     const endDay = parseInt(crossMatch[3]);
     const endDate = new Date(selectedYear, endMonthNum - 1, endDay + 1); // exclusive
     return {
@@ -1629,7 +1630,7 @@ function openRoutePage() {
 ${evs.map((e, i) => {
   const c = MC[e.month] || '#888';
   const isLast = i === evs.length - 1;
-  return `<div class="stop"><div class="line"><div class="dot" style="background:${c}">${e.num}</div>${isLast ? '' : '<div class="connector"></div>'}</div><div class="info"><h3>${e.title}</h3><div class="dates">${e.dates}</div><div class="loc">${e.location}</div><div class="desc">${e.description}</div>${e.url ? '<a href="' + evUrl(e.url) + '" target="_blank">' + e.url + '</a>' : ''}</div></div>`;
+  return `<div class="stop"><div class="line"><div class="dot" style="background:${c}">${e.num}</div>${isLast ? '' : '<div class="connector"></div>'}</div><div class="info"><h3>${esc(e.title)}</h3><div class="dates">${esc(e.dates)}</div><div class="loc">${esc(e.location)}</div><div class="desc">${esc(e.description)}</div>${e.url ? '<a href="' + esc(evUrl(e.url)) + '" target="_blank">' + esc(e.url) + '</a>' : ''}</div></div>`;
 }).join('')}
 <div class="actions">
 <a class="gm" href="${gmUrl}" target="_blank">Open route in Google Maps</a>
@@ -1718,6 +1719,8 @@ async function fetchEvents() {
 
     // Filter by year if the column exists
     query = query.eq('year', selectedYear);
+    // Hide off-scope events (scope: core | adjacent | off-scope)
+    query = query.neq('scope', 'off-scope');
 
     const { data, error } = await query;
 
