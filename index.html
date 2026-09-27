@@ -365,10 +365,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="top-bar" style="justify-content:space-between">
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
     <h1 id="mainTitle">Events & Gatherings <span id="yearDisplay">2026</span></h1>
-    <div class="year-toggle" style="display:flex;gap:2px;margin-left:4px">
-      <button class="btn yr-btn active" data-year="2026" onclick="switchYear(2026)">2026</button>
-      <button class="btn yr-btn" data-year="2027" onclick="switchYear(2027)">2027</button>
-    </div>
+    <div class="year-toggle" id="yearToggle" style="display:flex;gap:2px;margin-left:4px"></div>
     <div class="search-box"><input type="text" id="searchInput" placeholder="Search events..." oninput="onSearch()"></div>
     <button class="btn btn-add" onclick="openAddModal()">+ Suggest Event</button>
   </div>
@@ -393,10 +390,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <div class="mm-body">
     <input class="mm-search" id="mobileSearchInput" type="text" placeholder="Search events..." oninput="onMobileSearch()">
-    <div class="mm-year-row">
-      <button class="btn yr-btn active" data-year="2026" onclick="mobileMenuAction(()=>switchYear(2026))">2026</button>
-      <button class="btn yr-btn" data-year="2027" onclick="mobileMenuAction(()=>switchYear(2027))">2027</button>
-    </div>
+    <div class="mm-year-row" id="mobileYearRow"></div>
     <button class="mm-btn mm-btn-primary" onclick="mobileMenuAction(()=>openAddModal())">
       <span class="mm-icon">+</span><span class="mm-label">Suggest Event</span>
     </button>
@@ -437,6 +431,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <span class="fl">Months:</span>
   <button class="btn" onclick="toggleAll(true)" style="font-size:9px;padding:2px 6px">All</button>
   <button class="btn" onclick="toggleAll(false)" style="font-size:9px;padding:2px 6px">None</button>
+  <button class="btn" id="pastToggle" onclick="toggleShowPast()" style="font-size:9px;padding:2px 6px;background:#55555522;color:#888;border-color:#55555555">Show past</button>
   <!-- month labels get inserted here by JS -->
 </div>
 <div id="tlTip" class="tl-tip"></div>
@@ -638,6 +633,7 @@ const activeTags = new Set();
 let searchQuery = '';
 let clusterGroup;
 let selectedYear = new Date().getFullYear();
+let showPast = false;
 
 // === GEO-REGIONS ===
 const REGIONS = {
@@ -776,7 +772,7 @@ function mkIcon(color, isIgn, isStar, ev) {
   const ring = isStar ? `<div style="position:absolute;top:-7px;left:-7px;width:50px;height:50px;border-radius:50%;border:2px solid #e9c46a;box-shadow:0 0 10px 2px rgba(233,196,106,.4);pointer-events:none"></div>` : '';
   const bdr = isStar ? '2.5px solid #e9c46a' : '2px solid rgba(255,255,255,.6)';
   const glow = isStar ? 'box-shadow:0 2px 8px rgba(0,0,0,.4),0 0 14px 3px rgba(233,196,106,.35);' : 'box-shadow:0 2px 8px rgba(0,0,0,.4);';
-  const dt = esc(ev.dates || '');
+  const dt = ev.edition_state === 'dates-tba' ? esc('~' + (ev.month || '') + ' · TBA') : esc(ev.dates || '');
   return L.divIcon({
     className: 'cm',
     html: `<div style="position:relative;opacity:${op};text-align:center">${ring}<div style="width:36px;height:36px;border-radius:50%;background:${fill};border:${bdr};display:flex;align-items:center;justify-content:center;font-size:16px;${glow}cursor:pointer;position:relative;z-index:1">${em}</div><div style="font-size:8px;color:${isStar ? '#e9c46a' : '#ccc'};text-shadow:0 1px 3px #000,0 0 6px #000;margin-top:1px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;${isStar ? 'font-weight:600' : ''}">${lb}</div><div style="font-size:7px;color:${fill};text-shadow:0 1px 3px #000,0 0 6px #000;white-space:nowrap;pointer-events:none;opacity:.9">${dt}</div></div>`,
@@ -796,7 +792,7 @@ function calcDuration(dates) {
 }
 
 function popupHtml(ev, idx) {
-  const c = MC[ev.month] || '#888';
+  const c = ev.edition_state === 'dates-tba' ? '#6f9ceb' : (MC[ev.month] || '#888');
   const img = ev.image_url ? `<img src="${ev.image_url}" alt="" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:8px" onerror="this.style.display='none'">` : '';
   const tags = (ev.tags || []).filter(t => t !== 'sold-out').map(t => {
     const ic = TI[t] || '';
@@ -811,6 +807,11 @@ function popupHtml(ev, idx) {
   const soldOut = (ev.tags || []).includes('sold-out') ? `<span style="display:inline-block;font-size:9px;padding:2px 7px;border-radius:8px;background:#e63946;color:#fff;font-weight:700;margin-bottom:4px;margin-left:4px">SOLD OUT</span>` : '';
   const duration = calcDuration(ev.dates);
   const durBadge = `<span style="font-size:10px;color:#888;margin-left:6px">(${duration})</span>`;
+  const isTBA = ev.edition_state === 'dates-tba';
+  const datesLine = isTBA
+    ? `<div class="dates" style="color:#8ab4f8">🗓️ expected ~${esc(ev.month || '')} ${ev.year || selectedYear} · dates TBA</div>`
+    : `<div class="dates">${esc(ev.dates)} ${durBadge}</div>`;
+  const knowBtn = isTBA ? `<button class="br" onclick="openKnowDates(${idx})" style="color:#8ab4f8;border-color:#8ab4f855">📅 Know the dates?</button>` : '';
 
   // Star count and stargazers
   const starData = starCounts.get(ev.id);
@@ -823,11 +824,11 @@ function popupHtml(ev, idx) {
       </div>`
     : '';
 
-  return `${img}<div class="pi">${badge}${soldOut}<h3>${esc(ev.name)}</h3><div class="dates">${esc(ev.dates)} ${durBadge}</div><div class="loc">${esc(ev.location)} ${mapsLink}</div>${venue}<div class="desc">${esc(ev.description)}</div>${beaconBanner}${tags}${url ? '<br>' + url : ''}<div class="pa"><button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ Interested' : '☆ Interested'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '✓ Ignored' : '— Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
+  return `${img}<div class="pi">${badge}${soldOut}<h3>${esc(ev.name)}</h3>${datesLine}<div class="loc">${esc(ev.location)} ${mapsLink}</div>${venue}<div class="desc">${esc(ev.description)}</div>${beaconBanner}${tags}${url ? '<br>' + url : ''}<div class="pa">${knowBtn}<button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ Interested' : '☆ Interested'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '✓ Ignored' : '— Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
 }
 
 function tipHtml(ev) {
-  const c = MC[ev.month] || '#888';
+  const c = ev.edition_state === 'dates-tba' ? '#6f9ceb' : (MC[ev.month] || '#888');
   const img = ev.image_url ? `<img class="ti" src="${ev.image_url}" alt="" onerror="this.style.display='none'">` : `<div class="tp" style="background:linear-gradient(135deg,${c}44,${c}22)">${gi(ev)}</div>`;
   const tags = (ev.tags || []).map(t => `<span class="ttg">${TI[t] || ''} ${esc(t)}</span>`).join('');
   
@@ -845,7 +846,7 @@ function getVisible() {
     const inRegion = activeRegions.has(region);
     return { ev, i, region, inRegion };
   }).filter(({ ev }) => {
-    if (!activeMonths.has(ev.month)) return false;
+    if (ev.edition_state !== 'dates-tba' && !activeMonths.has(ev.month)) return false;
     const evTags = ev.tags || [];
     if (evTags.length > 0 && !evTags.some(t => activeTags.has(t))) return false;
     if (searchQuery) {
@@ -886,7 +887,7 @@ function render() {
   
   const visible = getVisible();
   visible.forEach(({ ev, i, inRegion }) => {
-    const c = MC[ev.month] || '#888';
+    const c = ev.edition_state === 'dates-tba' ? '#6f9ceb' : (MC[ev.month] || '#888');
     const isGreyed = ignored.has(i) || !inRegion;
     const icon = mkIcon(c, isGreyed, userStars.has(ev.id), ev);
     const marker = L.marker([ev.lat, ev.lng], { icon })
@@ -1001,7 +1002,7 @@ function renderTimeline(visible) {
 // === TIMELINE TOOLTIP ===
 function showTlTip(ev, e) {
   const tip = document.getElementById('tlTip');
-  const c = MC[ev.month] || '#888';
+  const c = ev.edition_state === 'dates-tba' ? '#6f9ceb' : (MC[ev.month] || '#888');
   const img = ev.image_url ? `<img class="ttp-img" src="${ev.image_url}" onerror="this.style.display='none'">` : '';
   const tags = (ev.tags || []).map(t => `<span class="ttp-tag" style="background:${c}44;color:${c};border:1px solid ${c}66">${TI[t] || ''} ${esc(t)}</span>`).join('');
   const duration = calcDuration(ev.dates);
@@ -1187,6 +1188,24 @@ function toggleAll(on) {
       l.classList.add('off');
     }
   });
+  render();
+}
+
+function toggleShowPast() {
+  showPast = !showPast;
+  PAST_MONTHS.forEach(m => { if (showPast) activeMonths.add(m); else activeMonths.delete(m); });
+  document.querySelectorAll('.filters label[class^="m-"]').forEach(l => {
+    const inp = l.querySelector('input'); if (!inp) return;
+    const m = inp.dataset.month;
+    if (PAST_MONTHS.has(m)) { inp.checked = showPast; l.classList.toggle('off', !showPast); }
+  });
+  const b = document.getElementById('pastToggle');
+  if (b) {
+    b.textContent = showPast ? 'Hide past' : 'Show past';
+    b.style.background = showPast ? '#2a9d8f22' : '#55555522';
+    b.style.color = showPast ? '#2a9d8f' : '#888';
+    b.style.borderColor = showPast ? '#2a9d8f55' : '#55555555';
+  }
   render();
 }
 
@@ -1645,7 +1664,17 @@ ${evs.map((e, i) => {
 
 // === ADD EVENT MODAL ===
 function openAddModal() {
+  document.getElementById('ae-url').value = '';
+  document.getElementById('ae-name').value = '';
+  document.getElementById('ae-desc').value = '';
   document.getElementById('addModal').classList.add('open');
+}
+
+function openKnowDates(idx) {
+  const ev = events[idx];
+  openAddModal();
+  document.getElementById('ae-url').value = ev.url ? evUrl(ev.url) : '';
+  document.getElementById('ae-desc').value = `DATES UPDATE for "${ev.name}" (#${ev.id}) — currently expected ~${ev.month || ''} ${ev.year || selectedYear}, dates TBA. Please share the confirmed dates and a source link.`;
 }
 
 function closeAddModal() {
@@ -1684,6 +1713,22 @@ function suggestEvent() {
 }
 
 // === YEAR SWITCHING ===
+async function fetchYears() {
+  try {
+    const { data, error } = await sb.from('events').select('year').eq('active', true).neq('scope', 'off-scope');
+    if (error || !data) return [selectedYear];
+    const ys = Array.from(new Set(data.map(r => r.year).filter(y => y != null))).sort((a, b) => a - b);
+    return ys.length ? ys : [selectedYear];
+  } catch (e) { return [selectedYear]; }
+}
+
+function buildYearButtons(years) {
+  const desk = document.getElementById('yearToggle');
+  const mob = document.getElementById('mobileYearRow');
+  if (desk) desk.innerHTML = years.map(y => `<button class="btn yr-btn ${y === selectedYear ? 'active' : ''}" data-year="${y}" onclick="switchYear(${y})">${y}</button>`).join('');
+  if (mob) mob.innerHTML = years.map(y => `<button class="btn yr-btn ${y === selectedYear ? 'active' : ''}" data-year="${y}" onclick="mobileMenuAction(()=>switchYear(${y}))">${y}</button>`).join('');
+}
+
 async function switchYear(year) {
   selectedYear = year;
   document.getElementById('yearDisplay').textContent = year;
@@ -1774,9 +1819,10 @@ async function initData() {
 
   // Set initial year display
   document.getElementById('yearDisplay').textContent = selectedYear;
-  document.querySelectorAll('.yr-btn').forEach(b => {
-    b.classList.toggle('active', parseInt(b.dataset.year) === selectedYear);
-  });
+  const years = await fetchYears();
+  if (!years.includes(selectedYear)) selectedYear = years.includes(new Date().getFullYear()) ? new Date().getFullYear() : years[0];
+  document.getElementById('yearDisplay').textContent = selectedYear;
+  buildYearButtons(years);
   document.title = `Events & Gatherings ${selectedYear} — Map`;
 
   // Fetch events
