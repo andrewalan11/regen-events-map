@@ -646,6 +646,11 @@
         </div>
         <div id="suggestions-tab">
             <div class="filter-bar" id="filters"></div>
+            <div class="bulk-bar" id="sug-bulk-bar" style="display:none;">
+                <span class="label"><span id="sug-bulk-count">0</span> selected</span>
+                <button class="btn-apply" onclick="bulkApproveSuggestions()">Approve selected</button>
+                <button style="background:#333;color:#aaa;" onclick="clearSugSelection()">Clear</button>
+            </div>
             <div id="suggestions-list"></div>
         </div>
         <div id="events-tab" style="display:none;">
@@ -874,6 +879,37 @@
                 return;
             }
             document.getElementById('suggestions-list').innerHTML = filtered.map(s => renderCard(s)).join('');
+            renderSugBulkBar();
+        }
+
+        // ── Suggestion batch approve ──
+        let sugSelected = new Set();
+        function toggleSugSelect(id, checked) { checked ? sugSelected.add(id) : sugSelected.delete(id); renderSugBulkBar(); }
+        function renderSugBulkBar() {
+            const bar = document.getElementById('sug-bulk-bar');
+            if (!bar) return;
+            const n = sugSelected.size;
+            bar.style.display = n > 0 ? 'flex' : 'none';
+            document.getElementById('sug-bulk-count').textContent = n;
+        }
+        function clearSugSelection() { sugSelected.clear(); renderList(); }
+        async function bulkApproveSuggestions() {
+            const ids = [...sugSelected];
+            if (!ids.length) { toast('Select suggestions first', true); return; }
+            let ok = 0; const skipped = [];
+            for (const id of ids) {
+                const s = suggestions.find(x => x.id === id);
+                if (!s || s.status !== 'enriched') continue;
+                const ev = buildEventFromSuggestion(s);
+                if (!ev) { skipped.push(s.enriched_data?.name || ('#' + id)); continue; }
+                const { error } = await sb.from('events').insert(ev);
+                if (error) { toast(`Error on ${ev.name}: ${error.message}`, true); skipped.push(ev.name); continue; }
+                await sb.from('suggestions').update({ status: 'approved' }).eq('id', id);
+                s.status = 'approved'; ok++;
+            }
+            sugSelected.clear();
+            renderList(); renderStats(); renderFilters();
+            toast(`Approved ${ok}${skipped.length ? `, skipped ${skipped.length} (missing fields): ${skipped.join(', ')}` : ''}`, skipped.length > 0);
         }
 
         function renderCard(s) {
@@ -907,6 +943,7 @@
             return `
             <div class="suggestion-card status-${s.status}" id="card-${s.id}">
                 <div class="card-header">
+                    ${s.status === 'enriched' ? `<input type="checkbox" class="bulk-check" ${sugSelected.has(s.id)?'checked':''} onchange="toggleSugSelect(${s.id}, this.checked)" style="margin-right:10px;transform:scale(1.3);cursor:pointer;">` : ''}
                     <div>
                         <div class="card-meta">
                             <span class="badge badge-${s.status}">${s.status === 'approved' ? 'on map' : s.status}</span>
@@ -1067,18 +1104,11 @@
         }
 
         // ── Approve: promote to events table ──
-        async function approveEvent(id) {
-            const s = suggestions.find(s => s.id === id);
+        // Build an events-table row from a suggestion; returns null if required fields are missing.
+        function buildEventFromSuggestion(s) {
             const ed = s.enriched_data || {};
-
-            // Validate required fields
-            if (!ed.name || !ed.dates || !ed.month || !ed.lat || !ed.lng || !ed.location) {
-                toast('Fill in name, dates, month, lat, lng, and location before approving', true);
-                return;
-            }
-
-            // Insert into events table
-            const newEvent = {
+            if (!ed.name || !ed.dates || !ed.month || !ed.lat || !ed.lng || !ed.location) return null;
+            return {
                 name: ed.name,
                 dates: ed.dates,
                 month: ed.month,
@@ -1092,6 +1122,15 @@
                 image_url: ed.image_url || '',
                 created_by: s.submitted_by || 'suggestion'
             };
+        }
+
+        async function approveEvent(id) {
+            const s = suggestions.find(s => s.id === id);
+            const newEvent = buildEventFromSuggestion(s);
+            if (!newEvent) {
+                toast('Fill in name, dates, month, lat, lng, and location before approving', true);
+                return;
+            }
 
             const { data, error } = await sb.from('events').insert(newEvent).select();
             if (error) { toast('Error adding event: ' + error.message, true); return; }
