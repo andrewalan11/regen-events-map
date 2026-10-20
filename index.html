@@ -759,8 +759,9 @@ function cancelUserName() {
 
 // === MAP ===
 const map = L.map('map', { zoomControl: true }).setView([30, 0], 3);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OSM &copy; CARTO',
+// CARTO basemaps need an API key since 2026 (free non-commercial key; manage at dashboard.basemaps.carto.com)
+L.tileLayer('https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=cb1_4q4i_1_b2a490d9c3fe6dd1e0d23e2b', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
   maxZoom: 19
 }).addTo(map);
 
