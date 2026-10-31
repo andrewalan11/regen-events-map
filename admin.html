@@ -902,14 +902,15 @@
                 if (!s || s.status !== 'enriched') continue;
                 const ev = buildEventFromSuggestion(s);
                 if (!ev) { skipped.push(s.enriched_data?.name || ('#' + id)); continue; }
-                const { error } = await sb.from('events').insert(ev);
+                const { data: inserted, error } = await sb.from('events').insert(ev).select();
                 if (error) { toast(`Error on ${ev.name}: ${error.message}`, true); skipped.push(ev.name); continue; }
+                if (inserted && inserted[0]) existingEvents.push(inserted[0]); // keep duplicate detection current
                 await sb.from('suggestions').update({ status: 'approved' }).eq('id', id);
                 s.status = 'approved'; ok++;
             }
             sugSelected.clear();
             renderList(); renderStats(); renderFilters();
-            toast(`Approved ${ok}${skipped.length ? `, skipped ${skipped.length} (missing fields): ${skipped.join(', ')}` : ''}`, skipped.length > 0);
+            toast(`Approved ${ok}${skipped.length ? `, skipped ${skipped.length} (missing fields or error): ${skipped.join(', ')}` : ''}`, skipped.length > 0);
         }
 
         function renderCard(s) {
@@ -929,8 +930,8 @@
                 if (dupes.length > 0) {
                     const dupeItems = dupes.map(d =>
                         `<div style="margin:4px 0;padding:4px 8px;background:#fbbf2409;border-radius:4px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;">` +
-                        `<div><strong>${d.event.name}</strong>` +
-                        `<span style="color:#888;font-size:0.75rem;margin-left:8px;">${d.event.dates} · ${d.event.location}</span>` +
+                        `<div><strong>${esc(d.event.name)}</strong>` +
+                        `<span style="color:#888;font-size:0.75rem;margin-left:8px;">${esc(d.event.dates)} · ${esc(d.event.location)}</span>` +
                         (d.isSubstring ? `<span style="color:#f87171;font-size:0.7rem;margin-left:6px;">exact match</span>` : '') +
                         `</div>` +
                         `<button class="btn btn-compare" onclick="openCompare(${s.id}, ${d.event.id})">Compare & Update</button>` +
@@ -947,14 +948,14 @@
                     <div>
                         <div class="card-meta">
                             <span class="badge badge-${s.status}">${s.status === 'approved' ? 'on map' : s.status}</span>
-                            <span class="badge badge-source">${s.source}</span>
+                            <span class="badge badge-source">${esc(s.source)}</span>
                             <span class="card-date">${dateStr}</span>
-                            ${s.submitted_by ? `<span class="card-date">by ${s.submitted_by}</span>` : ''}
+                            ${s.submitted_by ? `<span class="card-date">by ${esc(s.submitted_by)}</span>` : ''}
                         </div>
-                        <a class="card-url" href="${s.url}" target="_blank">${s.url}</a>
+                        ${safeHref(s.url) ? `<a class="card-url" href="${safeHref(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a>` : `<span class="card-url">${esc(s.url)}</span>`}
                     </div>
                 </div>
-                ${s.notes ? `<p style="color:#888;font-size:0.85rem;margin:8px 0;">Notes: ${s.notes}</p>` : ''}
+                ${s.notes ? `<p style="color:#888;font-size:0.85rem;margin:8px 0;">Notes: ${esc(s.notes)}</p>` : ''}
                 ${warningHtml}
                 ${hasEnriched || s.status !== 'pending' ? renderEnrichedForm(s) : `
                     <p style="color:#666;font-size:0.85rem;margin:12px 0;">No enrichment data yet. Click "Manual Enrich" to fill in details, or wait for auto-enrichment via Make.com.</p>
@@ -966,9 +967,10 @@
         function renderEnrichedForm(s) {
             const ed = s.enriched_data || {};
             const tags = ed.tags || [];
+            const isOnline = isOnlineFlag(ed.is_online);
             return `
             <div class="enriched-preview">
-                <h3>${ed.name || '(untitled)'}</h3>
+                <h3>${esc(ed.name || '(untitled)')}</h3>
                 <div class="enriched-fields">
                     <div class="enriched-field">
                         <label>Event Name</label>
@@ -997,9 +999,15 @@
                         <label>Longitude</label>
                         <input type="number" step="0.001" id="lng-${s.id}" value="${ed.lng || ''}" onchange="updateField(${s.id}, 'lng', parseFloat(this.value))">
                     </div>
+                    <div class="enriched-field full-width">
+                        <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:#ccc;text-transform:none;letter-spacing:0;cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${isOnline ? 'checked' : ''} onchange="toggleSuggestionOnline(${s.id}, this.checked)">
+                            🌐 Online event (no map pin; lat/lng not needed, location defaults to "Online")
+                        </label>
+                    </div>
                     <div class="enriched-field full-width" style="display:flex;gap:8px;align-items:center;">
-                        <button class="btn btn-geocode" onclick="geocodeLocation(${s.id})">📍 Geocode</button>
-                        ${(ed.url || s.url) ? `<a href="${ed.url || s.url}" target="_blank" class="btn btn-visit">🔗 Visit event page</a>` : ''}
+                        <button class="btn btn-geocode" id="geo-btn-${s.id}" onclick="geocodeLocation(${s.id})" style="${isOnline ? 'display:none;' : ''}">📍 Geocode</button>
+                        ${safeHref(ed.url || s.url) ? `<a href="${safeHref(ed.url || s.url)}" target="_blank" rel="noopener" class="btn btn-visit">🔗 Visit event page</a>` : ''}
                         <span class="geocode-status" id="geo-status-${s.id}"></span>
                     </div>
                     <div class="enriched-field full-width">
@@ -1013,8 +1021,8 @@
                     <div class="enriched-field full-width">
                         <label>Tags</label>
                         <div class="tag-select" id="tags-${s.id}">
-                            ${ALL_TAGS.map(t => `<span class="tag-chip ${tags.includes(t) ? 'selected' : ''}" onclick="toggleTag(${s.id}, '${t}', this)">${t}</span>`).join('')}
-                            ${(tags.filter(t => !ALL_TAGS.includes(t))).map(t => `<span class="tag-chip selected" onclick="toggleTag(${s.id}, '${esc(t)}', this)">${esc(t)}</span>`).join('')}
+                            ${ALL_TAGS.map(t => `<span class="tag-chip ${tags.includes(t) ? 'selected' : ''}" onclick="toggleTag(${s.id}, ${jsArg(t)}, this)">${esc(t)}</span>`).join('')}
+                            ${(tags.filter(t => !ALL_TAGS.includes(t))).map(t => `<span class="tag-chip selected" onclick="toggleTag(${s.id}, ${jsArg(t)}, this)">${esc(t)}</span>`).join('')}
                         </div>
                         <div class="custom-tag-row">
                             <input type="text" id="new-tag-${s.id}" placeholder="New tag..." onkeydown="if(event.key==='Enter')addCustomTag(${s.id})">
@@ -1054,6 +1062,14 @@
             const s = suggestions.find(s => s.id === id);
             if (!s.enriched_data) s.enriched_data = {};
             s.enriched_data[field] = value;
+        }
+
+        function isOnlineFlag(v) { return v === true || v === 'true'; }
+
+        function toggleSuggestionOnline(id, checked) {
+            updateField(id, 'is_online', checked);
+            const geoBtn = document.getElementById(`geo-btn-${id}`);
+            if (geoBtn) geoBtn.style.display = checked ? 'none' : '';
         }
 
         function toggleTag(id, tag, el) {
@@ -1105,16 +1121,32 @@
 
         // ── Approve: promote to events table ──
         // Build an events-table row from a suggestion; returns null if required fields are missing.
+        // Values allowed by the events table CHECK constraints
+        const VALID_RECURRENCE = ['annual', 'biennial', 'one-off', 'unknown', 'weekly', 'monthly'];
+        const VALID_SCOPE = ['core', 'adjacent', 'off-scope'];
+
+        // Year: enriched_data.year, else a 4-digit year in the dates text, else null (DB default applies)
+        function suggestionYear(ed) {
+            const y = parseInt(ed.year, 10);
+            if (y >= 2000 && y <= 2100) return y;
+            const m = String(ed.dates || '').match(/\b(20\d{2})\b/);
+            return m ? parseInt(m[1], 10) : null;
+        }
+
+        // Online events need no lat/lng/location: lat=0, lng=0, location defaults to "Online".
         function buildEventFromSuggestion(s) {
             const ed = s.enriched_data || {};
-            if (!ed.name || !ed.dates || !ed.month || !ed.lat || !ed.lng || !ed.location) return null;
-            return {
+            const online = isOnlineFlag(ed.is_online);
+            if (!ed.name || !ed.dates || !ed.month) return null;
+            if (!online && (!ed.lat || !ed.lng || !ed.location)) return null;
+            const ev = {
                 name: ed.name,
                 dates: ed.dates,
                 month: ed.month,
-                lat: ed.lat,
-                lng: ed.lng,
-                location: ed.location,
+                lat: online ? 0 : ed.lat,
+                lng: online ? 0 : ed.lng,
+                location: online ? (String(ed.location || '').trim() || 'Online') : ed.location,
+                is_online: online,
                 venue: ed.venue || null,
                 description: ed.description || '',
                 tags: ed.tags || [],
@@ -1122,13 +1154,19 @@
                 image_url: ed.image_url || '',
                 created_by: s.submitted_by || 'suggestion'
             };
+            const year = suggestionYear(ed);
+            if (year) ev.year = year;
+            if (VALID_SCOPE.includes(ed.scope)) ev.scope = ed.scope;
+            if (/^\d{4}-\d{2}-\d{2}$/.test(String(ed.end_date || ''))) ev.end_date = ed.end_date;
+            if (VALID_RECURRENCE.includes(ed.recurrence)) ev.recurrence = ed.recurrence;
+            return ev;
         }
 
         async function approveEvent(id) {
             const s = suggestions.find(s => s.id === id);
             const newEvent = buildEventFromSuggestion(s);
             if (!newEvent) {
-                toast('Fill in name, dates, month, lat, lng, and location before approving', true);
+                toast('Fill in name, dates, month, lat, lng, and location before approving (online events need only name, dates, month)', true);
                 return;
             }
 
@@ -1138,8 +1176,9 @@
             // Update suggestion status
             await sb.from('suggestions').update({ status: 'approved' }).eq('id', id);
             s.status = 'approved';
-            toast(`"${ed.name}" added to the map!`);
+            if (data && data[0]) existingEvents.push(data[0]); // keep duplicate detection current
             renderList(); renderStats(); renderFilters();
+            toast(`"${newEvent.name}" added to the map!`);
         }
 
         // ── Geocode ──
@@ -1201,13 +1240,13 @@
                 updateField(id, 'lat', lat);
                 updateField(id, 'lng', lng);
 
-                status.innerHTML = `✅ ${best.display_name.substring(0, 60)}… <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" style="color:#60a5fa;font-size:0.7rem;">verify on map</a>`;
+                status.innerHTML = `✅ ${esc(String(best.display_name || '').substring(0, 60))}… <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" style="color:#60a5fa;font-size:0.7rem;">verify on map</a>`;
                 status.style.color = '#4ade80';
 
                 // If there were multiple results, show alternatives
                 if (results.length > 1) {
                     const alts = results.slice(1).map((r, i) =>
-                        `<span class="geocode-alt" onclick="applyGeocode(${id}, ${r.lat}, ${r.lon})" style="cursor:pointer;color:#60a5fa;text-decoration:underline;font-size:0.7rem;margin-left:8px;" title="${r.display_name}">alt ${i+2}</span>`
+                        `<span class="geocode-alt" onclick="applyGeocode(${id}, ${Number(r.lat)}, ${Number(r.lon)})" style="cursor:pointer;color:#60a5fa;text-decoration:underline;font-size:0.7rem;margin-left:8px;" title="${esc(r.display_name)}">alt ${i+2}</span>`
                     ).join('');
                     status.innerHTML += ` ${alts}`;
                 }
@@ -1247,8 +1286,8 @@
                 const tags = s.enriched_data.tags;
                 const allKnown = ALL_TAGS;
                 tagContainer.innerHTML =
-                    allKnown.map(t => `<span class="tag-chip ${tags.includes(t) ? 'selected' : ''}" onclick="toggleTag(${id}, '${t}', this)">${t}</span>`).join('') +
-                    tags.filter(t => !allKnown.includes(t)).map(t => `<span class="tag-chip selected" onclick="toggleTag(${id}, '${esc(t)}', this)">${esc(t)}</span>`).join('');
+                    allKnown.map(t => `<span class="tag-chip ${tags.includes(t) ? 'selected' : ''}" onclick="toggleTag(${id}, ${jsArg(t)}, this)">${esc(t)}</span>`).join('') +
+                    tags.filter(t => !allKnown.includes(t)).map(t => `<span class="tag-chip selected" onclick="toggleTag(${id}, ${jsArg(t)}, this)">${esc(t)}</span>`).join('');
             }
         }
 
@@ -1308,7 +1347,7 @@
             bar.innerHTML = '<span class="label">Filter:</span>' +
                 `<span class="tag-filter-chip ${!activeTagFilter ? 'active' : ''}" onclick="setTagFilter(null)">All</span>` +
                 sortedTags.map(t =>
-                    `<span class="tag-filter-chip ${activeTagFilter === t ? 'active' : ''}" onclick="setTagFilter('${t}')">${getTagIcon(t)} ${t} (${tagCounts[t]})</span>`
+                    `<span class="tag-filter-chip ${activeTagFilter === t ? 'active' : ''}" onclick="setTagFilter(${jsArg(t)})">${esc(getTagIcon(t))} ${esc(t)} (${tagCounts[t]})</span>`
                 ).join('');
         }
 
@@ -1354,6 +1393,13 @@
                         <label>Lng</label>
                         <input type="number" step="0.001" value="${ev.lng || ''}" onchange="editEvent(${ev.id}, 'lng', parseFloat(this.value))">
                     </div>
+                    <div class="event-detail">
+                        <label>Online</label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;color:#ccc;text-transform:none;letter-spacing:0;cursor:pointer;margin-top:6px;">
+                            <input type="checkbox" style="width:auto;" ${ev.is_online ? 'checked' : ''} onchange="editEventOnline(${ev.id}, this.checked)">
+                            🌐 Online (no map pin)
+                        </label>
+                    </div>
                     <div class="event-detail full-width">
                         <label>Description</label>
                         <textarea onchange="editEvent(${ev.id}, 'description', this.value)">${esc(ev.description || '')}</textarea>
@@ -1365,8 +1411,8 @@
                     <div class="event-detail full-width">
                         <label>Tags</label>
                         <div class="tag-select" id="ev-tags-${ev.id}">
-                            ${ALL_TAGS.map(t => `<span class="tag-chip ${tags.includes(t) ? 'selected' : ''}" onclick="toggleEventTag(${ev.id}, '${t}', this)">${t}</span>`).join('')}
-                            ${tags.filter(t => !ALL_TAGS.includes(t)).map(t => `<span class="tag-chip selected" onclick="toggleEventTag(${ev.id}, '${esc(t)}', this)">${esc(t)}</span>`).join('')}
+                            ${ALL_TAGS.map(t => `<span class="tag-chip ${tags.includes(t) ? 'selected' : ''}" onclick="toggleEventTag(${ev.id}, ${jsArg(t)}, this)">${esc(t)}</span>`).join('')}
+                            ${tags.filter(t => !ALL_TAGS.includes(t)).map(t => `<span class="tag-chip selected" onclick="toggleEventTag(${ev.id}, ${jsArg(t)}, this)">${esc(t)}</span>`).join('')}
                         </div>
                         <div class="custom-tag-row">
                             <input type="text" id="ev-new-tag-${ev.id}" placeholder="New tag..." onkeydown="if(event.key==='Enter')addEventCustomTag(${ev.id})">
@@ -1376,8 +1422,8 @@
                 </div>
                 <div class="event-actions">
                     <button class="btn btn-save" onclick="saveEventChanges(${ev.id})">Save Changes</button>
-                    <button class="btn btn-delete" onclick="confirmDeleteEvent(${ev.id}, '${esc(ev.name).replace(/'/g, "\\'")}')">Delete</button>
-                    ${ev.url ? `<a href="https://${ev.url}" target="_blank" class="btn btn-visit">Visit</a>` : ''}
+                    <button class="btn btn-delete" onclick="confirmDeleteEvent(${ev.id})">Delete</button>
+                    ${ev.url ? `<a href="${esc('https://' + String(ev.url).replace(/^https?:\/\//i, ''))}" target="_blank" rel="noopener" class="btn btn-visit">Visit</a>` : ''}
                 </div>
             </div>`;
         }
@@ -1386,6 +1432,16 @@
             if (!eventEdits[id]) eventEdits[id] = {};
             eventEdits[id][field] = value;
             autoSaveEvent(id);
+        }
+
+        function editEventOnline(id, checked) {
+            editEvent(id, 'is_online', checked);
+            if (checked) return;
+            const ev = allEvents.find(e => e.id === id) || {};
+            const edits = eventEdits[id] || {};
+            const lat = Number(edits.lat ?? ev.lat) || 0;
+            const lng = Number(edits.lng ?? ev.lng) || 0;
+            if (lat === 0 && lng === 0) toast('No longer online, but lat/lng are 0 - set a location so the pin is not in the ocean', true);
         }
 
         function toggleEventTag(id, tag, el) {
@@ -1420,8 +1476,8 @@
             const tagContainer = document.getElementById(`ev-tags-${id}`);
             if (tagContainer) {
                 tagContainer.innerHTML =
-                    ALL_TAGS.map(t => `<span class="tag-chip ${ev.tags.includes(t) ? 'selected' : ''}" onclick="toggleEventTag(${id}, '${t}', this)">${t}</span>`).join('') +
-                    ev.tags.filter(t => !ALL_TAGS.includes(t)).map(t => `<span class="tag-chip selected" onclick="toggleEventTag(${id}, '${esc(t)}', this)">${esc(t)}</span>`).join('');
+                    ALL_TAGS.map(t => `<span class="tag-chip ${ev.tags.includes(t) ? 'selected' : ''}" onclick="toggleEventTag(${id}, ${jsArg(t)}, this)">${esc(t)}</span>`).join('') +
+                    ev.tags.filter(t => !ALL_TAGS.includes(t)).map(t => `<span class="tag-chip selected" onclick="toggleEventTag(${id}, ${jsArg(t)}, this)">${esc(t)}</span>`).join('');
             }
             autoSaveEvent(id);
         }
@@ -1446,7 +1502,9 @@
             toast(`Saved`);
         }
 
-        function confirmDeleteEvent(id, name) {
+        function confirmDeleteEvent(id) {
+            const ev = allEvents.find(e => e.id === id);
+            const name = ev ? ev.name : '';
             if (!confirm(`Delete "${name}" (id ${id}) from the map? This cannot be undone.`)) return;
             deleteEvent(id);
         }
@@ -1477,7 +1535,7 @@
             document.getElementById('bulk-count').textContent = count;
             const sel = document.getElementById('bulk-tag-select');
             sel.innerHTML = '<option value="">Select tag...</option>' +
-                ALL_TAGS.map(t => `<option value="${t}">${t}</option>`).join('');
+                ALL_TAGS.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
         }
 
         function clearBulkSelection() {
@@ -1591,13 +1649,13 @@
             // Populate rename dropdown
             const sel = document.getElementById('rename-tag-from');
             sel.innerHTML = '<option value="">Select tag...</option>' +
-                ALL_TAGS.map(t => `<option value="${t}">${t}</option>`).join('');
+                ALL_TAGS.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
             document.getElementById('rename-tag-to').value = '';
 
             // Populate delete dropdown
             const delSel = document.getElementById('delete-tag-select');
             delSel.innerHTML = '<option value="">Select tag...</option>' +
-                ALL_TAGS.map(t => `<option value="${t}">${t}</option>`).join('');
+                ALL_TAGS.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
 
             // Populate icon list
             renderTagIconList();
@@ -1682,7 +1740,7 @@
                 const icon = getTagIcon(tag);
                 return `
                     <div class="tag-mgmt-row" style="margin-bottom:4px;">
-                        <span class="tag-icon-btn" onclick="openIconPicker('${esc(tag)}')" title="Click to change">${icon}</span>
+                        <span class="tag-icon-btn" onclick="openIconPicker(${jsArg(tag)})" title="Click to change">${esc(icon)}</span>
                         <span style="color:#ccc;font-size:0.85rem;flex:1;">${esc(tag)}</span>
                     </div>`;
             }).join('');
@@ -1693,7 +1751,7 @@
                         <div style="font-size:0.75rem;color:#888;margin-bottom:4px;">Pick icon for "${esc(iconPickerOpenFor)}":</div>
                         <div class="icon-picker-grid">
                             ${ICON_PALETTE.map(icon =>
-                                `<span onclick="setTagIcon('${esc(iconPickerOpenFor)}', '${icon}')">${icon}</span>`
+                                `<span onclick="setTagIcon(${jsArg(iconPickerOpenFor)}, ${jsArg(icon)})">${icon}</span>`
                             ).join('')}
                         </div>
                     </div>`;
@@ -1726,8 +1784,15 @@
 
         // ── Helpers ──
         function esc(str) {
-            return String(str).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return String(str ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
+        // Escaped href, only for http(s) URLs; '' otherwise (caller renders no link)
+        function safeHref(u) {
+            const s = String(u ?? '').trim();
+            return /^https?:\/\//i.test(s) ? esc(s) : '';
+        }
+        // A value as a JS string literal, safe inside a double-quoted onclick="..." attribute
+        function jsArg(v) { return esc(JSON.stringify(String(v ?? ''))); }
 
         // ── Compare & Update (merge) ──
         let mergeSelections = {}; // { fieldName: 'existing' | 'suggestion' }

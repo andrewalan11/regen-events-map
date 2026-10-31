@@ -52,6 +52,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .yr-btn{background:#ffffff11;color:#888;border-color:#ffffff22;font-size:11px;padding:3px 8px;border-radius:6px}
 .yr-btn.active{background:#2a9d8f;color:#fff;border-color:#2a9d8f;font-weight:600}
 .btn-issues{background:#e6394622;color:#e63946;border-color:#e6394655}
+.btn-online{background:#8ab4f822;color:#8ab4f8;border-color:#8ab4f855}
 
 .filters{display:flex;flex-wrap:wrap;gap:3px;padding:6px 16px;background:#16213e;border-bottom:1px solid #0f3460;align-items:center}
 .filters .fl{font-size:10px;color:#888;margin-right:4px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
@@ -205,6 +206,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sp-item .sir{float:right;background:none;border:none;color:#555;cursor:pointer;font-size:13px}
 .sp-item .sir:hover{color:#e63946}
 .sp-btn{margin:10px 18px;padding:7px;border-radius:6px;cursor:pointer;font-size:11px;text-align:center;flex-shrink:0;border:1px solid}
+/* Online events panel */
+.op-note{padding:6px 18px;font-size:10px;color:#777;border-bottom:1px solid #0f346033;flex-shrink:0}
+.op-row{display:flex;gap:8px;align-items:flex-start}
+.op-info{flex:1;min-width:0}
+.op-item.op-ign{opacity:.4}
+.op-item.op-open{background:#1a1a3a}
+.op-star{background:none;border:none;cursor:pointer;font-size:16px;color:#e9c46a;opacity:.45;padding:2px 4px;flex-shrink:0}
+.op-star:hover,.op-star.on{opacity:1}
+.op-link{font-size:10px;color:#2a9d8f;text-decoration:none}
+.op-link:hover{text-decoration:underline}
+.op-detail{max-width:none!important;background:#1e1e3a;border-bottom:1px solid #0f3460}
+.op-group{border-top:1px solid #0f3460}
+.op-group summary{padding:10px 18px;cursor:pointer;font-size:11px;color:#8ab4f8;font-weight:600;user-select:none}
+.op-group summary:hover{background:#1a1a3a}
 
 /* === Desktop-only defaults for mobile elements === */
 .mobile-hamburger{display:none}
@@ -372,6 +387,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="top-btns" style="justify-content:center;margin-left:0">
     <button class="btn" id="typesBtn" onclick="togglePanel('types')" style="background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55">🏷️ Types</button>
     <button class="btn btn-favs" id="favsBtn" onclick="togglePanel('favs')">Starred (0)</button>
+    <button class="btn btn-online" id="onlineBtn" onclick="togglePanel('online')" title="Online events (no map pins)">🌐 Online (0)</button>
     <button class="btn" id="ignBtn" onclick="togglePanel('ignored')" style="background:#55555522;color:#888;border-color:#55555555">Ignored (0)</button>
     <button class="btn btn-issues" id="issuesBtn" onclick="togglePanel('issues')" style="display:none">Issues (0)</button>
   </div>
@@ -399,6 +415,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </button>
     <button class="mm-btn mm-btn-star" id="mmStarBtn" onclick="mobileMenuAction(()=>togglePanel('favs'))">
       <span class="mm-icon">⭐</span><span class="mm-label">Starred Events</span><span class="mm-badge" id="mmStarCount">0</span>
+    </button>
+    <button class="mm-btn" id="mmOnlineBtn" onclick="mobileMenuAction(()=>togglePanel('online'))">
+      <span class="mm-icon">🌐</span><span class="mm-label">Online Events</span><span class="mm-badge" id="mmOnlineCount">0</span>
     </button>
     <button class="mm-btn" onclick="mobileMenuAction(()=>togglePanel('ignored'))">
       <span class="mm-icon">—</span><span class="mm-label">Ignored Events</span><span class="mm-badge" id="mmIgnCount">0</span>
@@ -497,6 +516,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <button class="sp-btn" onclick="exportKML()" style="background:#e8951833;color:#e89518;border-color:#e8951855;margin-top:4px">📍 Export KML for Google My Maps</button>
 </div>
 
+<!-- Online Events Panel -->
+<div class="side-panel" id="onlinePanel">
+  <div class="sp-header"><h2 style="color:#8ab4f8">🌐 Online Events</h2><button class="sp-close" onclick="togglePanel('online')">&times;</button></div>
+  <div class="op-note">Follows the month, type and search filters (the region filter does not apply). Click an event for details.</div>
+  <div class="sp-list" id="onlineList"></div>
+</div>
+
 <!-- Issues Panel -->
 <div class="side-panel" id="issuesPanel">
   <div class="sp-header"><h2 style="color:#e63946">Bug Reports</h2><button class="sp-close" onclick="togglePanel('issues')">&times;</button></div>
@@ -566,7 +592,7 @@ let TI = {'ecovillage':'🛖','permaculture':'🌱','bioregional':'🌍','climat
 async function fetchTagIcons(){
   try{
     const{data,error}=await sb.from('tag_icons').select('tag,icon');
-    if(!error&&data){data.forEach(r=>{TI[r.tag]=r.icon});}
+    if(!error&&data){data.forEach(r=>{TI[r.tag]=esc(r.icon)});} // icons are inserted as HTML: keep them escaped
   }catch(e){console.warn('Tag icons fetch failed, using defaults');}
 }
 function gi(ev){for(const t of(ev.tags||[])){if(TI[t])return TI[t]}return'📍'}
@@ -624,6 +650,7 @@ const activeMonths = new Set(MO.filter(m => !PAST_MONTHS.has(m)));
 let events = [];
 const evUrl = u => !u ? '' : (/^https?:\/\//i.test(u) ? u : 'https://' + u);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const safeImg = u => /^https?:\/\//i.test(String(u ?? '').trim()) ? esc(String(u).trim()) : ''; // escaped http(s) image URL or ''
 let starCounts = new Map();
 let userStars = new Set();
 const ignored = new Set();
@@ -794,17 +821,17 @@ function calcDuration(dates) {
 
 function popupHtml(ev, idx) {
   const c = ev.edition_state === 'dates-tba' ? '#6f9ceb' : (MC[ev.month] || '#888');
-  const img = ev.image_url ? `<img src="${ev.image_url}" alt="" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:8px" onerror="this.style.display='none'">` : '';
+  const img = safeImg(ev.image_url) ? `<img src="${safeImg(ev.image_url)}" alt="" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:8px" onerror="this.style.display='none'">` : '';
   const tags = (ev.tags || []).filter(t => t !== 'sold-out').map(t => {
     const ic = TI[t] || '';
     return `<span class="tag" style="background:${c}44;color:${c};border:1px solid ${c}66">${ic} ${esc(t)}</span>`;
   }).join('');
   const url = ev.url ? `<a href="${esc(evUrl(ev.url))}" target="_blank">${esc(ev.url)}</a>` : '';
-  const mapsLink = `<a href="https://www.google.com/maps?q=${ev.lat},${ev.lng}" target="_blank" style="font-size:9px;color:#457b9d;margin-left:4px">open in maps</a>`;
+  const mapsLink = ev.is_online ? '' : `<a href="https://www.google.com/maps?q=${ev.lat},${ev.lng}" target="_blank" style="font-size:9px;color:#457b9d;margin-left:4px">open in maps</a>`;
   const venue = ev.venue ? `<div class="venue">📍 ${esc(ev.venue)}</div>` : '';
   const isStar = userStars.has(ev.id);
   const isIgn = ignored.has(idx);
-  const badge = `<span style="display:inline-block;font-size:9px;padding:2px 7px;border-radius:8px;background:${c};color:#fff;font-weight:600;margin-bottom:4px">${ev.month} ${selectedYear}</span>`;
+  const badge = `<span style="display:inline-block;font-size:9px;padding:2px 7px;border-radius:8px;background:${c};color:#fff;font-weight:600;margin-bottom:4px">${esc(ev.month)} ${selectedYear}</span>`;
   const soldOut = (ev.tags || []).includes('sold-out') ? `<span style="display:inline-block;font-size:9px;padding:2px 7px;border-radius:8px;background:#e63946;color:#fff;font-weight:700;margin-bottom:4px;margin-left:4px">SOLD OUT</span>` : '';
   const duration = calcDuration(ev.dates);
   const durBadge = `<span style="font-size:10px;color:#888;margin-left:6px">(${duration})</span>`;
@@ -830,7 +857,7 @@ function popupHtml(ev, idx) {
 
 function tipHtml(ev) {
   const c = ev.edition_state === 'dates-tba' ? '#6f9ceb' : (MC[ev.month] || '#888');
-  const img = ev.image_url ? `<img class="ti" src="${ev.image_url}" alt="" onerror="this.style.display='none'">` : `<div class="tp" style="background:linear-gradient(135deg,${c}44,${c}22)">${gi(ev)}</div>`;
+  const img = safeImg(ev.image_url) ? `<img class="ti" src="${safeImg(ev.image_url)}" alt="" onerror="this.style.display='none'">` : `<div class="tp" style="background:linear-gradient(135deg,${c}44,${c}22)">${gi(ev)}</div>`;
   const tags = (ev.tags || []).map(t => `<span class="ttg">${TI[t] || ''} ${esc(t)}</span>`).join('');
   
   // Show star count in tooltip
@@ -841,22 +868,46 @@ function tipHtml(ev) {
   return `${img}<div class="tb"><div class="tn">${esc(ev.name)}</div><div class="td">${esc(ev.dates)} · ${esc(ev.location)}</div><div class="tds">${esc(ev.description)}</div><div class="tt">${tags}</div>${starDisplay}</div>`;
 }
 
+// Type (tag) + search filter, shared by the map and the Online panel
+function passesTagSearch(ev) {
+  const evTags = ev.tags || [];
+  if (evTags.length > 0 && !evTags.some(t => activeTags.has(t))) return false;
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    const haystack = `${ev.name} ${ev.location} ${ev.description} ${evTags.join(' ')} ${ev.venue || ''}`.toLowerCase();
+    if (!haystack.includes(q)) return false;
+  }
+  return true;
+}
+
 function getVisible() {
   return events.map((ev, i) => {
     const region = getRegion(ev.lat, ev.lng);
     const inRegion = activeRegions.has(region);
     return { ev, i, region, inRegion };
   }).filter(({ ev }) => {
+    if (ev.is_online) return false; // online events have no pin; they live in the Online panel
     if (ev.edition_state !== 'dates-tba' && !activeMonths.has(ev.month)) return false;
-    const evTags = ev.tags || [];
-    if (evTags.length > 0 && !evTags.some(t => activeTags.has(t))) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const haystack = `${ev.name} ${ev.location} ${ev.description} ${evTags.join(' ')} ${ev.venue || ''}`.toLowerCase();
-      if (!haystack.includes(q)) return false;
-    }
-    return true;
+    return passesTagSearch(ev);
   });
+}
+
+// === ONLINE EVENTS ===
+const ONLINE_REGULAR = new Set(['weekly', 'monthly']);
+function onlineGroup(ev) {
+  if (ONLINE_REGULAR.has(ev.recurrence)) return 'regular'; // repeating calls, no fixed date
+  if (ev.edition_state === 'dates-tba') return 'tba';       // one-time, no date yet
+  if (MO.indexOf(ev.month) < 0) return 'tba';               // no usable month: list it rather than lose it
+  return 'main';
+}
+// Online events passing month / type / search filters (region does not apply).
+// Month filter applies only to dated events (main list), same rule as the map.
+function getVisibleOnline() {
+  return events.map((ev, i) => ({ ev, i })).filter(({ ev }) => ev.is_online).map(({ ev, i }) => ({ ev, i, group: onlineGroup(ev) }))
+    .filter(({ ev, group }) => {
+      if (group === 'main' && !activeMonths.has(ev.month)) return false;
+      return passesTagSearch(ev);
+    });
 }
 
 function render() {
@@ -904,6 +955,8 @@ function render() {
   map.addLayer(clusterGroup);
   renderTimeline(visible);
   updateBtns();
+  const op = document.getElementById('onlinePanel');
+  if (op && op.classList.contains('open')) renderOnlinePanel();
 }
 
 // === TIMELINE ===
@@ -1004,7 +1057,7 @@ function renderTimeline(visible) {
 function showTlTip(ev, e) {
   const tip = document.getElementById('tlTip');
   const c = ev.edition_state === 'dates-tba' ? '#6f9ceb' : (MC[ev.month] || '#888');
-  const img = ev.image_url ? `<img class="ttp-img" src="${ev.image_url}" onerror="this.style.display='none'">` : '';
+  const img = safeImg(ev.image_url) ? `<img class="ttp-img" src="${safeImg(ev.image_url)}" onerror="this.style.display='none'">` : '';
   const tags = (ev.tags || []).map(t => `<span class="ttp-tag" style="background:${c}44;color:${c};border:1px solid ${c}66">${TI[t] || ''} ${esc(t)}</span>`).join('');
   const duration = calcDuration(ev.dates);
   const starData = starCounts.get(ev.id);
@@ -1033,6 +1086,11 @@ function hideTlTip() {
 function updateBtns() {
   document.getElementById('favsBtn').textContent = `Starred (${userStars.size})`;
   document.getElementById('ignBtn').textContent = `Ignored (${ignored.size})`;
+  const onlineN = getVisibleOnline().length;
+  const onlineBtn = document.getElementById('onlineBtn');
+  if (onlineBtn) onlineBtn.textContent = `🌐 Online (${onlineN})`;
+  const mmOnline = document.getElementById('mmOnlineCount');
+  if (mmOnline) mmOnline.textContent = onlineN;
   if (issues.length > 0) {
     document.getElementById('issuesBtn').style.display = 'inline-block';
     document.getElementById('issuesBtn').textContent = `Issues (${issues.length})`;
@@ -1278,7 +1336,7 @@ function initTypeFilters() {
     item.style.color = isActive ? '#2a9d8f' : '#888';
     
     const icon = TI[tag] || '';
-    item.innerHTML = `<span style="font-size:12px;font-weight:600">${icon} ${tag}</span>`;
+    item.innerHTML = `<span style="font-size:12px;font-weight:600">${icon} ${esc(tag)}</span>`;
     
     item.addEventListener('click', () => {
       if (activeTags.has(tag)) {
@@ -1306,7 +1364,7 @@ function setAllTypes(on) {
 
 // === SIDE PANELS ===
 function togglePanel(panel) {
-  const panels = { favs: 'favsPanel', issues: 'issuesPanel', types: 'typesPanel', about: 'aboutPanel', ignored: 'ignoredPanel' };
+  const panels = { favs: 'favsPanel', issues: 'issuesPanel', types: 'typesPanel', about: 'aboutPanel', ignored: 'ignoredPanel', online: 'onlinePanel' };
   const el = document.getElementById(panels[panel]);
   if (!el) return;
   
@@ -1320,7 +1378,96 @@ function togglePanel(panel) {
     if (panel === 'favs') renderFavsPanel();
     if (panel === 'ignored') renderIgnoredPanel();
     if (panel === 'issues') renderIssuesPanel();
+    if (panel === 'online') renderOnlinePanel();
   }
+}
+
+// === ONLINE PANEL ===
+let onlineOpenId = null;                              // event whose details are expanded
+const onlineGroupsOpen = { regular: false, tba: false }; // collapsed groups state
+const firstDayNum = ev => parseInt(String(ev.dates || '').match(/\d+/)?.[0] || 0);
+
+function onlineRowHtml(ev, i) {
+  const isStar = userStars.has(ev.id);
+  const isIgn = ignored.has(i);
+  const isOpen = onlineOpenId === ev.id;
+  const icons = (ev.tags || []).filter(t => t !== 'sold-out' && TI[t]).map(t => `<span title="${esc(t)}">${TI[t]}</span>`).join(' ');
+  let dt = ev.edition_state === 'dates-tba' ? `~${ev.month || ''} · dates TBA` : (ev.dates || '');
+  if (ONLINE_REGULAR.has(ev.recurrence)) dt += (dt ? ' · ' : '') + ev.recurrence;
+  const link = ev.url ? `<a class="op-link" href="${esc(evUrl(ev.url))}" target="_blank" rel="noopener">🔗 ${esc(ev.url)}</a>` : '';
+  const row = `<div class="sp-item op-item${isIgn ? ' op-ign' : ''}${isOpen ? ' op-open' : ''}" data-idx="${i}">
+    <div class="op-row">
+      <div class="op-info">
+        <div class="sin">${esc(ev.name)}</div>
+        <div class="sid">${esc(dt)}</div>
+        <div class="sil">🌐 ${esc(ev.location || 'Online')}${icons ? ' · ' + icons : ''}</div>
+        ${link}
+      </div>
+      <button class="op-star${isStar ? ' on' : ''}" data-action="star" data-idx="${i}" title="${isStar ? 'Remove star' : 'Star this event'}">${isStar ? '★' : '☆'}</button>
+    </div>
+  </div>`;
+  return row + (isOpen ? `<div class="leaflet-popup-content op-detail">${popupHtml(ev, i)}</div>` : '');
+}
+
+function renderOnlinePanel() {
+  const list = document.getElementById('onlineList');
+  if (!list) return;
+  const vis = getVisibleOnline();
+  const byName = (a, b) => String(a.ev.name || '').localeCompare(String(b.ev.name || ''));
+  const byMonthDay = (a, b) => (MO.indexOf(a.ev.month) - MO.indexOf(b.ev.month)) || (firstDayNum(a.ev) - firstDayNum(b.ev)) || byName(a, b);
+  const main = vis.filter(v => v.group === 'main').sort(byMonthDay);
+  const regular = vis.filter(v => v.group === 'regular').sort(byName);
+  const tba = vis.filter(v => v.group === 'tba').sort(byMonthDay);
+
+  let html = '';
+  if (vis.length === 0) {
+    const anyOnline = events.some(e => e.is_online);
+    html = `<div class="sp-empty">${anyOnline ? 'No online events match your filters' + (showPast ? '' : ' (past months are hidden - try "Show past")') : 'No online events for ' + esc(selectedYear)}</div>`;
+  }
+  let curMonth;
+  main.forEach(({ ev, i }) => {
+    if (ev.month !== curMonth) {
+      curMonth = ev.month;
+      const mIdx = MO.indexOf(curMonth);
+      const slot = mIdx - NOW_MONTH;
+      const fg = (mIdx < NOW_MONTH) ? '#999' : (LIGHT_TEXT_SLOTS.has(slot) ? '#1a1a2e' : '#fff');
+      html += `<div class="tl-month" style="background:${MC[curMonth] || '#555'};color:${fg}">${esc(curMonth || '?')}</div>`;
+    }
+    html += onlineRowHtml(ev, i);
+  });
+  const group = (key, title, items) => !items.length ? '' :
+    `<details class="op-group" data-group="${key}"${onlineGroupsOpen[key] ? ' open' : ''}><summary>${title} (${items.length})</summary>${items.map(({ ev, i }) => onlineRowHtml(ev, i)).join('')}</details>`;
+  html += group('regular', '🔁 Regular calls', regular);
+  html += group('tba', '🗓️ Dates TBA', tba);
+  list.innerHTML = html;
+
+  list.querySelectorAll('details.op-group').forEach(d => {
+    d.addEventListener('toggle', () => { onlineGroupsOpen[d.dataset.group] = d.open; });
+  });
+  list.onclick = (e) => {
+    const starBtn = e.target.closest('[data-action="star"]');
+    if (starBtn) { e.stopPropagation(); toggleStar(Number(starBtn.dataset.idx)); return; }
+    if (e.target.closest('a') || e.target.closest('.op-detail')) return; // links + popup buttons handle themselves
+    const row = e.target.closest('.op-item');
+    if (!row) return;
+    const ev = events[Number(row.dataset.idx)];
+    if (!ev) return;
+    onlineOpenId = onlineOpenId === ev.id ? null : ev.id;
+    renderOnlinePanel();
+  };
+}
+
+// Open the Online panel with one event expanded (used from Starred / Ignored lists)
+function openOnlineEvent(id) {
+  const ev = events.find(e => e.id === id);
+  if (!ev) return;
+  onlineOpenId = id;
+  const g = onlineGroup(ev);
+  if (g !== 'main') onlineGroupsOpen[g] = true;
+  document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
+  document.getElementById('onlinePanel').classList.add('open');
+  renderOnlinePanel();
+  if (!getVisibleOnline().some(v => v.ev.id === id)) toast('Hidden by filters - try Show past, or clear search / types', '#e89530');
 }
 
 function renderFavsPanel() {
@@ -1354,6 +1501,7 @@ function renderFavsPanel() {
       <div class="sil">${esc(ev.location)}</div>
     `;
     item.addEventListener('click', () => {
+      if (ev.is_online) { openOnlineEvent(ev.id); return; }
       map.setView([ev.lat, ev.lng], 8);
       clusterGroup.getLayers().forEach(m => {
         if (m._evId === ev.id) m.openPopup();
@@ -1377,6 +1525,7 @@ function renderIgnoredPanel() {
     item.className = 'sp-item';
     item.innerHTML = `<button class="sir" onclick="event.stopPropagation();unIgnore(${idx})">↩</button><div class="sin">${esc(ev.name)}</div><div class="sid">${esc(ev.dates)}</div><div class="sil">${esc(ev.location)}</div>`;
     item.addEventListener('click', () => {
+      if (ev.is_online) { openOnlineEvent(ev.id); return; }
       map.setView([ev.lat, ev.lng], 8);
       togglePanel('ignored');
     });
@@ -1416,7 +1565,7 @@ function renderIssuesPanel() {
     item.innerHTML = `
       <div class="sin">${esc(iss.event_name)}</div>
       <div class="sil">${esc(iss.issue_text)}</div>
-      <div style="font-size:9px;color:#666;margin-top:3px">by ${iss.created_by}</div>
+      <div style="font-size:9px;color:#666;margin-top:3px">by ${esc(iss.created_by)}</div>
       <button class="sir" onclick="removeIssue(${i})">×</button>
     `;
     list.appendChild(item);
@@ -1527,21 +1676,23 @@ function exportICS() {
     // Build description with URL + Google Maps link
     let desc = ev.description || '';
     if (eventUrl) desc += `\\n\\nEvent: ${eventUrl}`;
-    desc += `\\n\\nMap: ${mapsUrl}`;
+    if (!ev.is_online) desc += `\\n\\nMap: ${mapsUrl}`;
     // Escape special chars for ICS
     desc = desc.replace(/,/g, '\\,').replace(/;/g, '\\;');
 
-    const summary = `${emoji} ${ev.name} — ${ev.location}`;
+    const summary = `${emoji} ${ev.name} — ${ev.location}${ev.edition_state === 'dates-tba' ? ' (dates TBA)' : ''}`;
 
     ics += `BEGIN:VEVENT\n`;
     ics += `UID:${uid}\n`;
     ics += `DTSTART;VALUE=DATE:${dtstart}\n`;
     ics += `DTEND;VALUE=DATE:${dtend}\n`;
+    if (ev.recurrence === 'weekly') ics += `RRULE:FREQ=WEEKLY\n`;
+    if (ev.recurrence === 'monthly') ics += `RRULE:FREQ=MONTHLY\n`;
     ics += `SUMMARY:${summary}\n`;
     ics += `DESCRIPTION:${desc}\n`;
     ics += `LOCATION:${ev.location}\n`;
     if (eventUrl) ics += `URL:${eventUrl}\n`;
-    ics += `GEO:${ev.lat};${ev.lng}\n`;
+    if (!ev.is_online) ics += `GEO:${ev.lat};${ev.lng}\n`;
     ics += `END:VEVENT\n`;
   });
 
@@ -1563,7 +1714,11 @@ function exportKML() {
     return;
   }
   
-  const starredEvents = events.filter(e => userStars.has(e.id));
+  const starredEvents = events.filter(e => userStars.has(e.id) && !e.is_online); // online events have no location
+  if (starredEvents.length === 0) {
+    toast('No starred events with a location (online events are not exported to KML)', '#e63946');
+    return;
+  }
   starredEvents.sort((a, b) => {
     const ma = MO.indexOf(a.month);
     const mb = MO.indexOf(b.month);
@@ -1604,12 +1759,11 @@ function openRoutePage() {
     toast('Star some events first!', '#e63946');
     return;
   }
-  if (userStars.size < 2) {
-    toast('Star at least 2 events for a route!', '#e63946');
+  const starredEvents = events.filter(e => userStars.has(e.id) && !e.is_online); // online events have no place on a route
+  if (starredEvents.length < 2) {
+    toast('Star at least 2 events with a location for a route!', '#e63946');
     return;
   }
-  
-  const starredEvents = events.filter(e => userStars.has(e.id));
   starredEvents.sort((a, b) => {
     const ma = MO.indexOf(a.month);
     const mb = MO.indexOf(b.month);
