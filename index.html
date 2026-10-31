@@ -1686,8 +1686,9 @@ function exportICS() {
     ics += `UID:${uid}\n`;
     ics += `DTSTART;VALUE=DATE:${dtstart}\n`;
     ics += `DTEND;VALUE=DATE:${dtend}\n`;
-    if (ev.recurrence === 'weekly') ics += `RRULE:FREQ=WEEKLY\n`;
-    if (ev.recurrence === 'monthly') ics += `RRULE:FREQ=MONTHLY\n`;
+    const rrUntil = `;UNTIL=${typeof ev.year === 'number' ? ev.year : selectedYear}1231T235959Z`;
+    if (ev.recurrence === 'weekly') ics += `RRULE:FREQ=WEEKLY${rrUntil}\n`;
+    if (ev.recurrence === 'monthly') ics += `RRULE:FREQ=MONTHLY${rrUntil}\n`;
     ics += `SUMMARY:${summary}\n`;
     ics += `DESCRIPTION:${desc}\n`;
     ics += `LOCATION:${ev.location}\n`;
