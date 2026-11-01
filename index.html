@@ -5,6 +5,62 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Events & Gatherings — Map</title>
 
+<!-- Site + theme config, and theme bootstrap (runs before first paint) -->
+<script>
+// FORKING THIS MAP: change title / storageKey, and bring your OWN CARTO key and Supabase project
+// (the ones below belong to this site; CARTO keys are referrer-locked, so they will not work elsewhere).
+// The og:/twitter: tags further down stay static (link-preview crawlers do not run JS): edit them by hand.
+window.SITE_CONFIG = {
+  title: 'Events & Gatherings',                     // h1 + phone menu title + document.title
+  defaultTheme: 'earthy',                           // a theme name, or 'auto' (follows prefers-color-scheme)
+  autoThemes: { dark: 'earthy', light: 'earthy' },  // what 'auto' resolves to (add a light theme later)
+  storageKey: 'events-map',                         // prefix for every localStorage key this page writes
+  // CARTO basemaps need an API key since 2026 (free non-commercial key; manage at dashboard.basemaps.carto.com)
+  cartoKey: 'cb1_4q4i_1_b2a490d9c3fe6dd1e0d23e2b',
+  // Supabase project (public anon key; row-level security on the project decides what it may do)
+  supabaseUrl: 'https://aurftdjjghtzeofqzezx.supabase.co',
+  supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1cmZ0ZGpqZ2h0emVvZnF6ZXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5OTA4MzUsImV4cCI6MjA4OTU2NjgzNX0.PeOisRNczOCYOgyiKL8lNDA0ZNiwhzBhqQWDYx6DtMo',
+  // Phone layout at or below this width. MUST match the @media(max-width:900px) rules in the page CSS.
+  phoneMax: 900,
+  // tiles: a preset name (cartoDark | cartoDarkSplit | cartoLight | cartoVoyager)
+  //        or a custom { url, attribution, options, labels?: { url, attribution, options } }
+  // tilesLite: optional cheaper preset used on phones / tablets / touch screens (see liteQuery);
+  //        theme.css styles it via :root[data-theme="x"][data-tiles="lite"]. Missing = same as tiles.
+  liteQuery: '(max-width: 900px), (pointer: coarse)',
+  themes: {
+    earthy: { label: 'Earthy', tiles: 'cartoDarkSplit', tilesLite: 'cartoDark' }, // tinted base + crisp labels; lite: one layer + tint
+    dark:   { label: 'Dark',   tiles: 'cartoDark' }       // the pre-S28 look
+  }
+};
+(function () {
+  var C = window.SITE_CONFIG;
+  var own = function (o, k) { return !!o && Object.prototype.hasOwnProperty.call(o, k); };
+  if (!C.themes || !Object.keys(C.themes).length) C.themes = { dark: { label: 'Dark', tiles: 'cartoDark' } };
+  // Browsers without color-mix() cannot render the derived tokens: they get the dark theme (most explicit values)
+  C.colorMix = !(window.CSS && CSS.supports) || CSS.supports('color', 'color-mix(in srgb, red, blue)');
+  C.resolveTheme = function (name) {
+    if (name === 'auto') {
+      var light = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+      name = (C.autoThemes || {})[light ? 'light' : 'dark'];
+    }
+    if (!C.colorMix && own(C.themes, 'dark')) return 'dark';
+    if (own(C.themes, name)) return name;
+    if (own(C.themes, C.defaultTheme)) return C.defaultTheme;
+    return Object.keys(C.themes)[0];
+  };
+  var pick = null;
+  try { pick = new URLSearchParams(location.search).get('theme'); } catch (e) {}
+  if (!pick) { try { pick = localStorage.getItem(C.storageKey + '-theme'); } catch (e) {} }
+  C.themeChoice = (pick === 'auto' || own(C.themes, pick || '')) ? pick : C.defaultTheme;
+  var root = document.documentElement;
+  root.setAttribute('data-theme', C.resolveTheme(C.themeChoice));
+  // data-tiles="lite" on phones / tablets / touch: theme.css drops the costly tile filter there
+  var lite = false;
+  try { lite = window.matchMedia(C.liteQuery).matches; } catch (e) {}
+  root.setAttribute('data-tiles', lite ? 'lite' : 'full');
+})();
+</script>
+
 <!-- Favicon (SVG inline) -->
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%231a1a2e'/><circle cx='50' cy='50' r='35' fill='%232a9d8f'/><text x='50' y='68' font-size='50' text-anchor='middle' font-family='sans-serif'>🌍</text></svg>" type="image/svg+xml">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%231a1a2e'/><text x='50' y='68' font-size='55' text-anchor='middle'>🌍</text></svg>">
@@ -33,193 +89,460 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Minimal fallback (earthy base colours) in case theme.css fails to load; theme.css overrides all of it -->
+<style>
+:root{--bg:#131d15;--surface:#102d2a;--surface-2:#143430;--surface-sunk:#081b1a;--hover:#1a3e39;--border:#5c5a3a;--line:#2f5a53;
+  --text:#efe6d2;--text-strong:#fbf6ea;--text-2:#e3d9c2;--text-muted:#a8bbc1;--accent:#48c8b5;--on-accent:#0b1a15;--accent-2:#d9b35e;
+  --link:#6fd5c5;--focus:#ecc96f;--danger:#ef775f;--bar-bg:#143430;--filter-bg:#102d2a;--panel-bg-solid:#102d2a;--popup-bg:#143430;
+  --dock-bg:#0e2826;--title-text:#ecc96f;--tg-bg:#0b2321;--tg-edge:#3d4a33;--cta-bg:#48c8b5;--cta-text:#0b1a15;--map-bg:#214d31;
+  --font-ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--font-display:Georgia,serif}
+</style>
+<!-- theme.css cache-buster: bump ?v= whenever theme.css changes (this is the only place it is set) -->
+<link rel="stylesheet" href="theme.css?v=s28">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a1a2e;color:#e0e0e0;overflow:hidden;height:100vh}
-.top-bar{padding:8px 16px;background:#16213e;border-bottom:1px solid #0f3460;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.top-bar h1{font-size:16px;color:#e0e0e0;font-weight:600;white-space:nowrap}
-.search-box{flex:1;min-width:180px;max-width:320px;position:relative}
-.search-box input{width:100%;padding:5px 10px 5px 28px;border-radius:14px;border:1px solid #333;background:#0f0f2a;color:#e0e0e0;font-size:12px;outline:none}
-.search-box input:focus{border-color:#2a9d8f}
-.search-box::before{content:'🔍';position:absolute;left:8px;top:5px;font-size:11px}
-.top-btns{display:flex;gap:4px;align-items:center;margin-left:auto}
-.btn{font-size:10px;padding:4px 10px;border-radius:8px;cursor:pointer;border:1px solid #444;background:#333;color:#ccc;white-space:nowrap}
-.btn:hover{background:#444}
-.btn-add{background:#2a9d8f33;color:#2a9d8f;border-color:#2a9d8f55}
-.btn-add:hover{background:#2a9d8f55}
-.btn-favs{background:#e9c46a22;color:#e9c46a;border-color:#e9c46a55}
-.btn-favs.active{background:#e9c46a;color:#1a1a2e;font-weight:600}
-.yr-btn{background:#ffffff11;color:#888;border-color:#ffffff22;font-size:11px;padding:3px 8px;border-radius:6px}
-.yr-btn.active{background:#2a9d8f;color:#fff;border-color:#2a9d8f;font-weight:600}
-.btn-issues{background:#e6394622;color:#e63946;border-color:#e6394655}
-.btn-online{background:#8ab4f822;color:#8ab4f8;border-color:#8ab4f855}
+body{font-family:var(--font-ui);background:var(--bg);color:var(--text);overflow:hidden;height:100vh;display:flex;flex-direction:column}
+/* === Header (S28 chunk 4): [brand | year | search] ...... [view toggles] [Suggest] [more] === */
+.sprite{position:absolute;width:0;height:0;overflow:hidden}
+.ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sr-only,.yr-inline{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.top-bar{padding:8px 16px;min-height:58px;background:var(--bar-bg);border-bottom:1px solid var(--header-edge);display:flex;align-items:center;gap:14px;flex-shrink:0;position:relative;z-index:1100}
+.tb-left{display:flex;align-items:center;gap:16px;flex:1 1 auto;min-width:0}
+.tb-mid{flex:none}
+.tb-right{display:flex;gap:8px;align-items:center;flex:none}
+.brand{display:flex;align-items:center;gap:10px;flex:none;min-width:0}
+.brand-mark{width:36px;height:36px;flex:none;color:var(--brand-mark);transition:transform .4s ease}
+.brand:hover .brand-mark{transform:rotate(-14deg)}
+/* the mark is one <symbol id="i-brand"> used twice; its paths are styled where they live (in the sprite) */
+.brand-mark{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
+.bm-shell{fill:var(--brand-glass);stroke:none}
+.bm-whorl{stroke-width:1.7}
+.bm-septa{stroke-width:.9;opacity:.75}
+.brand-tx{display:flex;flex-direction:column;min-width:0}
+.top-bar h1{font-family:var(--font-display);font-size:21px;line-height:1.1;color:var(--title-text);font-weight:600;white-space:nowrap;letter-spacing:.2px}
+.brand-tag{font-size:10.5px;line-height:1.2;color:var(--tagline);letter-spacing:.4px;margin-top:2px;white-space:nowrap}
+/* segmented control (year switch; mobile year row) */
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:11px;background:var(--tg-bg);border:1px solid var(--tg-edge);flex:none}
+.seg:empty{display:none} /* year switch before the years are known (or when loading failed) */
+.seg .yr-btn{font:inherit;font-size:12.5px;font-weight:600;padding:0 12px;height:28px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--text-muted);cursor:pointer;font-variant-numeric:tabular-nums;transition:background-color .15s,color .15s,box-shadow .15s}
+.seg .yr-btn:hover{color:var(--text-strong);background:var(--tg-hover)}
+.seg .yr-btn.active{background:var(--cta-bg);color:var(--cta-text);box-shadow:0 1px 8px var(--cta-glow)}
+/* search */
+.search-box{flex:0 1 340px;min-width:150px;position:relative;transition:flex-basis .2s ease}
+.search-box:focus-within{flex-basis:440px}
+.search-box .s-ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;transition:color .15s}
+.search-box:focus-within .s-ic{color:var(--focus)}
+.search-box input{width:100%;height:38px;padding:0 36px 0 37px;border-radius:12px;border:1px solid var(--search-edge);background:var(--search-bg);color:var(--text);font:inherit;font-size:13px;outline:none;transition:border-color .15s,box-shadow .2s}
+.search-box input::placeholder{color:var(--placeholder);opacity:1}
+.search-box input:hover{border-color:var(--search-edge-hover)}
+.search-box input:focus{border-color:var(--focus);box-shadow:0 0 0 3px var(--search-ring)}
+.search-box input:focus-visible{outline:none}
+.kbd-hint{position:absolute;right:10px;top:50%;transform:translateY(-50%);min-width:20px;height:20px;padding:0 6px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:var(--kbd-bg);border:1px solid var(--kbd-edge);color:var(--kbd-text);font:600 11px/1 var(--font-ui);pointer-events:none}
+.search-box input:focus~.kbd-hint,.search-box input:not(:placeholder-shown)~.kbd-hint{display:none}
+.search-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:28px;height:28px;display:none;align-items:center;justify-content:center;border:none;border-radius:8px;background:transparent;color:var(--text-muted);cursor:pointer}
+.search-clear:hover{background:var(--tg-hover);color:var(--text-strong)}
+.search-box input:not(:placeholder-shown)~.search-clear{display:flex}
+/* view toggles: one group, icon + label + count; pressed = its panel / dock is open */
+.tgroup{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:13px;background:var(--tg-bg);border:1px solid var(--tg-edge)}
+.tg-btn{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--tg-text);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background-color .15s,color .15s,border-color .15s,transform .1s}
+.tg-btn .ic{color:var(--tg-icon);transition:color .15s}
+.tg-btn:hover{background:var(--tg-hover);color:var(--text-strong)}
+.tg-btn:hover .ic{color:var(--text-strong)}
+.tg-btn:active{transform:translateY(1px)}
+.tg-btn[aria-pressed="true"]{background:var(--tg-on-bg);border-color:var(--tg-on-edge);color:var(--tg-on-text)}
+.tg-btn[aria-pressed="true"] .ic{color:var(--tg-on-icon)}
+.tg-btn.t-star .ic,.tg-btn.t-star:hover .ic{color:var(--star)}
+.tg-badge{min-width:20px;height:18px;padding:0 6px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;line-height:1;background:var(--badge-bg);color:var(--badge-text);font-variant-numeric:tabular-nums;flex:none}
+.tg-badge[hidden]{display:none}
+.tg-badge.b-star:not(.zero){background:var(--badge-star-bg);color:var(--badge-star-text)}
+.tg-badge.b-info:not(.zero){background:var(--badge-info-bg);color:var(--badge-info-text)}
+.tg-btn[aria-pressed="true"] .tg-badge.b-info:not(.zero){background:var(--tg-bg)}
+/* the one primary action */
+.btn-cta{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 17px 0 13px;border-radius:12px;border:1px solid transparent;background:var(--cta-bg);color:var(--cta-text);font:inherit;font-size:13px;font-weight:700;letter-spacing:.1px;cursor:pointer;white-space:nowrap;box-shadow:0 2px 12px var(--cta-glow),inset 0 1px 0 var(--cta-sheen);transition:background-color .15s,box-shadow .2s,transform .12s}
+.btn-cta .ic{stroke-width:2.4}
+.btn-cta:hover{background:var(--cta-hover);transform:translateY(-1px);box-shadow:0 5px 20px var(--cta-glow),inset 0 1px 0 var(--cta-sheen)}
+.btn-cta:active{transform:translateY(0)}
+.btn-cta:focus-visible{outline-offset:2px}
+/* square icon button (more menu, panel close) */
+.icon-btn{width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;border:1px solid var(--tg-edge);background:var(--tg-bg);color:var(--tg-text);cursor:pointer;transition:background-color .15s,color .15s,border-color .15s}
+.icon-btn .ic{width:18px;height:18px}
+.icon-btn:hover{background:var(--tg-hover);color:var(--text-strong)}
+.icon-btn[aria-expanded="true"]{background:var(--tg-on-bg);border-color:var(--tg-on-edge);color:var(--tg-on-text)}
+/* generic buttons (filter row All/None, Types panel) */
+.btn{font-size:10px;padding:4px 10px;border-radius:8px;cursor:pointer;border:1px solid var(--control-border);background:var(--control);color:var(--text-2);white-space:nowrap;transition:background-color .15s,color .15s}
+.btn:hover{background:var(--control-hover)}
+.yr-btn{background:color-mix(in srgb,var(--text-strong) 6.7%,transparent);color:var(--text-muted);border-color:color-mix(in srgb,var(--text-strong) 13.3%,transparent);font-size:11px;padding:3px 8px;border-radius:6px}
+.yr-btn.active{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:600}
+/* labels collapse to icons (+ tooltip) as the row gets tight: Types/Timeline first, then all */
+@media(max-width:1350px){.tg-c1 .tg-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}.tg-c1{padding:0 9px}}
+@media(max-width:1180px){.tg-btn .tg-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}.tg-btn{padding:0 9px}.brand-tag{display:none}.top-bar h1{font-size:19px}}
+@media(max-width:1000px){.cta-x{display:none}.search-box{min-width:120px}.tb-left{gap:12px}.top-bar{gap:10px}}
+@media(max-width:1060px){.brand-mark{width:30px;height:30px}.top-bar h1{font-size:17px}.tgroup .tg-badge{display:none}}
+/* below 901px the phone layout takes over (SITE_CONFIG.phoneMax) */
 
-.filters{display:flex;flex-wrap:wrap;gap:3px;padding:6px 16px;background:#16213e;border-bottom:1px solid #0f3460;align-items:center}
-.filters .fl{font-size:10px;color:#888;margin-right:4px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-.filters label{font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none}
+/* Filter row: regions | months on one line; wraps to two lines on narrow desktops */
+.filters{display:flex;flex-wrap:wrap;gap:4px 10px;padding:5px 14px;background:var(--filter-bg);border-bottom:1px solid var(--header-edge);align-items:center;flex-shrink:0}
+.fgroup{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
+#regionFilters,#monthPills{display:contents}
+.fdiv{width:1px;height:16px;background:var(--line)}
+.filters .fl{font-size:9px;color:var(--text-muted);margin-right:3px;font-weight:600;text-transform:uppercase;letter-spacing:.6px}
+.filters .fbtn{font-size:9px;padding:2px 6px;border-radius:7px}
+.filters label{font-size:10px;line-height:14px;padding:2px 7px;border-radius:9px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none}
 .filters label:hover{opacity:.85}
 .filters label input{display:none}
-/* Month colors injected dynamically by initColors() */
+/* Month pills: color comes from data-month (theme.css plumbing) */
+.filters label.mlab{background:var(--c);color:var(--c-on)}
+.filters label.mlab.off{background:transparent;color:var(--c-ink);border-color:var(--c)}
 
-.main{display:flex;height:calc(100vh - 108px)}
+.main{display:flex;flex:1;min-height:0;position:relative}
 #map{flex:1;min-width:0}
 
+/* Online events: docked column on the left (desktop) */
+.online-dock{width:300px;background:var(--dock-bg);border-right:1px solid var(--dock-edge);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;transition:width .3s,opacity .3s}
+.online-dock>*{min-width:300px}
+.online-dock.collapsed{width:0;opacity:0;border:none}
+.online-dock .sp-list{padding:0}
+.online-dock .op-note{padding:6px 14px}
+.online-dock .sp-item{padding:9px 14px}
+.online-dock .op-group summary{padding:9px 14px}
+@media(min-width:901px) and (max-width:1400px){ /* narrower docks so the map keeps room */
+  .online-dock{width:260px}.online-dock>*{min-width:260px}
+  .timeline:not(.hidden){width:300px} /* :not() so this beats the base .timeline rule further down */
+}
+/* Collapsed-column tabs at the map edges */
+.dock-tab{position:absolute;top:50%;transform:translateY(-50%);z-index:1001;display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 7px;transition:background-color .15s,color .15s;background:var(--panel-bg-solid);border:1px solid var(--panel-edge);color:var(--text-muted);cursor:pointer;font-size:10px;line-height:1;box-shadow:0 2px 10px color-mix(in srgb,var(--shadow) 40%,transparent)}
+.dock-tab[hidden]{display:none}
+.dock-tab:hover{color:var(--text-strong);background:var(--hover)}
+.dock-tab-tx{writing-mode:vertical-rl;letter-spacing:.5px;font-weight:600}
+.od-toggle{left:0;border-left:none;border-radius:0 8px 8px 0}
+.tl-toggle{right:0;border-right:none;border-radius:8px 0 0 8px}
+
+/* More menu (...) */
+.more-wrap{position:relative}
+.more-menu{position:absolute;right:0;top:calc(100% + 8px);min-width:236px;padding:6px;display:flex;flex-direction:column;gap:1px;background:var(--panel-bg-solid);border:1px solid var(--panel-edge);border-radius:14px;box-shadow:var(--glass-shadow);z-index:1200;transform-origin:top right}
+.more-menu:not([hidden]){animation:menuIn .14s ease-out}
+@keyframes menuIn{from{opacity:0;transform:translateY(-4px) scale(.97)}to{opacity:1;transform:none}}
+.more-menu[hidden]{display:none}
+.mn-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;min-height:38px;padding:0 10px;border-radius:9px;border:none;background:transparent;color:var(--text-2);font:inherit;font-size:13px;cursor:pointer;transition:background-color .12s,color .12s}
+.mn-item .ic{color:var(--menu-icon);transition:color .12s}
+.mn-item .mn-tx{flex:1}
+.mn-item:hover,.mn-item:focus-visible{background:var(--hover);color:var(--text-strong)}
+.mn-item:hover .ic,.mn-item:focus-visible .ic{color:var(--text-strong)}
+.mn-item[hidden]{display:none}
+.mn-item.mn-danger,.mn-item.mn-danger .ic{color:var(--danger)}
+.mn-sep{height:1px;background:var(--line);margin:5px 6px}
+.mn-label{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);padding:5px 10px 5px}
+.mn-label .ic{width:14px;height:14px}
+.theme-seg{display:flex;gap:2px;margin:2px 4px 4px;padding:3px;border-radius:11px;background:var(--tg-bg);border:1px solid var(--tg-edge)}
+/* theme options: role=menuitemradio in the more menu, toggle buttons (aria-pressed) in the phone menu */
+.seg-opt{flex:1;display:block;text-align:center;padding:6px 10px;border-radius:8px;border:none;background:transparent;font:inherit;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;transition:background-color .15s,color .15s}
+.seg-opt:hover{color:var(--text-strong)}
+.seg-opt[aria-checked="true"],.seg-opt[aria-pressed="true"]{background:var(--cta-bg);color:var(--cta-text);box-shadow:0 1px 8px var(--cta-glow)}
+.seg-opt:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+
 /* Timeline sidebar */
-.timeline{width:340px;background:#12122a;border-left:1px solid #0f3460;display:flex;flex-direction:column;flex-shrink:0;transition:width .3s,opacity .3s}
+.timeline{width:340px;background:var(--dock-bg);border-left:1px solid var(--dock-edge);display:flex;flex-direction:column;flex-shrink:0;transition:width .3s,opacity .3s}
 .timeline.hidden{width:0;overflow:hidden;opacity:0;border:none}
-.tl-toggle{position:absolute;right:0;top:50%;transform:translateY(-50%);background:#12122a;border:1px solid #0f3460;color:#888;border-radius:4px 0 0 4px;padding:8px 5px;cursor:pointer;font-size:12px;z-index:10;line-height:1}
-.tl-toggle:hover{color:#fff;background:#1a1a3a}
-.region-sep{color:#333;margin:0 4px;font-size:10px}
-.r-label{font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;user-select:none;background:#2a9d8f;color:#fff;margin-left:1px}
-.r-label.off{background:transparent;color:#2a9d8f;border-color:#2a9d8f}
-.tl-header{padding:10px 14px;border-bottom:1px solid #0f3460;font-size:12px;color:#888;display:flex;justify-content:space-between;align-items:center}
-.tl-header span{font-weight:600;color:#ccc}
+.region-sep{color:var(--line);margin:0 4px;font-size:10px}
+.filters label.r-label{background:var(--pill-on-bg);color:var(--pill-on-text);border-color:var(--pill-on-border)}
+.filters label.r-label.off{background:transparent;color:var(--pill-off-text);border-color:var(--pill-off-border)}
+.tl-header{padding:12px 12px 12px 16px;min-height:52px;border-bottom:1px solid var(--dock-edge);font-size:12px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tl-header>span{font-family:var(--font-display);font-size:16px;font-weight:600;color:var(--title-text);letter-spacing:.2px}
+.tl-header>span>span{display:inline-flex;align-items:center;justify-content:center;vertical-align:2px;min-width:22px;height:20px;padding:0 7px;margin-left:4px;border-radius:10px;background:var(--badge-bg);color:var(--badge-text);font:700 11.5px/1 var(--font-ui);font-variant-numeric:tabular-nums}
 .tl-scroll{flex:1;overflow-y:auto;padding:0}
-.tl-month{padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;position:sticky;top:0;z-index:10;backdrop-filter:blur(8px)}
-.tl-event{padding:10px 14px;border-bottom:1px solid #ffffff08;cursor:pointer;transition:background .15s;display:flex;gap:10px;align-items:flex-start}
-.tl-event:hover{background:#1a1a3a}
-.tl-event.starred-ev{background:#e9c46a08;border-left:3px solid #e9c46a}
-.tl-event.ignored-ev{opacity:.35}
-.tl-event.highlighted{background:#2a9d8f22;border-left:3px solid #2a9d8f}
-.tl-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+/* Month bars: a theme may set --tl-month-band (+ -text / -accent) to draw non-current months as a band
+   with an urgency edge; unset = the month's own color. The current month (slot 0) always keeps its color. */
+.tl-month{font-family:var(--font-display);background:var(--tl-month-band,var(--c));color:var(--tl-month-band-text,var(--c-on));box-shadow:inset var(--tl-month-accent,0px) 0 0 var(--c);padding:6px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;position:sticky;top:0;z-index:10}
+.tl-month[data-month="past"]{color:var(--tl-month-past-text,var(--c-on))}
+.tl-month[data-month="0"]{background:var(--c);color:var(--c-on);box-shadow:none}
+.tl-event{position:relative;padding:10px 10px 10px 16px;border-bottom:1px solid var(--row-sep);cursor:pointer;transition:background-color .15s,box-shadow .15s;display:flex;gap:12px;align-items:center}
+.tl-event:hover{background:var(--hover);box-shadow:inset 3px 0 0 var(--accent)}
+.tl-event[data-month="0"]{background:color-mix(in srgb,var(--c) 6%,transparent)}
+.tl-event[data-month="0"]:hover{background:var(--hover)}
+.tl-event.starred-ev{background:color-mix(in srgb,var(--star) 7%,transparent);box-shadow:inset 3px 0 0 var(--star)}
+.tl-event.ignored-ev{opacity:.4}
+.tl-event.highlighted{background:color-mix(in srgb,var(--accent) 13.3%,transparent);box-shadow:inset 3px 0 0 var(--accent)}
+.tl-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;flex-shrink:0;border:1.5px solid var(--pin-ring);box-shadow:0 1px 4px color-mix(in srgb,var(--shadow) 45%,transparent);transition:transform .15s ease}
+.tl-event:hover .tl-icon{transform:scale(1.06)}
 .tl-info{flex:1;min-width:0}
-.tl-name{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tl-dates{font-size:10px;color:#e9c46a;margin-top:1px}
-.tl-loc{font-size:10px;color:#777;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tl-stars{font-size:9px;color:#e9c46a;margin-top:2px}
-.tl-actions{display:flex;gap:4px;flex-shrink:0;align-self:center}
-.tl-actions button{background:none;border:none;cursor:pointer;font-size:14px;opacity:.4;transition:opacity .15s;padding:2px}
-.tl-actions button:hover{opacity:1}
-.tl-actions button.active-star{opacity:1;filter:none}
-.tl-empty{padding:30px 14px;text-align:center;color:#555;font-size:12px}
-.tl-tip{position:fixed;z-index:9999;pointer-events:none;background:#1e1e3a;border:1px solid #333;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.7);max-width:300px;overflow:hidden;opacity:0;transition:opacity .15s}
+.tl-name{font-size:13px;line-height:1.3;font-weight:600;color:var(--text-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-dates{font-size:11px;line-height:1.35;font-weight:600;color:var(--accent-2);margin-top:2px;font-variant-numeric:tabular-nums}
+.tl-loc{font-size:11px;line-height:1.35;color:var(--text-dim);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-stars{font-size:10px;font-weight:600;color:var(--star);margin-top:3px}
+.tl-actions{display:flex;gap:2px;flex-shrink:0;align-self:center}
+.tl-actions button,.op-star{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--text-muted);cursor:pointer;padding:0;flex-shrink:0;transition:background-color .15s,color .15s,border-color .15s}
+.tl-actions button .ic,.op-star .ic{width:17px;height:17px}
+.tl-actions button:hover,.op-star:hover{background:var(--tg-bg);border-color:var(--tg-edge);color:var(--text-strong)}
+.tl-actions button[data-action="star"]:hover,.tl-actions button.active-star,.op-star:hover,.op-star.on{color:var(--star)}
+.tl-actions button.active-star .ic,.op-star.on .ic{fill:currentColor}
+.tl-empty{padding:30px 14px;text-align:center;color:var(--text-faint);font-size:12px}
+.tl-tip{position:fixed;z-index:9999;pointer-events:none;background:var(--popup-bg);border:1px solid var(--panel-edge);border-radius:10px;box-shadow:0 8px 32px color-mix(in srgb,var(--shadow) 70%,transparent);max-width:300px;overflow:hidden;opacity:0;transition:opacity .15s}
 .tl-tip.show{opacity:1}
 .tl-tip .ttp-img{width:100%;height:80px;object-fit:cover}
 .tl-tip .ttp-body{padding:10px 12px}
-.tl-tip .ttp-name{font-size:13px;font-weight:600;color:#fff;margin-bottom:3px}
-.tl-tip .ttp-dates{font-size:11px;color:#e9c46a;margin-bottom:2px}
-.tl-tip .ttp-loc{font-size:10px;color:#888;margin-bottom:6px}
-.tl-tip .ttp-desc{font-size:10px;color:#bbb;line-height:1.4;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tl-tip .ttp-name{font-size:13px;font-weight:600;color:var(--text-strong);margin-bottom:3px}
+.tl-tip .ttp-dates{font-size:11px;color:var(--accent-2);margin-bottom:2px}
+.tl-tip .ttp-loc{font-size:10px;color:var(--text-muted);margin-bottom:6px}
+.tl-tip .ttp-desc{font-size:10px;color:var(--text-3);line-height:1.4;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .tl-tip .ttp-tags{display:flex;flex-wrap:wrap;gap:3px}
 .tl-tip .ttp-tag{font-size:8px;padding:1px 5px;border-radius:5px;white-space:nowrap}
-.tl-tip .ttp-stars{font-size:9px;color:#e9c46a;margin-top:4px}
-.filter-hints{margin-left:auto;display:flex;gap:12px;align-items:center;font-size:9px;color:#555;flex-shrink:0}
-.filter-hints span{white-space:nowrap}
-.filter-hints span.clickable{cursor:pointer;transition:color .15s}.filter-hints span.clickable:hover{color:#e9c46a}
+.tl-tip .ttp-stars{font-size:9px;color:var(--star);margin-top:4px}
 
-/* Popup */
-.leaflet-popup-content-wrapper{background:#1e1e3a;color:#e0e0e0;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,.6)}
-.leaflet-popup-tip{background:#1e1e3a}
-.leaflet-popup-content{margin:0;max-width:360px;line-height:1.5;padding:0}
-.leaflet-popup-content .pi{padding:12px 16px}
-.leaflet-popup-content .pi img{width:100%;height:110px;object-fit:cover;border-radius:6px;margin-bottom:8px}
-.leaflet-popup-content h3{margin:0 0 3px;font-size:14px;color:#fff}
-.leaflet-popup-content .dates{font-size:12px;color:#e9c46a;font-weight:600;margin-bottom:4px}
-.leaflet-popup-content .loc{font-size:11px;color:#aaa;margin-bottom:4px}
-.leaflet-popup-content .venue{font-size:10px;color:#888;margin-bottom:6px}
-.leaflet-popup-content .desc{font-size:11px;color:#bbb;margin-bottom:6px}
-.leaflet-popup-content .tag{display:inline-block;font-size:9px;padding:1px 6px;border-radius:6px;margin-right:3px;margin-bottom:3px}
-.leaflet-popup-content a{color:#2a9d8f;text-decoration:none;font-size:11px}
+/* Popup card (chunk 4): media, month badge, serif title, gold dates + duration, place, text, tags, link, actions */
+.leaflet-popup-content-wrapper{padding:0;overflow:hidden;background:var(--popup-bg);color:var(--text);border-radius:16px;border:var(--popup-border);box-shadow:0 10px 36px color-mix(in srgb,var(--shadow) 60%,transparent)}
+.leaflet-popup-tip{background:var(--popup-bg)}
+.leaflet-popup-content{margin:0;max-width:340px;line-height:1.5;padding:0;font-family:var(--font-ui)}
+.pc-media{position:relative;height:128px;overflow:hidden;background:var(--surface-sunk)}
+.pc-media img{width:100%;height:100%;object-fit:cover;display:block}
+.pc-media::after{content:'';position:absolute;left:0;right:0;bottom:0;height:44px;background:linear-gradient(to bottom,transparent,var(--popup-bg));pointer-events:none}
+.leaflet-popup-content .pi{padding:14px 18px 14px}
+.pc-media+.pi{padding-top:4px}
+.pc-badges{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px}
+.leaflet-popup-content h3{font-family:var(--font-display);margin:0 0 6px;font-size:19px;line-height:1.2;font-weight:600;color:var(--text-strong);letter-spacing:.1px}
+.leaflet-popup-content .dates{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;font-size:13px;color:var(--accent-2);font-weight:700;margin-bottom:6px;font-variant-numeric:tabular-nums}
+.leaflet-popup-content .loc{display:flex;align-items:center;flex-wrap:wrap;gap:3px 6px;font-size:12px;color:var(--text-4);margin-bottom:2px}
+.leaflet-popup-content .loc .ic{width:14px;height:14px;color:var(--text-muted)}
+.leaflet-popup-content .venue{font-size:11px;color:var(--text-muted);margin:1px 0 0 20px}
+.leaflet-popup-content .desc{font-size:12px;line-height:1.55;color:var(--text-3);margin:9px 0 0}
+.pc-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+.leaflet-popup-content .tag{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;line-height:1;padding:4px 8px;border-radius:10px;white-space:nowrap}
+.leaflet-popup-content a{color:var(--link);text-decoration:none;font-size:12px}
 .leaflet-popup-content a:hover{text-decoration:underline}
-.leaflet-popup-close-button{color:#888!important}
-.pa{display:flex;gap:5px;margin-top:8px;padding-top:7px;border-top:1px solid #333;flex-wrap:wrap}
-.pa button{font-size:10px;padding:3px 10px;border-radius:5px;cursor:pointer;border:1px solid #444;transition:all .15s}
-.pa .bs{background:#e9c46a22;color:#e9c46a;border-color:#e9c46a55}
-.pa .bs:hover{background:#e9c46a44}
-.pa .bs.on{background:#e9c46a;color:#1a1a2e;font-weight:600}
-.pa .bi{background:#33333322;color:#888;border-color:#44444455}
-.pa .bi:hover{background:#44444444}
-.pa .bi.on{background:#555;color:#333}
-.pa .br{background:#33333322;color:#777;border-color:#44444455;margin-left:auto;font-size:9px}
-.star-list{font-size:9px;color:#e9c46a;margin-top:4px;padding-top:4px;border-top:1px solid #333}
+.leaflet-popup-content a.pc-link{display:flex;align-items:center;gap:6px;margin-top:10px;font-weight:600;min-width:0}
+.pc-link span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.pc-link .ic{width:14px;height:14px}
+/* close: round glass button over the media corner. Same specificity as Leaflet's own rules (loaded earlier). */
+.leaflet-container a.leaflet-popup-close-button{top:8px;right:8px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:400 20px/1 var(--font-ui);padding:0 0 2px;background:var(--popup-close-bg);color:var(--popup-close-text);z-index:2;transition:background-color .15s;text-decoration:none}
+.leaflet-container a.leaflet-popup-close-button:hover,.leaflet-container a.leaflet-popup-close-button:focus{background:var(--hover);color:var(--popup-close-text)}
+.pa{display:flex;gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);flex-wrap:wrap}
+.pa button{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:10px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--control-border);transition:background-color .15s,color .15s,border-color .15s}
+.pa button .ic{width:15px;height:15px}
+.pa .bs{background:color-mix(in srgb,var(--star) 13.3%,transparent);color:var(--star);border-color:color-mix(in srgb,var(--star) 40%,transparent)}
+.pa .bs:hover{background:color-mix(in srgb,var(--star) 24%,transparent)}
+.pa .bs.on{background:var(--star);color:var(--on-accent-2);border-color:var(--star)}
+.pa .bs.on .ic{fill:currentColor}
+.pa .bi{background:transparent;color:var(--text-muted);border-color:var(--tg-edge)}
+.pa .bi:hover{background:var(--tg-hover);color:var(--text-strong)}
+.pa .bi.on{background:var(--tg-on-bg);color:var(--tg-on-text);border-color:var(--tg-on-edge)}
+.pa .br{background:transparent;color:var(--text-muted);border-color:transparent;margin-left:auto;padding:0 7px}
+.pa .br:hover{background:var(--tg-hover);color:var(--text-strong)}
+.star-list{font-size:9px;color:var(--star);margin-top:4px;padding-top:4px;border-top:1px solid var(--line)}
 
 /* Tooltip */
-.leaflet-tooltip.et{background:#1e1e3a;color:#e0e0e0;border:1px solid #333;border-radius:10px;padding:0;font-size:12px;box-shadow:0 6px 24px rgba(0,0,0,.6);max-width:300px;white-space:normal;line-height:1.4;overflow:hidden}
+.leaflet-tooltip.et{background:var(--popup-bg);color:var(--text);border:1px solid var(--panel-edge);border-radius:10px;padding:0;font-size:12px;box-shadow:0 6px 24px color-mix(in srgb,var(--shadow) 60%,transparent);max-width:300px;white-space:normal;line-height:1.4;overflow:hidden}
 .et .ti{width:300px;height:120px;object-fit:cover;display:block}
 .et .tp{width:300px;height:60px;display:flex;align-items:center;justify-content:center;font-size:24px}
 .et .tb{padding:8px 12px 10px}
-.et .tn{font-weight:700;color:#fff;font-size:13px}
-.et .td{color:#e9c46a;font-weight:600;font-size:11px;margin-top:1px}
-.et .tds{color:#bbb;margin-top:4px;font-size:10px;line-height:1.4}
+.et .tn{font-weight:700;color:var(--text-strong);font-size:13px}
+.et .td{color:var(--accent-2);font-weight:600;font-size:11px;margin-top:1px}
+.et .tds{color:var(--text-3);margin-top:4px;font-size:10px;line-height:1.4}
 .et .tt{margin-top:4px}
-.et .ttg{display:inline-block;font-size:8px;padding:1px 5px;border-radius:5px;margin-right:2px;background:#ffffff11;color:#999;border:1px solid #ffffff15}
+.et .ttg{display:inline-block;font-size:8px;padding:1px 5px;border-radius:5px;margin-right:2px;background:color-mix(in srgb,var(--text-strong) 6.7%,transparent);color:var(--text-muted);border:1px solid color-mix(in srgb,var(--text-strong) 8.2%,transparent)}
 
-/* Cluster */
-.marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background:rgba(26,26,46,.7)!important}
-.marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{background:#2a9d8f!important;color:#fff!important;font-size:12px!important;font-weight:600}
+/* Cluster (markercluster's default classes; the live cluster icon is the .cl-* SVG below) */
+.marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background-color:var(--cluster-bg)}
+.marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{background-color:var(--accent);color:var(--on-accent);font-size:12px;font-weight:600}
 
 /* Loading spinner */
 .spinner{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:3000}
 .spinner.show{display:block}
-.spinner-circle{width:48px;height:48px;border:4px solid #333;border-top:4px solid #2a9d8f;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto;margin-bottom:12px}
+.spinner-circle{width:48px;height:48px;border:4px solid var(--line);border-top:4px solid var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto;margin-bottom:12px}
 @keyframes spin{to{transform:rotate(360deg)}}
-.spinner-text{font-size:12px;color:#888}
+.spinner-text{font-size:12px;color:var(--text-muted)}
+/* Data could not be loaded (Supabase unreachable / timed out) */
+.load-error{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);z-index:1050;width:min(360px,calc(100% - 32px));padding:22px 22px 18px;text-align:center;background:var(--panel-bg-solid);color:var(--text);border:1px solid var(--panel-edge);border-radius:16px;box-shadow:var(--glass-shadow)}
+.load-error[hidden]{display:none}
+.load-error h2{font-family:var(--font-display);font-size:19px;font-weight:600;color:var(--title-text);margin-bottom:6px}
+.load-error p{font-size:12.5px;line-height:1.5;color:var(--text-muted);margin-bottom:14px}
+.load-error button{height:38px;padding:0 20px;border-radius:12px;border:1px solid transparent;background:var(--cta-bg);color:var(--cta-text);font:inherit;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 12px var(--cta-glow)}
+.load-error button:hover{background:var(--cta-hover)}
 
 /* Add event modal */
-.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:2000;display:none;align-items:center;justify-content:center}
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--scrim);z-index:2100;display:none;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
-.modal{background:#16213e;border-radius:12px;padding:24px;width:420px;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.5)}
-.modal h2{font-size:16px;color:#fff;margin-bottom:16px}
-.modal label{display:block;font-size:11px;color:#888;margin-bottom:3px;margin-top:10px}
-.modal input,.modal textarea,.modal select{width:100%;padding:6px 10px;border-radius:6px;border:1px solid #333;background:#0f0f2a;color:#e0e0e0;font-size:12px;outline:none;font-family:inherit}
+.modal{background:var(--panel-bg-solid);border:1px solid var(--panel-edge);border-radius:18px;padding:26px 26px 22px;width:440px;max-height:80vh;overflow-y:auto;box-shadow:var(--glass-shadow)}
+.modal h2{font-family:var(--font-display);font-size:22px;font-weight:600;line-height:1.2;color:var(--title-text);margin-bottom:10px;letter-spacing:.2px}
+.modal label{display:block;font-size:11.5px;font-weight:600;color:var(--text-muted);margin-bottom:5px;margin-top:12px}
+.modal input,.modal textarea,.modal select{width:100%;padding:9px 12px;border-radius:10px;border:1px solid var(--search-edge);background:var(--search-bg);color:var(--text);font-size:13px;outline:none;font-family:inherit;transition:border-color .15s,box-shadow .2s}
+.modal input::placeholder,.modal textarea::placeholder,.user-modal input::placeholder{color:var(--placeholder);opacity:1}
 .modal textarea{height:60px;resize:vertical}
-.modal input:focus,.modal textarea:focus{border-color:#2a9d8f}
+.modal input:hover,.modal textarea:hover{border-color:var(--search-edge-hover)}
+.modal input:focus,.modal textarea:focus{border-color:var(--focus);box-shadow:0 0 0 3px var(--search-ring)}
 .modal .row{display:flex;gap:8px}
 .modal .row>*{flex:1}
-.modal .mbtn{margin-top:16px;display:flex;gap:8px;justify-content:flex-end}
-.modal .mbtn button{padding:6px 16px;border-radius:6px;cursor:pointer;font-size:12px;border:1px solid #444}
-.modal .mbtn .save{background:#2a9d8f;color:#fff;border-color:#2a9d8f}
-.modal .mbtn .cancel{background:#333;color:#ccc}
-.modal .error{color:#e63946;font-size:11px;margin-top:4px}
+.modal .mbtn{margin-top:18px;display:flex;gap:8px;justify-content:flex-end}
+.modal .mbtn button,.user-modal button{height:38px;padding:0 18px;border-radius:12px;cursor:pointer;font:inherit;font-size:13px;font-weight:600;border:1px solid var(--tg-edge);transition:background-color .15s,box-shadow .2s,transform .12s}
+.modal .mbtn .save,.user-modal .save{background:var(--cta-bg);color:var(--cta-text);border-color:transparent;font-weight:700;box-shadow:0 2px 12px var(--cta-glow),inset 0 1px 0 var(--cta-sheen)}
+.modal .mbtn .save:hover,.user-modal .save:hover{background:var(--cta-hover);transform:translateY(-1px)}
+.modal .mbtn .cancel,.user-modal .cancel{background:var(--tg-bg);color:var(--text-2)}
+.modal .mbtn .cancel:hover,.user-modal .cancel:hover{background:var(--tg-hover);color:var(--text-strong)}
+.modal .error{color:var(--danger);font-size:11px;margin-top:4px}
 
 /* User name modal */
-.user-modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:2500;display:none;align-items:center;justify-content:center}
+.user-modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--scrim-strong);z-index:2500;display:none;align-items:center;justify-content:center}
 .user-modal-overlay.show{display:flex}
-.user-modal{background:#16213e;border-radius:12px;padding:30px;width:380px;box-shadow:0 8px 32px rgba(0,0,0,.5);text-align:center}
-.user-modal h3{font-size:15px;color:#fff;margin-bottom:12px}
-.user-modal p{font-size:12px;color:#999;margin-bottom:16px}
-.user-modal input{width:100%;padding:8px 12px;border-radius:6px;border:1px solid #333;background:#0f0f2a;color:#e0e0e0;font-size:13px;outline:none;margin-bottom:16px}
-.user-modal input:focus{border-color:#2a9d8f}
-.user-modal .buttons{display:flex;gap:8px;justify-content:center}
-.user-modal button{padding:8px 20px;border-radius:6px;cursor:pointer;font-size:12px;border:1px solid #444;font-weight:600}
-.user-modal .save{background:#2a9d8f;color:#fff;border-color:#2a9d8f}
-.user-modal .cancel{background:#333;color:#ccc}
+.user-modal{background:var(--panel-bg-solid);border:1px solid var(--panel-edge);border-radius:18px;padding:30px 28px 26px;width:400px;box-shadow:var(--glass-shadow);text-align:center}
+.user-modal h3{font-family:var(--font-display);font-size:22px;font-weight:600;line-height:1.2;color:var(--title-text);margin-bottom:12px}
+.user-modal p{font-size:12px;color:var(--text-muted);margin-bottom:16px}
+.user-modal input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--search-edge);background:var(--search-bg);color:var(--text);font-size:14px;outline:none;margin-bottom:16px;font-family:inherit;transition:border-color .15s,box-shadow .2s}
+.user-modal input:focus{border-color:var(--focus);box-shadow:0 0 0 3px var(--search-ring)}
+.user-modal .buttons{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 
 /* Toast notifications */
-.toast{position:fixed;bottom:20px;left:20px;background:#333;color:#fff;padding:10px 16px;border-radius:6px;font-size:12px;z-index:4000;animation:slideIn .3s ease}
+.toast{position:fixed;bottom:20px;left:20px;background:var(--accent);color:var(--on-accent);padding:10px 16px;border-radius:6px;font-size:12px;z-index:4000;animation:slideIn .3s ease}
 @keyframes slideIn{from{transform:translateX(-200px);opacity:0}to{transform:translateX(0);opacity:1}}
 
 /* Panels */
-.side-panel{position:fixed;top:0;right:-400px;width:400px;height:100vh;background:#16213e;border-left:1px solid #0f3460;z-index:2001;transition:right .3s ease;overflow-y:auto;display:flex;flex-direction:column}
+.side-panel{position:fixed;top:0;right:-400px;width:400px;height:100vh;background:var(--panel-bg-solid);border-left:1px solid var(--panel-edge);z-index:2001;transition:right .3s ease;overflow-y:auto;display:flex;flex-direction:column}
 .side-panel.open{right:0}
-.sp-header{padding:14px 18px;border-bottom:1px solid #0f3460;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
-.sp-header h2{font-size:15px}
-.sp-close{background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:4px 8px}
-.sp-close:hover{color:#fff}
+.sp-header{padding:14px 14px 14px 20px;min-height:62px;border-bottom:1px solid var(--panel-edge);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-shrink:0}
+.sp-header h2{font-family:var(--font-display);font-size:20px;font-weight:600;line-height:1.2;letter-spacing:.2px}
+.sp-close,.tl-close{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:11px;border:1px solid var(--tg-edge);background:var(--tg-bg);color:var(--text-muted);font-size:20px;line-height:1;cursor:pointer;padding:0 0 2px;flex:none;transition:background-color .15s,color .15s}
+/* dock close: the same button without its frame (one definition; was split in two) */
+.tl-close{width:30px;height:30px;font-size:14px;padding:2px 6px;border-radius:10px;border:none;background:none}
+.sp-close:hover,.tl-close:hover{background:var(--tg-hover);color:var(--text-strong)}
 .sp-list{flex:1;overflow-y:auto;padding:6px 0}
-.sp-empty{padding:40px 18px;text-align:center;color:#555;font-size:12px}
-.sp-item{padding:10px 18px;border-bottom:1px solid #0f346033;cursor:pointer;transition:background .15s}
-.sp-item:hover{background:#1a1a3a}
-.sp-item .sin{font-size:12px;font-weight:600;color:#fff}
-.sp-item .sid{font-size:10px;color:#e9c46a;margin-top:1px}
-.sp-item .sil{font-size:10px;color:#777;margin-top:1px}
-.sp-item .sir{float:right;background:none;border:none;color:#555;cursor:pointer;font-size:13px}
-.sp-item .sir:hover{color:#e63946}
-.sp-btn{margin:10px 18px;padding:7px;border-radius:6px;cursor:pointer;font-size:11px;text-align:center;flex-shrink:0;border:1px solid}
+.sp-empty{padding:40px 18px;text-align:center;color:var(--text-faint);font-size:12px}
+.sp-item{padding:11px 20px;border-bottom:1px solid var(--row-sep);cursor:pointer;transition:background-color .15s,box-shadow .15s}
+.sp-item:hover{background:var(--hover);box-shadow:inset 3px 0 0 var(--accent)}
+.sp-item .sin{font-size:13px;line-height:1.3;font-weight:600;color:var(--text-strong)}
+.sp-item .sid{font-size:11px;line-height:1.35;font-weight:600;color:var(--accent-2);margin-top:2px}
+.sp-item .sil{font-size:11px;line-height:1.35;color:var(--text-dim);margin-top:1px}
+.sp-item .sir{float:right;width:30px;height:30px;margin:-2px -6px 0 8px;border-radius:9px;background:transparent;border:1px solid transparent;color:var(--text-muted);cursor:pointer;font-size:14px;transition:background-color .15s,color .15s}
+.sp-item .sir:hover{color:var(--danger);background:var(--tg-bg);border-color:var(--tg-edge)}
+.sp-btn{margin:10px 20px 0;min-height:40px;padding:9px 12px;border-radius:12px;cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;text-align:center;flex-shrink:0;border:1px solid;transition:background-color .15s,transform .12s}
+.sp-btn:last-child{margin-bottom:16px}
+.sp-btn:hover{transform:translateY(-1px)}
 /* Online events panel */
-.op-note{padding:6px 18px;font-size:10px;color:#777;border-bottom:1px solid #0f346033;flex-shrink:0}
+.op-note{padding:8px 18px;font-size:11px;line-height:1.45;color:var(--text-dim);border-bottom:1px solid color-mix(in srgb,var(--border) 20%,transparent);flex-shrink:0}
 .op-row{display:flex;gap:8px;align-items:flex-start}
 .op-info{flex:1;min-width:0}
 .op-item.op-ign{opacity:.4}
-.op-item.op-open{background:#1a1a3a}
-.op-star{background:none;border:none;cursor:pointer;font-size:16px;color:#e9c46a;opacity:.45;padding:2px 4px;flex-shrink:0}
-.op-star:hover,.op-star.on{opacity:1}
-.op-link{font-size:10px;color:#2a9d8f;text-decoration:none}
+.op-item.op-open{background:var(--hover)}
+.op-link{font-size:11px;color:var(--link);text-decoration:none;display:flex;align-items:center;gap:5px;margin-top:3px;min-width:0}
+.op-link span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.op-link .ic{width:13px;height:13px}
 .op-link:hover{text-decoration:underline}
-.op-detail{max-width:none!important;background:#1e1e3a;border-bottom:1px solid #0f3460}
-.op-group{border-top:1px solid #0f3460}
-.op-group summary{padding:10px 18px;cursor:pointer;font-size:11px;color:#8ab4f8;font-weight:600;user-select:none}
-.op-group summary:hover{background:#1a1a3a}
+.op-detail a{overflow-wrap:anywhere}
+.op-detail{max-width:none!important;background:var(--popup-bg);border-bottom:1px solid var(--border)}
+.op-group{border-top:1px solid var(--border)}
+.op-group summary{padding:10px 18px;cursor:pointer;font-size:12px;color:var(--info);font-weight:600;user-select:none}
+.op-group summary:hover{background:var(--hover)}
+
+/* Glass: translucent panels where backdrop-filter is supported (themes without glass set
+   --panel-bg = --panel-bg-solid and --panel-backdrop:none, so nothing changes there) */
+@supports (backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px)){
+  .side-panel,.modal,.user-modal,.more-menu,.tl-tip,.leaflet-tooltip.et,.dock-tab{background:var(--panel-bg);-webkit-backdrop-filter:var(--panel-backdrop);backdrop-filter:var(--panel-backdrop)}
+  .leaflet-popup-content-wrapper{background:var(--popup-glass);-webkit-backdrop-filter:var(--panel-backdrop);backdrop-filter:var(--panel-backdrop)}
+  .leaflet-bar a{-webkit-backdrop-filter:var(--panel-backdrop);backdrop-filter:var(--panel-backdrop)}
+}
+.how-to{margin:0 0 16px;padding:10px 12px;border:1px solid var(--panel-edge);border-radius:8px;background:var(--surface-sunk)}
+.how-to-h{font-size:10px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+.how-to ul{list-style:none;font-size:12px;line-height:1.8}
+.link-btn{background:none;border:none;padding:0;font:inherit;color:var(--link);cursor:pointer;text-align:left}
+.link-btn:hover{text-decoration:underline}
+
+/* === S28 theming: classes that replaced inline / JS-generated colors === */
+:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.toast.error{background:var(--danger);color:var(--on-danger)}
+.toast.warn{background:var(--warn);color:var(--on-warn)}
+.js-error{color:var(--danger);padding:40px;font-family:monospace}
+.js-async-error{color:var(--accent-2);padding:20px;font-family:monospace}
+.c-muted{color:var(--text-muted)}.c-star{color:var(--star)}.c-info{color:var(--info)}.c-danger{color:var(--danger)}
+.c-accent{color:var(--accent)}.c-success{color:var(--success)}.c-warn{color:var(--warn)}.c-accent-3{color:var(--accent-3)}
+.btn.tone-accent{background:color-mix(in srgb,var(--accent) 13.3%,transparent);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 33.3%,transparent)}
+.btn.tone-muted{background:color-mix(in srgb,var(--text-faint) 13.3%,transparent);color:var(--text-muted);border-color:color-mix(in srgb,var(--text-faint) 33.3%,transparent)}
+.btn.tone-ghost{background:color-mix(in srgb,var(--text-strong) 6.7%,transparent);color:var(--text-4);border-color:color-mix(in srgb,var(--text-strong) 13.3%,transparent)}
+.btn.past-toggle.on{background:color-mix(in srgb,var(--accent) 13.3%,transparent);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 33.3%,transparent)}
+.sp-btn.tone-accent:hover{background:color-mix(in srgb,var(--accent) 30%,transparent)}
+.sp-btn.tone-accent{background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 33.3%,transparent)}
+.sp-btn.tone-success:hover{background:color-mix(in srgb,var(--success) 30%,transparent)}
+.sp-btn.tone-success{background:color-mix(in srgb,var(--success) 20%,transparent);color:var(--success);border-color:color-mix(in srgb,var(--success) 33.3%,transparent)}
+.sp-btn.tone-link2:hover{background:color-mix(in srgb,var(--link-2) 30%,transparent)}
+.sp-btn.tone-link2{background:color-mix(in srgb,var(--link-2) 20%,transparent);color:var(--link-2);border-color:color-mix(in srgb,var(--link-2) 33.3%,transparent)}
+.sp-btn.tone-warn:hover{background:color-mix(in srgb,var(--warn) 30%,transparent)}
+.sp-btn.tone-warn{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 33.3%,transparent)}
+.sp-btn.tone-danger:hover{background:color-mix(in srgb,var(--danger) 30%,transparent)}
+.sp-btn.tone-danger{background:color-mix(in srgb,var(--danger) 20%,transparent);color:var(--danger);border-color:color-mix(in srgb,var(--danger) 33.3%,transparent)}
+.sp-btn.tone-quiet{background:color-mix(in srgb,var(--control) 13.3%,transparent);color:var(--text-dim);border-color:color-mix(in srgb,var(--control-border) 33.3%,transparent)}
+.user-modal h3.um-title{margin-bottom:8px}
+.user-modal p.um-lead{font-size:12px;color:var(--text-4);line-height:1.5;margin-bottom:12px}
+.user-modal p.um-lead strong{color:var(--star)}
+.user-modal p.um-note{font-size:12px;color:var(--text-muted);margin-bottom:10px}
+.user-modal .skip{background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 33.3%,transparent)}
+.modal p.modal-lead{font-size:12px;color:var(--text-4);line-height:1.5;margin-bottom:14px}
+.about-body{padding:18px;font-size:12px;color:var(--text-3);line-height:1.7;overflow-y:auto;flex:1}
+.about-body a{color:var(--link)}
+.about-title{font-size:14px;color:var(--text-strong);font-weight:600;margin-bottom:12px}
+.about-h{font-size:13px;font-weight:600;margin-top:20px;margin-bottom:6px}
+.about-foot{margin-top:20px;padding-top:12px;border-top:1px solid var(--line);color:var(--text-dim);font-size:10px}
+.types-bar{padding:10px 20px;border-bottom:1px solid var(--row-sep);display:flex;gap:6px;align-items:center}
+.types-bar .chip-btn{height:30px;padding:0 12px;border-radius:10px;border:1px solid var(--tg-edge);background:var(--tg-bg);color:var(--text-2);font:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:background-color .15s,color .15s}
+.types-bar .chip-btn:hover{background:var(--tg-hover);color:var(--text-strong)}
+.type-item{display:flex;align-items:center;gap:10px;min-height:42px;padding:6px 20px;border-bottom:1px solid var(--row-sep);cursor:pointer;user-select:none;background:transparent;color:var(--text-muted);transition:background-color .12s,color .12s}
+.type-item:hover{background:var(--hover);color:var(--text-strong)}
+.type-item.on{color:var(--text-strong)}
+.type-item .ty-ic{width:22px;text-align:center;font-size:15px;flex:none;filter:grayscale(.7);opacity:.6;transition:filter .12s,opacity .12s}
+.type-item.on .ty-ic{filter:none;opacity:1}
+.type-item .ty-name{flex:1;font-size:13px;font-weight:600}
+.type-item .ty-check{width:20px;height:20px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1.5px solid var(--text-dim);color:transparent;font-size:12px;font-weight:800;transition:background-color .12s,border-color .12s}
+.type-item.on .ty-check{background:var(--cta-bg);border-color:var(--cta-bg);color:var(--cta-text)}
+.si-by{font-size:9px;color:var(--text-dim);margin-top:3px}
+
+/* Map pins (markup from mkIcon; color from data-month). Orb = month color + theme gloss; ring = cream/gold. */
+.pinwrap{position:relative;display:flex;flex-direction:column;align-items:center}
+.pinwrap.is-ign{opacity:.3;--c:var(--pin-muted)}
+.pin{width:36px;height:36px;border-radius:50%;background:var(--pin-gloss),var(--c);border:var(--pin-ring-width) solid var(--pin-ring);display:flex;align-items:center;justify-content:center;font-size:17px;line-height:1;box-shadow:var(--pin-shadow);cursor:pointer;position:relative;z-index:1;transition:transform .15s ease,box-shadow .15s ease}
+.leaflet-marker-icon:hover .pin{transform:translateY(-2px) scale(1.1);box-shadow:var(--pin-shadow-hover)}
+.pinwrap.is-star .pin{border-color:var(--star);box-shadow:var(--pin-shadow),0 0 0 3px color-mix(in srgb,var(--star) 22%,transparent),0 0 16px 2px color-mix(in srgb,var(--star) 30%,transparent)}
+.pinwrap.is-star .pin::after{content:'\2605';position:absolute;top:-6px;right:-6px;width:16px;height:16px;border-radius:50%;background:var(--pin-star-badge-bg);color:var(--pin-star-badge-text);border:1.5px solid var(--pin-star-badge-edge);font-size:9px;line-height:13px;text-align:center;box-shadow:0 1px 3px color-mix(in srgb,var(--shadow) 50%,transparent)}
+.pin-cap{margin-top:3px;max-width:100px;padding:1px 6px 2px;border-radius:7px;background:var(--pin-label-bg);text-align:center;pointer-events:none;transition:background-color .15s}
+.pin-label{font-size:9.5px;line-height:12px;font-weight:600;letter-spacing:.1px;color:var(--pin-label);text-shadow:0 1px 2px var(--pin-label-shadow),0 0 5px var(--pin-label-shadow);white-space:nowrap;max-width:88px;overflow:hidden;text-overflow:ellipsis;transition:color .15s}
+.pin-date{font-size:8.5px;line-height:11px;font-weight:600;color:var(--c-ink);text-shadow:0 1px 2px var(--pin-label-shadow),0 0 5px var(--pin-label-shadow);white-space:nowrap;max-width:88px;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.leaflet-marker-icon:hover .pin-label{color:var(--pin-label-hover)}
+.pinwrap.is-star .pin-label{color:var(--star)}
+/* Cluster icon (SVG from iconCreateFunction; size bucket in data-size): glass disc, gold ring, month "orbs" */
+.cl{overflow:visible;cursor:pointer;filter:drop-shadow(0 2px 5px var(--cluster-shadow));transition:transform .15s ease}
+.leaflet-marker-icon:hover .cl{transform:scale(1.1)}
+.cl-bg{fill:var(--cluster-bg);stroke:var(--cluster-ring);stroke-width:var(--cluster-ring-width);transition:stroke .15s}
+.leaflet-marker-icon:hover .cl-bg{stroke:var(--cluster-ring-hover)}
+.cl-in{fill:none;stroke:var(--cluster-ring-inner);stroke-width:1}
+.cl-dot{fill:var(--c);stroke:var(--cluster-dot-stroke);stroke-width:1}
+.cl-num{fill:var(--cluster-text);font-family:var(--font-ui);font-variant-numeric:tabular-nums}
+/* Popup / tooltip / timeline pieces */
+.mo-badge{display:inline-flex;align-items:center;height:20px;font-size:10.5px;letter-spacing:.3px;padding:0 9px;border-radius:10px;background:var(--c);color:var(--month-badge-text,var(--c-on));font-weight:700}
+.soldout-badge{display:inline-flex;align-items:center;height:20px;font-size:10px;letter-spacing:.4px;padding:0 8px;border-radius:10px;background:var(--danger);color:var(--on-danger);font-weight:700}
+.leaflet-popup-content .tag{background:color-mix(in srgb,var(--c) var(--month-chip-alpha),transparent);color:var(--c-ink);border:1px solid color-mix(in srgb,var(--c) 40%,transparent)}
+.leaflet-popup-content a.maps-link{font-size:11px;color:var(--link-2);white-space:nowrap}
+.leaflet-popup-content a.maps-link::after{content:' \2197'}
+.leaflet-popup-content .dates.tba{color:var(--info)}
+.leaflet-popup-content .dur{font-size:10.5px;font-weight:600;color:var(--text-muted);padding:2px 8px;border-radius:9px;border:1px solid var(--line);line-height:1.3}
+.pa .br.know{color:var(--info);border-color:color-mix(in srgb,var(--info) 40%,transparent);margin-left:0}
+.beacon-banner{margin:10px 0 0;padding:8px 12px;background:color-mix(in srgb,var(--star) 6.7%,transparent);border:1px solid color-mix(in srgb,var(--star) 20%,transparent);border-radius:8px}
+.beacon-count{font-size:12px;color:var(--star);font-weight:600}
+.beacon-names{font-size:10px;color:var(--text-4);margin-top:3px}
+.et .tp{background:linear-gradient(135deg,color-mix(in srgb,var(--c) 26.7%,transparent),color-mix(in srgb,var(--c) 13.3%,transparent))}
+.et .tt-stars{margin-top:4px;font-size:9px;color:var(--star);font-weight:600}
+.tl-icon{background:var(--pin-gloss),var(--c);color:var(--on-accent-2)}
+.tl-tip .ttp-tag{background:color-mix(in srgb,var(--c) var(--month-chip-alpha),transparent);color:var(--c-ink);border:1px solid color-mix(in srgb,var(--c) 40%,transparent)}
+
+/* Leaflet chrome - same specificity as leaflet.css (loaded earlier), so no !important */
+.leaflet-container{background:var(--map-bg);font-family:var(--font-map)}
+.leaflet-bar a{background-color:var(--map-ctrl-bg);color:var(--map-ctrl-text);border-bottom-color:var(--map-ctrl-border)}
+.leaflet-bar a:hover,.leaflet-bar a:focus{background-color:var(--map-ctrl-hover)}
+.leaflet-container .leaflet-control-attribution{background:var(--map-attr-bg);color:var(--map-attr-text)}
+.leaflet-control-attribution a{color:var(--map-attr-link)}
+.leaflet-tooltip-top:before{border-top-color:var(--tooltip-arrow)}
+/* Tile panes: only the base pane is filtered; labels sit above, unfiltered */
+.leaflet-base-pane{filter:var(--map-filter)}
+.leaflet-tint-pane{mix-blend-mode:var(--map-tint-blend);pointer-events:none}
+.leaflet-tint-pane .map-tint{position:absolute;left:0;top:0;background:var(--map-tint);pointer-events:none}
+.leaflet-labels-pane{pointer-events:none}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}
+  .brand:hover .brand-mark,.leaflet-marker-icon:hover .pin,.leaflet-marker-icon:hover .cl,.btn-cta:hover{transform:none}
+}
 
 /* === Desktop-only defaults for mobile elements === */
 .mobile-hamburger{display:none}
@@ -229,84 +552,108 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mobile-timeline-btn{display:none}
 
 /* ================ MOBILE ================ */
-@media(max-width:768px){
+@media(max-width:900px){ /* phone layout; keep in step with SITE_CONFIG.phoneMax */
   body{overflow:hidden;height:100vh;height:100dvh;display:flex;flex-direction:column}
 
-  /* --- Top bar: title + hamburger only --- */
-  .top-bar{padding:6px 12px;flex-wrap:nowrap!important;gap:8px;justify-content:space-between!important;flex-shrink:0}
+  /* --- Top bar: brand + hamburger only --- */
+  .top-bar{padding:8px 12px;min-height:56px;flex-wrap:nowrap!important;gap:8px;justify-content:space-between!important;flex-shrink:0}
   .mobile-filter-toggle{flex-shrink:0}
   .filters{flex-shrink:0}
-  .top-bar>div:first-child .search-box,
-  .top-bar>div:first-child .btn-add,
-  .top-bar>div:first-child .year-toggle{display:none!important}
-  .top-bar>div.top-btns{display:none!important}
-  .top-bar>div:nth-child(3){display:none!important}
-  .top-bar h1{font-size:14px}
+  .tb-left .search-box,.tb-left .year-toggle,.tb-mid,.tb-right{display:none!important}
+  .brand{gap:9px}
+  .brand-mark{width:32px;height:32px}
+  .brand-tag{display:none}
+  .top-bar h1{font-size:18px}
+  .yr-inline{position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto}
 
   .mobile-hamburger{
     display:flex!important;align-items:center;justify-content:center;
-    width:38px;height:38px;background:#333;border:1px solid #444;
-    border-radius:8px;color:#ccc;font-size:20px;cursor:pointer;flex-shrink:0
+    width:44px;height:44px;background:var(--tg-bg);border:1px solid var(--tg-edge);
+    border-radius:13px;color:var(--tg-text);cursor:pointer;flex-shrink:0
   }
-  .mobile-hamburger:active{background:#444}
+  .mobile-hamburger .ic{width:22px;height:22px}
+  .mobile-hamburger:active{background:var(--tg-hover)}
 
   /* --- Mobile menu overlay --- */
   .mobile-menu{
     display:none;position:fixed;top:0;left:0;right:0;bottom:0;
-    background:#16213eF8;z-index:3000;flex-direction:column;
+    background:color-mix(in srgb,var(--surface) 97.3%,transparent);z-index:3000;flex-direction:column;
     overflow-y:auto;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)
   }
-  .mobile-menu.open{display:flex}
+  .mobile-menu.open{display:flex;animation:menuIn .16s ease-out}
   .mm-header{
     display:flex;justify-content:space-between;align-items:center;
-    padding:12px 16px;border-bottom:1px solid #0f3460
+    padding:8px 12px 8px 12px;min-height:56px;border-bottom:1px solid var(--header-edge);background:var(--bar-bg)
   }
-  .mm-header h2{font-size:16px;color:#e0e0e0;font-weight:600}
+  .mm-header h2{font-family:var(--font-display);font-size:18px;color:var(--title-text);font-weight:600}
   .mm-close{
-    width:38px;height:38px;background:none;border:1px solid #444;
-    border-radius:8px;color:#888;font-size:22px;cursor:pointer;
+    width:44px;height:44px;background:var(--tg-bg);border:1px solid var(--tg-edge);
+    border-radius:13px;color:var(--tg-text);cursor:pointer;
     display:flex;align-items:center;justify-content:center
   }
-  .mm-close:active{color:#fff}
-  .mm-body{padding:16px;display:flex;flex-direction:column;gap:10px}
+  .mm-close .ic{width:22px;height:22px}
+  .mm-close:active{background:var(--tg-hover)}
+  .mm-body{padding:16px;display:flex;flex-direction:column;gap:12px}
+  .mm-search-wrap{position:relative}
+  .mm-search-wrap .s-ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--text-muted);pointer-events:none}
   .mm-search{
-    width:100%;padding:12px 14px;border-radius:10px;
-    border:1px solid #333;background:#0f0f2a;color:#e0e0e0;
-    font-size:14px;outline:none
+    width:100%;height:48px;padding:0 14px 0 42px;border-radius:14px;
+    border:1px solid var(--search-edge);background:var(--search-bg);color:var(--text);
+    font:inherit;font-size:16px;outline:none
   }
-  .mm-search:focus{border-color:#2a9d8f}
-  .mm-year-row{display:flex;gap:8px;justify-content:center}
-  .mm-year-row .yr-btn{flex:1;padding:10px;font-size:14px;text-align:center;border-radius:8px}
+  .mm-search::placeholder{color:var(--placeholder);opacity:1}
+  .mm-search:focus{border-color:var(--focus);box-shadow:0 0 0 3px var(--search-ring)}
+  .mm-year-row{display:flex;width:100%}
+  .mm-year-row .yr-btn{flex:1;height:40px;font-size:15px;border-radius:9px}
+  .mm-group{display:flex;flex-direction:column;border:1px solid var(--tg-edge);border-radius:16px;background:var(--tg-bg);overflow:hidden}
   .mm-btn{
-    display:flex;align-items:center;gap:10px;
-    padding:14px 16px;border-radius:10px;font-size:14px;
-    cursor:pointer;border:1px solid #333;background:#0f0f2a;color:#ccc;
+    display:flex;align-items:center;gap:12px;min-height:54px;
+    padding:8px 14px;font:inherit;font-size:15px;font-weight:600;
+    cursor:pointer;border:none;background:transparent;color:var(--text-2);
     text-align:left;width:100%
   }
-  .mm-btn:active{background:#1a1a3a}
-  .mm-btn .mm-icon{font-size:18px;width:24px;text-align:center;flex-shrink:0}
+  .mm-group .mm-btn+.mm-btn{border-top:1px solid var(--row-sep)}
+  .mm-btn:active{background:var(--hover)}
+  .mm-btn .mm-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--tg-hover);color:var(--tg-icon);flex-shrink:0}
+  .mm-btn .mm-icon .ic{width:18px;height:18px}
   .mm-btn .mm-label{flex:1}
-  .mm-btn .mm-badge{font-size:11px;color:#888;flex-shrink:0}
-  .mm-btn-primary{background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f44}
-  .mm-btn-star{background:#e9c46a11;color:#e9c46a;border-color:#e9c46a33}
+  .mm-btn .mm-badge{height:22px;min-width:24px;font-size:12px;border-radius:11px}
+  .mm-btn-primary{min-height:52px;border-radius:14px;background:var(--cta-bg);color:var(--cta-text);font-weight:700;box-shadow:0 2px 12px var(--cta-glow),inset 0 1px 0 var(--cta-sheen)}
+  .mm-btn-primary .mm-icon{background:transparent;color:var(--cta-text)}
+  .mm-btn-primary .mm-icon .ic{stroke-width:2.4}
+  .mm-btn-primary:active{background:var(--cta-hover)}
+  .mm-btn-star .mm-icon{color:var(--star)}
+  .mm-btn-info .mm-icon{color:var(--info)}
+  .mm-theme{display:flex;align-items:center;gap:12px;padding:4px 2px}
+  .mm-theme-l{font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px}
+  .mm-theme .theme-seg{flex:1;margin:0}
+  .mm-theme .seg-opt{padding:10px;font-size:14px}
 
   /* --- Filter toggle bar --- */
   .mobile-filter-toggle{
-    display:flex!important;align-items:center;justify-content:space-between;
-    padding:8px 12px;background:#16213e;border-bottom:1px solid #0f3460;cursor:pointer
+    display:flex!important;align-items:center;justify-content:space-between;width:100%;min-height:44px;
+    padding:0 14px;background:var(--filter-bg);border:none;border-bottom:1px solid var(--header-edge);cursor:pointer;font:inherit;color:var(--text-muted)
   }
-  .mobile-filter-toggle span{font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-  .mobile-filter-toggle .mft-arrow{font-size:10px;color:#888;transition:transform .2s}
+  .mobile-filter-toggle .mft-l{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.7px}
+  .mobile-filter-toggle .mft-arrow{transition:transform .2s}
   .mobile-filter-toggle.open .mft-arrow{transform:rotate(180deg)}
+  .mobile-filter-toggle.open{color:var(--text-strong)}
 
-  .filters{display:none!important;padding:4px 12px;overflow-x:auto;flex-wrap:nowrap!important;-webkit-overflow-scrolling:touch;gap:4px}
+  .filters{display:none!important;padding:4px 12px;flex-direction:column;align-items:stretch;flex-wrap:nowrap!important;gap:4px}
   .filters.mobile-open{display:flex!important}
-  .filter-hints{display:none!important}
-  .filters label{flex-shrink:0;padding:6px 10px;font-size:11px}
+  .fgroup{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+  .fdiv{display:none}
+  .filters label{flex-shrink:0;padding:6px 10px;font-size:11px;white-space:nowrap}
   .filters .fl{flex-shrink:0}
   .filters .btn{flex-shrink:0}
-  .filters #regionFilters{display:flex;flex-wrap:nowrap;gap:3px}
-  .filters .r-label{flex-shrink:0;white-space:nowrap}
+  .filters .fbtn{font-size:10px;padding:5px 8px}
+
+  /* --- Online events: full-screen panel from the menu (not docked) --- */
+  .online-dock{position:fixed!important;top:0;left:-100%;width:100%!important;height:100%;z-index:2001;opacity:1!important;border:none!important;transition:left .3s ease!important}
+  .online-dock.m-open{left:0}
+  .online-dock>*{min-width:0}
+  .online-dock .tl-header{padding:14px 18px}
+  .dock-tab{display:none!important}
 
   /* --- Main: map fills remaining space --- */
   .main{flex:1!important;height:auto!important;flex-direction:column;position:relative;min-height:0}
@@ -316,7 +663,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .timeline{
     position:fixed!important;bottom:0;left:0;right:0;
     width:100%!important;height:44vh;max-height:55vh;
-    border-left:none!important;border-top:1px solid #0f3460;
+    border-left:none!important;border-top:1px solid var(--border);
     border-radius:16px 16px 0 0;z-index:1500;
     transform:translateY(100%);
     transition:transform .3s ease!important
@@ -326,20 +673,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .timeline.hidden{transform:translateY(100%)!important;opacity:1!important}
   .drag-handle{
     display:block!important;width:40px;height:4px;
-    background:#555;border-radius:2px;margin:8px auto 0;cursor:grab
+    background:var(--text-faint);border-radius:2px;margin:8px auto 0;cursor:grab
   }
-  .tl-toggle{display:none!important}
 
   /* Mobile timeline FAB */
   .mobile-timeline-btn{
-    display:flex!important;position:fixed;bottom:16px;right:16px;z-index:1400;
-    width:48px;height:48px;border-radius:50%;
-    background:#12122a;border:1px solid #0f3460;
-    align-items:center;justify-content:center;font-size:20px;
-    cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.5)
+    display:flex!important;position:fixed;bottom:20px;right:16px;z-index:1400;
+    width:54px;height:54px;border-radius:50%;
+    background:var(--panel-bg-solid);border:1px solid var(--panel-edge);color:var(--title-text);
+    align-items:center;justify-content:center;
+    cursor:pointer;box-shadow:var(--glass-shadow)
   }
-  .mobile-timeline-btn:active{background:#1a1a3a}
-  .mobile-timeline-btn.active{background:#2a9d8f;border-color:#2a9d8f}
+  .mobile-timeline-btn .ic{width:24px;height:24px}
+  .mobile-timeline-btn:active{background:var(--hover)}
+  .mobile-timeline-btn.active{background:var(--cta-bg);border-color:transparent;color:var(--cta-text)}
 
   /* --- Side panels: full width --- */
   .side-panel{width:100%!important;right:-100%!important}
@@ -353,13 +700,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   /* --- Popups --- */
   .leaflet-popup-content{max-width:calc(100vw - 60px)!important}
-  .leaflet-popup-content .pi img{height:80px}
-  .pa button{padding:6px 12px;font-size:11px;min-height:36px}
+  .leaflet-popup-content .pi{padding:12px 14px}
+  .pa{gap:5px}
+  .pa button{height:40px;padding:0 10px;font-size:12px}
+  .leaflet-container a.leaflet-popup-close-button{width:34px;height:34px}
 
   /* --- Touch targets --- */
-  .r-label{padding:6px 10px;font-size:11px}
   .tl-event{padding:12px 14px}
-  .tl-actions button{font-size:18px;padding:6px;min-width:36px;min-height:36px}
+  .tl-actions button,.op-star{width:40px;height:40px}
+  .sp-close{width:42px;height:42px}
+  .tl-close{width:40px;height:40px}
+  .type-item{min-height:48px}
 
   /* --- Toast --- */
   .toast{left:50%;transform:translateX(-50%);bottom:70px;max-width:calc(100vw - 32px);text-align:center}
@@ -377,105 +728,159 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="spinner-text">Loading events...</div>
 </div>
 
-<div class="top-bar" style="justify-content:space-between">
-  <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
-    <h1 id="mainTitle">Events & Gatherings <span id="yearDisplay">2026</span></h1>
-    <div class="year-toggle" id="yearToggle" style="display:flex;gap:2px;margin-left:4px"></div>
-    <div class="search-box"><input type="text" id="searchInput" placeholder="Search events..." oninput="onSearch()"></div>
-    <button class="btn btn-add" onclick="openAddModal()">+ Suggest Event</button>
+<!-- Icon sprite (stroke icons; color = currentColor) -->
+<svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1 1 0 0 1 0 1.4l-7.3 7.3a1 1 0 0 1-1.4 0z"/><circle cx="8" cy="8" r="1.4"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 17l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5S9.6 5.9 12 3.5z"/></symbol>
+  <symbol id="i-timeline" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h7"/><circle cx="4.5" cy="6" r="1.3"/><circle cx="4.5" cy="12" r="1.3"/><circle cx="4.5" cy="18" r="1.3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3.5 3.5l17 17M10.4 5.6A9.6 9.6 0 0 1 12 5.5c5 0 8.4 4.2 9.3 6.5-.4 1-1.1 2.2-2.2 3.3M6.6 7.1C4.6 8.4 3.3 10.4 2.7 12c.9 2.3 4.3 6.5 9.3 6.5 1.6 0 3-.4 4.3-1.1M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5.5 21V4M5.5 4.5h11l-2.2 4 2.2 4h-11"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.2"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.8-6.5-11a6.5 6.5 0 0 1 13 0c0 5.2-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8.5 8.5M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5.5h16l-6 7v5.5l-4 1.8v-7.3z"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6.5 9.5l5.5 5.5 5.5-5.5"/></symbol>
+  <symbol id="i-brand" viewBox="0 0 32 32"><path class="bm-shell" d="M17.9 12.8 18.0 12.7 18.1 12.5 18.2 12.4 18.4 12.3 18.6 12.2 18.8 12.2 18.9 12.1 19.2 12.1 19.4 12.1 19.6 12.1 19.8 12.2 20.0 12.2 20.2 12.3 20.4 12.5 20.6 12.6 20.8 12.8 20.9 13.0 21.0 13.2 21.2 13.4 21.2 13.7 21.3 14.0 21.3 14.2 21.3 14.5 21.2 14.8 21.2 15.1 21.1 15.4 20.9 15.7 20.7 15.9 20.5 16.1 20.3 16.4 20.0 16.6 19.7 16.7 19.4 16.9 19.0 16.9 18.7 17.0 18.3 17.0 17.9 17.0 17.5 16.9 17.1 16.8 16.8 16.6 16.4 16.4 16.1 16.1 15.8 15.8 15.5 15.5 15.2 15.1 15.0 14.7 14.9 14.3 14.8 13.8 14.7 13.3 14.7 12.8 14.8 12.3 14.9 11.8 15.1 11.3 15.4 10.8 15.7 10.3 16.0 9.9 16.5 9.5 16.9 9.1 17.5 8.8 18.0 8.6 18.6 8.4 19.3 8.3 19.9 8.2 20.6 8.3 21.3 8.4 22.0 8.6 22.6 8.8 23.3 9.2 23.9 9.6 24.4 10.2 25.0 10.8 25.4 11.4 25.8 12.1 26.1 12.9 26.3 13.7 26.4 14.6 26.4 15.5 26.4 16.4 26.2 17.3 25.9 18.2 25.5 19.1 24.9 19.9 24.3 20.7 23.6 21.5 22.8 22.1 21.8 22.7 20.8 23.2 19.8 23.5 18.7 23.8 17.5 23.9 16.3 23.8 15.1 23.7 13.9 23.4 12.7 22.9 11.5 22.3 10.4 21.6 9.4 20.7 8.5 19.7 7.6 18.5 6.9 17.3 6.3 15.9 5.9 14.5 5.6 12.9 5.6 11.4 5.7 9.7 5.9 8.1 L14.8 12.1 14.8 12.6 14.7 13.1 14.7 13.6 14.8 14.0 15.0 14.5 15.1 14.9 15.4 15.3 15.6 15.7 15.9 16.0 16.3 16.3 16.6 16.5 17.0 16.7 17.3 16.9 17.7 17.0 18.1 17.0 18.5 17.0 18.9 17.0 19.2 16.9 19.5 16.8 19.9 16.6 20.1 16.5 20.4 16.3 20.6 16.0 20.8 15.8 21.0 15.5 21.1 15.2 21.2 14.9 21.3 14.7 21.3 14.4 21.3 14.1 21.3 13.8 21.2 13.6 21.1 13.3 21.0 13.1 20.8 12.9 20.7 12.7 20.5 12.5 20.3 12.4 20.1 12.3 19.9 12.2 19.7 12.1 19.5 12.1 19.2 12.1 19.0 12.1 18.8 12.1 18.6 12.2 18.5 12.3 18.3 12.4 18.2 12.5 18.0 12.6 17.9 12.7Z"/><path class="bm-whorl" d="M17.9 12.8 18.0 12.7 18.1 12.5 18.2 12.4 18.4 12.3 18.6 12.2 18.8 12.2 18.9 12.1 19.2 12.1 19.4 12.1 19.6 12.1 19.8 12.2 20.0 12.2 20.2 12.3 20.4 12.5 20.6 12.6 20.8 12.8 20.9 13.0 21.0 13.2 21.2 13.4 21.2 13.7 21.3 14.0 21.3 14.2 21.3 14.5 21.2 14.8 21.2 15.1 21.1 15.4 20.9 15.7 20.7 15.9 20.5 16.1 20.3 16.4 20.0 16.6 19.7 16.7 19.4 16.9 19.0 16.9 18.7 17.0 18.3 17.0 17.9 17.0 17.5 16.9 17.1 16.8 16.8 16.6 16.4 16.4 16.1 16.1 15.8 15.8 15.5 15.5 15.2 15.1 15.0 14.7 14.9 14.3 14.8 13.8 14.7 13.3 14.7 12.8 14.8 12.3 14.9 11.8 15.1 11.3 15.4 10.8 15.7 10.3 16.0 9.9 16.5 9.5 16.9 9.1 17.5 8.8 18.0 8.6 18.6 8.4 19.3 8.3 19.9 8.2 20.6 8.3 21.3 8.4 22.0 8.6 22.6 8.8 23.3 9.2 23.9 9.6 24.4 10.2 25.0 10.8 25.4 11.4 25.8 12.1 26.1 12.9 26.3 13.7 26.4 14.6 26.4 15.5 26.4 16.4 26.2 17.3 25.9 18.2 25.5 19.1 24.9 19.9 24.3 20.7 23.6 21.5 22.8 22.1 21.8 22.7 20.8 23.2 19.8 23.5 18.7 23.8 17.5 23.9 16.3 23.8 15.1 23.7 13.9 23.4 12.7 22.9 11.5 22.3 10.4 21.6 9.4 20.7 8.5 19.7 7.6 18.5 6.9 17.3 6.3 15.9 5.9 14.5 5.6 12.9 5.6 11.4 5.7 9.7 5.9 8.1"/><path class="bm-septa" d="M6.3 15.8Q12.8 18.5 14.9 14.5M10.2 21.4Q16.5 20.3 16.2 16.2M16.0 23.8Q20.2 20.0 18.0 17.0M21.5 22.9Q22.9 17.9 19.7 16.7M25.2 19.5Q23.9 15.0 20.9 15.6M26.4 15.1Q23.2 12.3 21.3 14.2M25.3 11.2Q21.5 10.6 20.9 13.0M22.4 8.8Q19.3 10.2 20.0 12.3M19.1 8.3Q17.4 10.9 19.0 12.1"/><path class="bm-whorl" d="M5.9 8.1L14.8 12.1"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 0 0 0 17c1.2 0 1.8-.8 1.8-1.7 0-1.2-1-1.6-1-2.6 0-.9.7-1.6 1.6-1.6h2.1a4 4 0 0 0 4-4c0-4-3.8-7.1-8.5-7.1z"/><circle cx="7.8" cy="11.5" r="1"/><circle cx="10" cy="7.6" r="1"/><circle cx="14.6" cy="7.6" r="1"/></symbol>
+</svg>
+
+<header class="top-bar">
+  <div class="tb-left">
+    <div class="brand">
+      <svg class="brand-mark" aria-hidden="true" focusable="false"><use href="#i-brand"/></svg>
+      <div class="brand-tx">
+        <h1 id="mainTitle"><span id="siteTitle">Events &amp; Gatherings</span> <span class="yr-inline" id="yearDisplay">2026</span></h1>
+        <span class="brand-tag">Regenerative gatherings worldwide</span>
+      </div>
+    </div>
+    <div class="year-toggle seg" id="yearToggle" role="group" aria-label="Year"></div>
+    <div class="search-box" role="search">
+      <svg class="ic s-ic" aria-hidden="true"><use href="#i-search"/></svg>
+      <input type="text" id="searchInput" placeholder="Search events, places, tags" aria-label="Search events" aria-keyshortcuts="/" autocomplete="off" spellcheck="false" enterkeyhint="search" oninput="onSearch()">
+      <kbd class="kbd-hint" aria-hidden="true">/</kbd>
+      <button type="button" class="search-clear" onclick="clearSearch()" title="Clear search" aria-label="Clear search"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
   </div>
-  <div class="top-btns" style="justify-content:center;margin-left:0">
-    <button class="btn" id="typesBtn" onclick="togglePanel('types')" style="background:#2a9d8f22;color:#2a9d8f;border-color:#2a9d8f55">🏷️ Types</button>
-    <button class="btn btn-favs" id="favsBtn" onclick="togglePanel('favs')">Starred (0)</button>
-    <button class="btn btn-online" id="onlineBtn" onclick="togglePanel('online')" title="Online events (no map pins)">🌐 Online (0)</button>
-    <button class="btn" id="ignBtn" onclick="togglePanel('ignored')" style="background:#55555522;color:#888;border-color:#55555555">Ignored (0)</button>
-    <button class="btn btn-issues" id="issuesBtn" onclick="togglePanel('issues')" style="display:none">Issues (0)</button>
+  <div class="top-btns tb-mid tgroup" role="toolbar" aria-label="Views">
+    <button class="tg-btn tg-c1" id="typesBtn" onclick="togglePanel('types')" title="Filter by event type" aria-controls="typesPanel" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg><span class="tg-label">Types</span><span class="tg-badge" id="typesCount" hidden></span></button>
+    <button class="tg-btn t-star" id="favsBtn" onclick="togglePanel('favs')" title="Your starred events" aria-controls="favsPanel" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg><span class="tg-label">Starred</span><span class="tg-badge b-star zero" id="favsCount">0</span></button>
+    <button class="tg-btn" id="onlineBtn" onclick="togglePanel('online')" title="Online events (no map pins)" aria-controls="onlineDock" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg><span class="tg-label">Online</span><span class="tg-badge b-info zero" id="onlineCount">0</span></button>
+    <button class="tg-btn tg-c1" id="tlToggleTop" onclick="toggleTimeline()" title="Timeline list" aria-controls="timeline" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="#i-timeline"/></svg><span class="tg-label">Timeline</span></button>
   </div>
-  <div style="flex-shrink:0;display:flex;gap:4px">
-    <button class="btn" id="tlToggleTop" onclick="toggleTimeline()" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">📋 Timeline</button>
-    <button class="btn" onclick="togglePanel('about')" style="background:#ffffff11;color:#aaa;border-color:#ffffff22">ℹ️ About</button>
+  <div class="tb-right">
+    <button class="btn-cta" onclick="openAddModal()" title="Suggest an event for the map"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg><span>Suggest<span class="cta-x"> Event</span></span></button>
+    <div class="more-wrap" id="moreWrap">
+      <button class="icon-btn more-btn" id="moreBtn" onclick="toggleMoreMenu(event)" aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu" title="More" aria-label="More"><svg class="ic" aria-hidden="true"><use href="#i-dots"/></svg></button>
+      <div class="more-menu" id="moreMenu" role="menu" aria-labelledby="moreBtn" hidden>
+        <button class="mn-item" role="menuitem" tabindex="-1" id="ignBtn" onclick="moreMenuAction('ignored')"><svg class="ic" aria-hidden="true"><use href="#i-eye-off"/></svg><span class="mn-tx">Ignored events</span><span class="tg-badge zero" id="ignCount">0</span></button>
+        <button class="mn-item mn-danger" role="menuitem" tabindex="-1" id="issuesBtn" onclick="moreMenuAction('issues')" hidden><svg class="ic" aria-hidden="true"><use href="#i-flag"/></svg><span class="mn-tx">Issues</span><span class="tg-badge" id="issuesCount">0</span></button>
+        <button class="mn-item" role="menuitem" tabindex="-1" onclick="moreMenuAction('about')"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><span class="mn-tx">About this map</span></button>
+        <div class="mn-sep" role="separator"></div>
+        <div class="mn-label" id="themeLbl" role="none"><svg class="ic" aria-hidden="true"><use href="#i-palette"/></svg>Theme</div>
+        <div class="theme-seg" id="themePick" role="group" aria-labelledby="themeLbl"></div>
+      </div>
+    </div>
   </div>
-  <button class="mobile-hamburger" onclick="toggleMobileMenu()">☰</button>
-</div>
+  <button class="mobile-hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()" aria-label="Menu" aria-controls="mobileMenu" aria-expanded="false"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg></button>
+</header>
 
 <!-- Mobile Menu Overlay -->
-<div class="mobile-menu" id="mobileMenu">
+<div class="mobile-menu" id="mobileMenu" role="dialog" aria-modal="true" aria-label="Menu">
   <div class="mm-header">
-    <h2>Events & Gatherings</h2>
-    <button class="mm-close" onclick="closeMobileMenu()">&times;</button>
+    <div class="brand"><svg class="brand-mark" aria-hidden="true" focusable="false"><use href="#i-brand"/></svg><h2 id="mmTitle">Events &amp; Gatherings</h2></div>
+    <button class="mm-close" onclick="closeMobileMenu()" aria-label="Close menu"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
   </div>
   <div class="mm-body">
-    <input class="mm-search" id="mobileSearchInput" type="text" placeholder="Search events..." oninput="onMobileSearch()">
-    <div class="mm-year-row" id="mobileYearRow"></div>
+    <div class="mm-search-wrap"><svg class="ic s-ic" aria-hidden="true"><use href="#i-search"/></svg><input class="mm-search" id="mobileSearchInput" type="text" placeholder="Search events, places, tags" aria-label="Search events" autocomplete="off" enterkeyhint="search" oninput="onMobileSearch()"></div>
+    <div class="mm-year-row seg" id="mobileYearRow" role="group" aria-label="Year"></div>
     <button class="mm-btn mm-btn-primary" onclick="mobileMenuAction(()=>openAddModal())">
-      <span class="mm-icon">+</span><span class="mm-label">Suggest Event</span>
+      <span class="mm-icon"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></span><span class="mm-label">Suggest Event</span>
     </button>
+    <div class="mm-group">
     <button class="mm-btn" onclick="mobileMenuAction(()=>togglePanel('types'))">
-      <span class="mm-icon">🏷️</span><span class="mm-label">Event Types</span>
+      <span class="mm-icon"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg></span><span class="mm-label">Event Types</span>
     </button>
     <button class="mm-btn mm-btn-star" id="mmStarBtn" onclick="mobileMenuAction(()=>togglePanel('favs'))">
-      <span class="mm-icon">⭐</span><span class="mm-label">Starred Events</span><span class="mm-badge" id="mmStarCount">0</span>
+      <span class="mm-icon"><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg></span><span class="mm-label">Starred Events</span><span class="mm-badge tg-badge b-star zero" id="mmStarCount">0</span>
     </button>
-    <button class="mm-btn" id="mmOnlineBtn" onclick="mobileMenuAction(()=>togglePanel('online'))">
-      <span class="mm-icon">🌐</span><span class="mm-label">Online Events</span><span class="mm-badge" id="mmOnlineCount">0</span>
-    </button>
-    <button class="mm-btn" onclick="mobileMenuAction(()=>togglePanel('ignored'))">
-      <span class="mm-icon">—</span><span class="mm-label">Ignored Events</span><span class="mm-badge" id="mmIgnCount">0</span>
+    <button class="mm-btn mm-btn-info" id="mmOnlineBtn" onclick="mobileMenuAction(()=>togglePanel('online'))">
+      <span class="mm-icon"><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg></span><span class="mm-label">Online Events</span><span class="mm-badge tg-badge b-info zero" id="mmOnlineCount">0</span>
     </button>
     <button class="mm-btn" onclick="mobileMenuAction(()=>toggleMobileTimeline())">
-      <span class="mm-icon">📋</span><span class="mm-label">Timeline</span>
+      <span class="mm-icon"><svg class="ic" aria-hidden="true"><use href="#i-timeline"/></svg></span><span class="mm-label">Timeline</span>
+    </button>
+    </div>
+    <div class="mm-group">
+    <button class="mm-btn" onclick="mobileMenuAction(()=>togglePanel('ignored'))">
+      <span class="mm-icon"><svg class="ic" aria-hidden="true"><use href="#i-eye-off"/></svg></span><span class="mm-label">Ignored Events</span><span class="mm-badge tg-badge zero" id="mmIgnCount">0</span>
     </button>
     <button class="mm-btn" onclick="mobileMenuAction(()=>togglePanel('about'))">
-      <span class="mm-icon">ℹ️</span><span class="mm-label">About This Map</span>
+      <span class="mm-icon"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg></span><span class="mm-label">About This Map</span>
     </button>
+    </div>
+    <div class="mm-theme"><span class="mm-theme-l" id="mThemeLbl">Theme</span><div class="theme-seg" id="mThemePick" role="group" aria-labelledby="mThemeLbl"></div></div>
   </div>
 </div>
-<div class="mobile-filter-toggle" onclick="toggleMobileFilters()">
-  <span>Filters</span>
-  <span class="mft-arrow">▼</span>
-</div>
-<div class="filters" style="border-bottom:none;padding-bottom:4px">
-  <span class="fl">Regions:</span>
-  <button class="btn" onclick="toggleAllRegions(true)" style="font-size:9px;padding:2px 6px">All</button>
-  <button class="btn" onclick="toggleAllRegions(false)" style="font-size:9px;padding:2px 6px">None</button>
-  <span id="regionFilters"></span>
-  <div class="filter-hints">
-    <span>☆ Star to save favorites</span>
-    <span class="clickable" onclick="togglePanel('favs')">📅 Export to calendar</span>
-    <span class="clickable" onclick="togglePanel('favs')">🗺 Plan a route</span>
-    <span>— Ignore to hide</span>
+<button type="button" class="mobile-filter-toggle" onclick="toggleMobileFilters()" aria-controls="filterBar" aria-expanded="false">
+  <span class="mft-l"><svg class="ic" aria-hidden="true"><use href="#i-filter"/></svg>Filters</span>
+  <svg class="ic mft-arrow" aria-hidden="true"><use href="#i-chev"/></svg>
+</button>
+<div class="filters" id="filterBar">
+  <div class="fgroup" id="regionGroup">
+    <span class="fl">Regions</span>
+    <button class="btn fbtn" onclick="toggleAllRegions(true)">All</button>
+    <button class="btn fbtn" onclick="toggleAllRegions(false)">None</button>
+    <span id="regionFilters"></span>
   </div>
-</div>
-<div class="filters" id="filterBar" style="padding-top:0px">
-  <span class="fl">Months:</span>
-  <button class="btn" onclick="toggleAll(true)" style="font-size:9px;padding:2px 6px">All</button>
-  <button class="btn" onclick="toggleAll(false)" style="font-size:9px;padding:2px 6px">None</button>
-  <button class="btn" id="pastToggle" onclick="toggleShowPast()" style="font-size:9px;padding:2px 6px;background:#55555522;color:#888;border-color:#55555555">Show past</button>
-  <!-- month labels get inserted here by JS -->
+  <span class="fdiv" aria-hidden="true"></span>
+  <div class="fgroup" id="monthGroup">
+    <span class="fl">Months</span>
+    <button class="btn fbtn" onclick="toggleAll(true)">All</button>
+    <button class="btn fbtn" onclick="toggleAll(false)">None</button>
+    <button class="btn fbtn tone-muted past-toggle" id="pastToggle" onclick="toggleShowPast()">Show past</button>
+    <span id="monthPills"><!-- month labels get inserted here by JS --></span>
+  </div>
 </div>
 <div id="tlTip" class="tl-tip"></div>
 
-<div class="main" style="position:relative">
+<div class="main">
+  <aside class="online-dock" id="onlineDock" aria-label="Online events">
+    <div class="tl-header od-header"><span>Online <span id="odCount">0</span></span><button class="tl-close" onclick="togglePanel('online')" title="Collapse online events" aria-label="Collapse online events">✕</button></div>
+    <div class="op-note">Follows the month, type and search filters (the region filter does not apply). Click an event for details.</div>
+    <div class="sp-list" id="onlineList"></div>
+  </aside>
   <div id="map"></div>
+  <div class="load-error" id="loadError" role="alert" hidden>
+    <h2>Events could not be loaded</h2>
+    <p id="loadErrorMsg">The event database is not answering right now. Check your connection, then try again.</p>
+    <button type="button" id="loadRetry" onclick="retryLoad()">Retry</button>
+  </div>
   <div class="timeline" id="timeline">
     <div class="drag-handle"></div>
-    <div class="tl-header"><span>Timeline (<span id="tlCount">0</span>)</span><button onclick="toggleTimeline()" style="background:none;border:none;color:#888;cursor:pointer;font-size:14px;padding:2px 6px" title="Collapse timeline">✕</button></div>
+    <div class="tl-header"><span>Timeline <span id="tlCount">0</span></span><button class="tl-close" onclick="toggleTimeline()" title="Collapse timeline" aria-label="Collapse timeline">✕</button></div>
     <div class="tl-scroll" id="tlScroll"></div>
   </div>
-  <button class="tl-toggle" id="tlToggle" onclick="toggleTimeline()" title="Show timeline" style="display:none">▶</button>
-  <button class="mobile-timeline-btn" id="mobileTimelineBtn" onclick="toggleMobileTimeline()">📋</button>
+  <button class="dock-tab od-toggle" id="odToggle" onclick="togglePanel('online')" title="Show online events" hidden><span class="dock-tab-ar">▶</span><svg class="ic" aria-hidden="true"><use href="#i-globe"/></svg><span class="dock-tab-tx">Online</span></button>
+  <button class="dock-tab tl-toggle" id="tlToggle" onclick="toggleTimeline()" title="Show timeline" hidden><span class="dock-tab-ar">◀</span><svg class="ic" aria-hidden="true"><use href="#i-timeline"/></svg><span class="dock-tab-tx">Timeline</span></button>
+  <button class="mobile-timeline-btn" id="mobileTimelineBtn" onclick="toggleMobileTimeline()" aria-label="Timeline"><svg class="ic" aria-hidden="true"><use href="#i-timeline"/></svg></button>
 </div>
 
 <!-- User Name Modal (for stars) -->
 <div class="user-modal-overlay" id="userNameModal">
   <div class="user-modal">
-    <h3 style="margin-bottom:8px">Resonance Beacons ✨</h3>
-    <p style="font-size:12px;color:#aaa;line-height:1.5;margin-bottom:12px">When you star an event, it becomes a <strong style="color:#e9c46a">resonance beacon</strong> — a signal to the community that you're interested. Others can see how many people are interested in each gathering, and who they are. This helps the community self-organize and find each other.</p>
-    <p style="font-size:12px;color:#888;margin-bottom:10px">Enter your name so others know who's interested, or skip to star anonymously.</p>
+    <h3 class="um-title">Resonance Beacons ✨</h3>
+    <p class="um-lead">When you star an event, it becomes a <strong>resonance beacon</strong> — a signal to the community that you're interested. Others can see how many people are interested in each gathering, and who they are. This helps the community self-organize and find each other.</p>
+    <p class="um-note">Enter your name so others know who's interested, or skip to star anonymously.</p>
     <input type="text" id="userNameInput" placeholder="Your name (e.g. Andrew)" onkeypress="if(event.key==='Enter') confirmUserName()">
     <div class="buttons">
       <button class="save" onclick="confirmUserName()">Save & Star</button>
-      <button class="cancel" onclick="skipUserName()" style="background:#2a9d8f33;color:#2a9d8f;border-color:#2a9d8f55">Skip — Star Anonymously</button>
+      <button class="cancel skip" onclick="skipUserName()">Skip — Star Anonymously</button>
       <button class="cancel" onclick="cancelUserName()">Cancel</button>
     </div>
   </div>
@@ -485,7 +890,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="modal-overlay" id="addModal">
   <div class="modal">
     <h2>Suggest an Event</h2>
-    <p style="font-size:12px;color:#aaa;line-height:1.5;margin-bottom:14px">Know of a regenerative gathering, ecovillage festival, or community event that should be on this map? Drop a link below and we'll add it.</p>
+    <p class="modal-lead">Know of a regenerative gathering, ecovillage festival, or community event that should be on this map? Drop a link below and we'll add it.</p>
     <label>Link to the event *</label>
     <input id="ae-url" placeholder="https://example.com/amazing-gathering-2026" style="margin-bottom:10px">
     <label>Your name (optional)</label>
@@ -501,150 +906,172 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <!-- Ignored Panel -->
 <div class="side-panel" id="ignoredPanel">
-  <div class="sp-header"><h2 style="color:#888">Ignored Events</h2><button class="sp-close" onclick="togglePanel('ignored')">&times;</button></div>
+  <div class="sp-header"><h2 class="c-muted">Ignored Events</h2><button class="sp-close" aria-label="Close" onclick="togglePanel('ignored')">&times;</button></div>
   <div class="sp-list" id="ignoredList"></div>
-  <button class="sp-btn" onclick="clearIgnored()" style="background:#33333322;color:#666;border-color:#44444455">Clear all ignored</button>
+  <button class="sp-btn tone-quiet" onclick="clearIgnored()">Clear all ignored</button>
 </div>
 
 <!-- Starred Panel -->
 <div class="side-panel" id="favsPanel">
-  <div class="sp-header"><h2 style="color:#e9c46a">Your Starred Events</h2><button class="sp-close" onclick="togglePanel('favs')">&times;</button></div>
+  <div class="sp-header"><h2 class="c-star">Your Starred Events</h2><button class="sp-close" aria-label="Close" onclick="togglePanel('favs')">&times;</button></div>
   <div class="sp-list" id="favsList"></div>
-  <button class="sp-btn" onclick="copyFavsList()" style="background:#2a9d8f33;color:#2a9d8f;border-color:#2a9d8f55">Copy list to clipboard</button>
-  <button class="sp-btn" onclick="exportICS()" style="background:#6bbe4533;color:#6bbe45;border-color:#6bbe4555;margin-top:4px">📅 Export .ics calendar file</button>
-  <button class="sp-btn" onclick="openRoutePage()" style="background:#457b9d33;color:#457b9d;border-color:#457b9d55;margin-top:4px">🗺️ View route itinerary + Google Maps</button>
-  <button class="sp-btn" onclick="exportKML()" style="background:#e8951833;color:#e89518;border-color:#e8951855;margin-top:4px">📍 Export KML for Google My Maps</button>
-</div>
-
-<!-- Online Events Panel -->
-<div class="side-panel" id="onlinePanel">
-  <div class="sp-header"><h2 style="color:#8ab4f8">🌐 Online Events</h2><button class="sp-close" onclick="togglePanel('online')">&times;</button></div>
-  <div class="op-note">Follows the month, type and search filters (the region filter does not apply). Click an event for details.</div>
-  <div class="sp-list" id="onlineList"></div>
+  <button class="sp-btn tone-accent" onclick="copyFavsList()">Copy list to clipboard</button>
+  <button class="sp-btn tone-success" onclick="exportICS()" style="margin-top:4px">📅 Export .ics calendar file</button>
+  <button class="sp-btn tone-link2" onclick="openRoutePage()" style="margin-top:4px">🗺️ View route itinerary + Google Maps</button>
+  <button class="sp-btn tone-warn" onclick="exportKML()" style="margin-top:4px">📍 Export KML for Google My Maps</button>
 </div>
 
 <!-- Issues Panel -->
 <div class="side-panel" id="issuesPanel">
-  <div class="sp-header"><h2 style="color:#e63946">Bug Reports</h2><button class="sp-close" onclick="togglePanel('issues')">&times;</button></div>
+  <div class="sp-header"><h2 class="c-danger">Bug Reports</h2><button class="sp-close" aria-label="Close" onclick="togglePanel('issues')">&times;</button></div>
   <div class="sp-list" id="issuesList"></div>
-  <button class="sp-btn" onclick="copyIssues()" style="background:#e6394633;color:#e63946;border-color:#e6394655">Copy issues for Claude</button>
-  <button class="sp-btn" onclick="clearIssues()" style="background:#33333322;color:#666;border-color:#44444455;margin-top:4px">Clear all</button>
+  <button class="sp-btn tone-danger" onclick="copyIssues()">Copy issues for Claude</button>
+  <button class="sp-btn tone-quiet" onclick="clearIssues()" style="margin-top:4px">Clear all</button>
 </div>
 
 <!-- About Panel -->
 <div class="side-panel" id="aboutPanel" style="z-index:2001;">
-  <div class="sp-header"><h2 style="color:#2a9d8f">About This Map</h2><button class="sp-close" onclick="togglePanel('about')">&times;</button></div>
-  <div style="padding:18px;font-size:12px;color:#bbb;line-height:1.7;overflow-y:auto;flex:1">
-    <p style="font-size:14px;color:#fff;font-weight:600;margin-bottom:12px">Regen Events Map</p>
+  <div class="sp-header"><h2 class="c-accent">About This Map</h2><button class="sp-close" aria-label="Close" onclick="togglePanel('about')">&times;</button></div>
+  <div class="about-body">
+    <div class="how-to">
+      <p class="how-to-h">How to use</p>
+      <ul>
+        <li><span class="c-star">☆</span> Star an event to save it to your favorites</li>
+        <li><button type="button" class="link-btn" onclick="togglePanel('favs')">📅 Export your starred events to a calendar</button></li>
+        <li><button type="button" class="link-btn" onclick="togglePanel('favs')">🗺 Plan a route through your starred events</button></li>
+        <li><span class="c-muted">—</span> Ignore an event to hide it</li>
+      </ul>
+    </div>
+    <p class="about-title">Regen Events Map</p>
     <p>A community-curated map of regenerative gatherings, ecovillage festivals, bioregional congresses, permaculture convergences, and adjacent events happening around the world.</p>
     <p style="margin-top:12px">This project emerged from the regenerative economy ecosystem — connecting communities working on bioregionalism, decentralized governance, community coordination, regenerative finance, and systems change.</p>
 
-    <p style="font-size:13px;color:#e9c46a;font-weight:600;margin-top:20px;margin-bottom:6px">✨ Resonance Beacons</p>
+    <p class="about-h c-star">✨ Resonance Beacons</p>
     <p>When you star an event, it becomes a "resonance beacon" — a signal visible to the whole community showing interest in that gathering. You can see how many people are interested in each event and who they are. This helps the community self-organize and find each other on the road.</p>
 
-    <p style="font-size:13px;color:#2a9d8f;font-weight:600;margin-top:20px;margin-bottom:6px">🔒 Privacy & Identity</p>
+    <p class="about-h c-accent">🔒 Privacy & Identity</p>
     <p>We don't track you. There are no accounts, no cookies, no analytics. Your "ignored" events list is stored only in your browser's local storage — nobody else can see it, and it disappears if you clear your browser data.</p>
     <p style="margin-top:6px">If you star an event, you can choose to share your name or star anonymously. Names are stored in our database so others can see who's interested, but there's no email, no login, no personal data beyond the name you choose to give.</p>
 
-    <p style="font-size:13px;color:#6bbe45;font-weight:600;margin-top:20px;margin-bottom:6px">➕ Adding Events</p>
+    <p class="about-h c-success">➕ Adding Events</p>
     <p>Anyone can suggest an event by clicking "+ Suggest Event" and dropping a link. Suggestions go into a review queue — a human checks them and adds the full details to the map. You can also contribute via our Telegram group where a bot collects shared event links automatically.</p>
 
-    <p style="font-size:13px;color:#e89530;font-weight:600;margin-top:20px;margin-bottom:6px">🛠️ How It's Built</p>
+    <p class="about-h c-warn">🛠️ How It's Built</p>
     <p>Open source. Single HTML file hosted on GitHub Pages. Event data stored in Supabase (open-source PostgreSQL). Map tiles by OpenStreetMap + CARTO. No frameworks, no build step, no vendor lock-in.</p>
-    <p style="margin-top:6px"><a href="https://github.com/andrewalan11/regen-events-map" target="_blank" style="color:#2a9d8f">View source on GitHub</a></p>
+    <p style="margin-top:6px"><a href="https://github.com/andrewalan11/regen-events-map" target="_blank" rel="noopener">View source on GitHub</a></p>
 
-    <p style="font-size:13px;color:#d4652a;font-weight:600;margin-top:20px;margin-bottom:6px">🐛 Found a Bug?</p>
+    <p class="about-h c-accent-3">🐛 Found a Bug?</p>
     <p>Click any event and use the "Report" button to flag wrong dates, broken links, or missing info. Reports go directly to our review queue.</p>
 
-    <p style="margin-top:20px;padding-top:12px;border-top:1px solid #333;color:#666;font-size:10px">Built with care by Andrew and Claude. Part of the regenerative economy ecosystem including BetterWorld, NAO, and UPgame.</p>
+    <p class="about-foot">Built with care by Andrew and Claude. Part of the regenerative economy ecosystem including BetterWorld, NAO, and UPgame.</p>
   </div>
 </div>
 
 <!-- Types Filter Panel -->
 <div class="side-panel" id="typesPanel" style="z-index:2001;">
-  <div class="sp-header"><h2 style="color:#2a9d8f">Event Types</h2><button class="sp-close" onclick="togglePanel('types')">&times;</button></div>
-  <div style="padding:8px 18px;border-bottom:1px solid #0f346033;display:flex;gap:6px">
-    <button class="btn" onclick="setAllTypes(true)" style="font-size:10px;padding:3px 8px">All on</button>
-    <button class="btn" onclick="setAllTypes(false)" style="font-size:10px;padding:3px 8px">All off</button>
+  <div class="sp-header"><h2 class="c-accent">Event Types</h2><button class="sp-close" aria-label="Close" onclick="togglePanel('types')">&times;</button></div>
+  <div class="types-bar">
+    <button class="chip-btn" onclick="setAllTypes(true)">All on</button>
+    <button class="chip-btn" onclick="setAllTypes(false)">All off</button>
   </div>
-  <div class="sp-list" id="typesList" style="padding:8px 0"></div>
+  <div class="sp-list" id="typesList" style="padding:0 0 8px"></div>
 </div>
 
 <script>
 // === ERROR DISPLAY ===
+// Messages and stacks are inserted as text (never as HTML)
+function errorBox(cls, title, lines, pre) {
+  const box = document.createElement('div');
+  box.className = cls;
+  const h = document.createElement(cls === 'js-error' ? 'h2' : 'h3');
+  h.textContent = title;
+  box.appendChild(h);
+  lines.forEach(t => { const p = document.createElement('p'); p.textContent = t; box.appendChild(p); });
+  const st = document.createElement('pre');
+  st.textContent = pre || '';
+  box.appendChild(st);
+  return box;
+}
 window.onerror = function(msg, url, line, col, err) {
-  document.getElementById('map').innerHTML = '<div style="color:#e63946;padding:40px;font-family:monospace"><h2>JS Error</h2><p>'+msg+'</p><p>Line: '+line+', Col: '+col+'</p><pre>'+(err?.stack||'')+'</pre></div>';
+  const m = document.getElementById('map');
+  if (m) { m.textContent = ''; m.appendChild(errorBox('js-error', 'JS Error', [String(msg), 'Line: ' + line + ', Col: ' + col], err && err.stack ? String(err.stack) : '')); }
   return false;
 };
 window.addEventListener('unhandledrejection', function(e) {
-  document.getElementById('map').innerHTML += '<div style="color:#e9c46a;padding:20px;font-family:monospace"><h3>Async Error</h3><p>'+e.reason?.message+'</p><pre>'+(e.reason?.stack||'')+'</pre></div>';
+  const r = e.reason;
+  const m = document.getElementById('map');
+  if (m) m.appendChild(errorBox('js-async-error', 'Async Error', [String(r && r.message !== undefined ? r.message : r)], r && r.stack ? String(r.stack) : ''));
 });
 
+// === SAFE STORAGE ===
+// localStorage can be missing or throw (privacy modes, blocked storage): the map still works, it just forgets.
+function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { window.localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+
 // === SUPABASE INIT ===
-const sb = window.supabase.createClient(
-  'https://aurftdjjghtzeofqzezx.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1cmZ0ZGpqZ2h0emVvZnF6ZXp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5OTA4MzUsImV4cCI6MjA4OTU2NjgzNX0.PeOisRNczOCYOgyiKL8lNDA0ZNiwhzBhqQWDYx6DtMo'
-);
+// Every request gives up after SB_TIMEOUT_MS, so an unreachable server ends in the Retry message, not an endless spinner.
+const SB_TIMEOUT_MS = 15000;
+function fetchWithTimeout(input, init) {
+  init = init || {};
+  if (typeof AbortController === 'undefined') return fetch(input, init);
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), SB_TIMEOUT_MS);
+  if (init.signal) init.signal.addEventListener('abort', () => ctl.abort());
+  return fetch(input, Object.assign({}, init, { signal: ctl.signal })).finally(() => clearTimeout(t));
+}
+// supabase-js also retries failed requests with backoff, so each load step gets an overall deadline too
+const withDeadline = (promise, ms = SB_TIMEOUT_MS) => Promise.race([promise, new Promise(res => setTimeout(() => res(null), ms))]);
+const sb = (window.supabase && window.supabase.createClient)
+  ? window.supabase.createClient(SITE_CONFIG.supabaseUrl, SITE_CONFIG.supabaseKey, { global: { fetch: fetchWithTimeout } })
+  : null; // supabase-js failed to load: data calls fail and the Retry message shows
 
 // === COLORS & ICONS ===
-// Hardcoded fallbacks; overridden by Supabase tag_icons table
-let TI = {'ecovillage':'🛖','permaculture':'🌱','bioregional':'🌍','climate':'☁️','systems change':'🦋','web3':'⛓️','governance':'🏛️','regen ag':'🌾','festival':'🎪','commons':'🤝','transformation':'✨','UPgame':'🔮','primitive skills':'🏹','craft':'🧶','healing':'💚','rewilding':'🐺','gathering':'🧠','retreat':'🧘','impact':'💡','futures':'🔭','cultural':'🎭','hacker camp':'💻','burning man':'🔥','wellbeing':'🌸','food systems':'🍎','AI':'🤖','entrepreneurship':'🚀','regen':'♻️','regen economics':'💰'};
+const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k); // (Object.hasOwn is newer than some supported browsers)
+// Hardcoded fallbacks; overridden by Supabase tag_icons table.
+// Null-prototype map + own-key lookups: a tag named "constructor" or "__proto__" is just a tag.
+const TI = Object.assign(Object.create(null), {'ecovillage':'🛖','permaculture':'🌱','bioregional':'🌍','climate':'☁️','systems change':'🦋','web3':'⛓️','governance':'🏛️','regen ag':'🌾','festival':'🎪','commons':'🤝','transformation':'✨','UPgame':'🔮','primitive skills':'🏹','craft':'🧶','healing':'💚','rewilding':'🐺','gathering':'🧠','retreat':'🧘','impact':'💡','futures':'🔭','cultural':'🎭','hacker camp':'💻','burning man':'🔥','wellbeing':'🌸','food systems':'🍎','AI':'🤖','entrepreneurship':'🚀','regen':'♻️','regen economics':'💰'});
+const tagIcon = t => (own(TI, t) && TI[t]) || '';
 async function fetchTagIcons(){
   try{
     const{data,error}=await sb.from('tag_icons').select('tag,icon');
     if(!error&&data){data.forEach(r=>{TI[r.tag]=esc(r.icon)});} // icons are inserted as HTML: keep them escaped
   }catch(e){console.warn('Tag icons fetch failed, using defaults');}
 }
-function gi(ev){for(const t of(ev.tags||[])){if(TI[t])return TI[t]}return'📍'}
+function gi(ev){for(const t of(ev.tags||[])){const ic=tagIcon(t);if(ic)return ic}return'📍'}
 
-// === DYNAMIC COLOR SHIFTING ===
-// Heat gradient: index 0 = hottest (current month), cooling toward future
-const HEAT_GRADIENT = [
-  '#e63946', // 0 — red (this month!)
-  '#e8613a', // 1 — red-orange
-  '#e89530', // 2 — orange
-  '#e9c46a', // 3 — yellow
-  '#a8d430', // 4 — yellow-green
-  '#4a9e4a', // 5 — green
-  '#2a9d8f', // 6 — teal
-  '#457b9d', // 7 — blue
-  '#3a5fa0', // 8 — deep blue
-  '#6a4c9c', // 9 — purple
-];
-const PAST_COLOR = '#555';
-const LIGHT_TEXT_SLOTS = new Set([3, 4]); // slots where text should be dark
-
+// === MONTH URGENCY SLOTS ===
+// Colors live in theme.css (--month-0 .. --month-11, --month-past, --tba).
+// JS only picks the slot: '0' = current month (hottest), each later month one
+// step cooler (max '11'); months before the current one are 'past'.
 const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const NOW_MONTH = new Date().getMonth(); // 0=Jan, 1=Feb, ...
-
-// Build MC: current month = red, each future month one step cooler, past = grey
-const MC = {};
-MO.forEach((m, i) => {
-  if (i < NOW_MONTH) { MC[m] = PAST_COLOR; }
-  else {
-    const slot = i - NOW_MONTH;
-    MC[m] = slot < HEAT_GRADIENT.length ? HEAT_GRADIENT[slot] : HEAT_GRADIENT[HEAT_GRADIENT.length - 1];
-  }
-});
+const MS = Object.create(null); // month name -> slot
+MO.forEach((m, i) => { MS[m] = i < NOW_MONTH ? 'past' : String(Math.min(i - NOW_MONTH, 11)); });
+const monthSlot = m => (typeof m === 'string' && own(MS, m)) ? MS[m] : 'none'; // 'none' = no usable month
+const evSlot = ev => ev.edition_state === 'dates-tba' ? 'tba' : monthSlot(ev.month); // pins/popups show TBA in its own color
 
 // Auto-detect past months & set active
 const PAST_MONTHS = new Set(MO.filter((m, i) => i < NOW_MONTH));
 const activeMonths = new Set(MO.filter(m => !PAST_MONTHS.has(m)));
 
-// Inject month filter CSS dynamically
-(function initColors() {
-  const style = document.createElement('style');
-  let css = '';
-  MO.forEach((m, i) => {
-    const c = MC[m];
-    const slot = i - NOW_MONTH;
-    const textColor = (i < NOW_MONTH) ? '#999' : (LIGHT_TEXT_SLOTS.has(slot) ? '#1a1a2e' : '#fff');
-    const cls = `.m-${m.toLowerCase()}`;
-    css += `${cls}{background:${c};color:${textColor}}${cls}.off{background:transparent;color:${c};border-color:${c}}\n`;
-  });
-  style.textContent = css;
-  document.head.appendChild(style);
-})();
+// === THEME TOKENS (only for places that need a literal color value) ===
+const _tokCache = new Map();
+let _tokProbe = null;
+function readToken(name) {
+  if (!/^--[\w-]+$/.test(name)) return '';
+  if (_tokCache.has(name)) return _tokCache.get(name);
+  if (!_tokProbe) {
+    _tokProbe = document.createElement('div');
+    _tokProbe.setAttribute('aria-hidden', 'true');
+    _tokProbe.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;visibility:hidden;pointer-events:none';
+    document.body.appendChild(_tokProbe);
+  }
+  _tokProbe.style.backgroundColor = 'var(' + name + ')';
+  const v = getComputedStyle(_tokProbe).backgroundColor;
+  _tokCache.set(name, v);
+  return v;
+}
+window.addEventListener('themechange', () => _tokCache.clear());
 
 // === EVENT DATA & STATE ===
 let events = [];
@@ -688,16 +1115,19 @@ let currentStarIndex = -1; // which event the user is trying to star
 let currentStarCallback = null; // callback after user enters name
 
 // === LOCAL STORAGE ===
-function getLSKey() { return `events-map-${selectedYear}-state`; }
-const USER_KEY = 'events-map-userName';
+// Namespaced under SITE_CONFIG.storageKey. With the default storageKey 'events-map' these are the same keys
+// the site has always used (events-map-userName, events-map-<year>-state), so existing visitors keep their data;
+// a fork with its own storageKey starts fresh instead of reading the parent site's data.
+function getLSKey() { return `${SITE_CONFIG.storageKey}-${selectedYear}-state`; }
+const USER_KEY = SITE_CONFIG.storageKey + '-userName';
 
 function loadUserName() {
-  userName = localStorage.getItem(USER_KEY) || '';
+  userName = lsGet(USER_KEY) || '';
   syncUserStars();
 }
 
 function saveUserName() {
-  localStorage.setItem(USER_KEY, userName);
+  lsSet(USER_KEY, userName);
 }
 
 function syncUserStars() {
@@ -713,13 +1143,13 @@ function syncUserStars() {
 function persist() {
   try {
     const s = { ignoredNames: [...ignored].map(i => events[i]?.name).filter(Boolean), issues };
-    localStorage.setItem(getLSKey(), JSON.stringify(s));
+    lsSet(getLSKey(), JSON.stringify(s));
   } catch(e) {}
 }
 
 function restore() {
   try {
-    const raw = localStorage.getItem(getLSKey());
+    const raw = lsGet(getLSKey());
     if (!raw) return;
     const s = JSON.parse(raw);
     const nm = new Map();
@@ -733,11 +1163,10 @@ function restore() {
 }
 
 // === TOAST ===
-function toast(msg, color = '#2a9d8f') {
+function toast(msg, kind = 'ok') { // kind: 'ok' | 'warn' | 'error'
   const t = document.createElement('div');
-  t.className = 'toast';
+  t.className = 'toast' + (kind === 'error' || kind === 'warn' ? ' ' + kind : '');
   t.textContent = msg;
-  t.style.backgroundColor = color;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
 }
@@ -761,7 +1190,7 @@ function promptUserName(callback) {
 function confirmUserName() {
   const name = document.getElementById('userNameInput').value.trim();
   if (!name) {
-    toast('Please enter your name', '#e63946');
+    toast('Please enter your name', 'error');
     return;
   }
   userName = name;
@@ -785,33 +1214,129 @@ function cancelUserName() {
 }
 
 // === MAP ===
+// prefers-reduced-motion: map moves jump instead of animating (one helper for every programmatic move)
+const reduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+const mapView = (latlng, zoom) => {
+  if (!latlng.every(v => Number.isFinite(+v))) return; // no usable coordinates: stay put
+  map.setView(latlng, zoom, reduceMotion() ? { animate: false } : {});
+};
 const map = L.map('map', { zoomControl: true }).setView([30, 0], 3);
-// CARTO basemaps need an API key since 2026 (free non-commercial key; manage at dashboard.basemaps.carto.com)
-L.tileLayer('https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=cb1_4q4i_1_b2a490d9c3fe6dd1e0d23e2b', {
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-  maxZoom: 19
-}).addTo(map);
+{ // Leaflet pans by itself too (popup auto-pan): route those through the same reduced-motion rule
+  const panBy = map.panBy;
+  map.panBy = function (offset, options) { return panBy.call(this, offset, reduceMotion() ? Object.assign({}, options, { animate: false }) : options); };
+}
+// Panes: base tiles (theme filter applies here only) < tint overlay < labels (never filtered) < markers
+map.createPane('basePane').style.zIndex = 200;
+map.createPane('tintPane').style.zIndex = 210;
+map.createPane('labelsPane').style.zIndex = 250;
+const tintEl = L.DomUtil.create('div', 'map-tint', map.getPane('tintPane'));
+function placeTint() { // keep the tint covering the viewport (+1 screen margin) as the map pans/zooms
+  const sz = map.getSize();
+  L.DomUtil.setPosition(tintEl, map.containerPointToLayerPoint([-sz.x, -sz.y]));
+  tintEl.style.width = (sz.x * 3) + 'px';
+  tintEl.style.height = (sz.y * 3) + 'px';
+}
+map.on('move zoom viewreset resize', placeTint);
+placeTint();
 
-function mkIcon(color, isIgn, isStar, ev) {
-  const op = isIgn ? 0.25 : 1;
-  const fill = isIgn ? '#555' : color;
+// Tile presets (CARTO raster basemaps; the key comes from SITE_CONFIG)
+const CARTO_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+const TILE_PRESETS = {
+  cartoDark:      { base: 'dark_all' },
+  cartoDarkSplit: { base: 'dark_nolabels', labels: 'dark_only_labels' },
+  cartoLight:     { base: 'light_all' },
+  cartoVoyager:   { base: 'voyager' }
+};
+const cartoUrl = style => `https://basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(SITE_CONFIG.cartoKey)}`;
+function mkTileLayer(def, pane) { // def: CARTO style name, or custom { url, attribution, options }
+  if (typeof def === 'string') return L.tileLayer(cartoUrl(def), { attribution: CARTO_ATTR, maxZoom: 19, pane });
+  return L.tileLayer(def.url, Object.assign({ attribution: def.attribution || '', maxZoom: 19 }, def.options || {}, { pane }));
+}
+let tileLayers = [], tilesKey = null;
+// Lite tiles (phones, tablets, touch screens): a theme's optional tilesLite preset, and data-tiles="lite"
+// on <html> so theme.css can swap the costly base-tile filter for a plain tint there.
+const liteMQ = window.matchMedia ? window.matchMedia(SITE_CONFIG.liteQuery || '(max-width: 900px)') : null;
+const tilesLite = () => !!(liteMQ && liteMQ.matches);
+function applyTiles(themeName) {
+  const th = SITE_CONFIG.themes[themeName] || {};
+  const lite = tilesLite();
+  document.documentElement.setAttribute('data-tiles', lite ? 'lite' : 'full');
+  const preset = (lite && th.tilesLite) || th.tiles || 'cartoDark';
+  const key = JSON.stringify(preset);
+  if (key === tilesKey) return; // same preset: keep the loaded tiles
+  tilesKey = key;
+  tileLayers.forEach(l => map.removeLayer(l));
+  const spec = (preset && typeof preset === 'object') ? { base: preset, labels: preset.labels || null } : (TILE_PRESETS[preset] || TILE_PRESETS.cartoDark);
+  tileLayers = [mkTileLayer(spec.base, 'basePane').addTo(map)];
+  if (spec.labels) tileLayers.push(mkTileLayer(spec.labels, 'labelsPane').addTo(map));
+}
+
+// === THEMES ===
+// Markers, clusters and panels use CSS variables only, so a theme switch needs
+// no re-render; only tiles, <meta theme-color> and readToken() users react.
+function syncThemeChrome() {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', readToken('--surface'));
+  const cur = document.documentElement.getAttribute('data-theme');
+  document.querySelectorAll('.theme-seg .seg-opt').forEach(b => {
+    b.setAttribute(b.getAttribute('role') === 'menuitemradio' ? 'aria-checked' : 'aria-pressed', String(b.dataset.theme === cur));
+  });
+}
+function setTheme(name) {
+  const resolved = SITE_CONFIG.resolveTheme(name);
+  SITE_CONFIG.themeChoice = name;
+  document.documentElement.setAttribute('data-theme', resolved);
+  lsSet(SITE_CONFIG.storageKey + '-theme', name);
+  applyTiles(resolved);
+  window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: resolved } }));
+  syncThemeChrome();
+}
+function initThemePicker() {
+  // More menu: role=menuitemradio items (arrow keys move through the whole menu, Enter/Space picks).
+  // Phone menu: plain toggle buttons (aria-pressed).
+  document.querySelectorAll('.theme-seg').forEach(pick => {
+    const inMenu = !!pick.closest('[role="menu"]');
+    pick.innerHTML = '';
+    Object.keys(SITE_CONFIG.themes).forEach(k => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'seg-opt';
+      b.dataset.theme = k;
+      if (inMenu) { b.setAttribute('role', 'menuitemradio'); b.tabIndex = -1; }
+      b.textContent = SITE_CONFIG.themes[k].label || k;
+      b.addEventListener('click', () => setTheme(k));
+      pick.appendChild(b);
+    });
+  });
+  if (window.matchMedia) { // 'auto' follows the OS setting live
+    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    const onChange = () => { if (SITE_CONFIG.themeChoice === 'auto') setTheme('auto'); };
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+  }
+  // crossing the lite breakpoint (resize, rotation, plugging in a mouse) swaps the tiles without a reload
+  if (liteMQ && liteMQ.addEventListener) liteMQ.addEventListener('change', () => applyTiles(document.documentElement.getAttribute('data-theme')));
+  applyTiles(document.documentElement.getAttribute('data-theme'));
+  syncThemeChrome();
+}
+initThemePicker();
+
+function mkIcon(slot, isIgn, isStar, ev) {
   const em = gi(ev);
-  const lb = esc(ev.name.length > 16 ? ev.name.slice(0, 14) + '...' : ev.name);
-  const ring = isStar ? `<div style="position:absolute;top:-7px;left:-7px;width:50px;height:50px;border-radius:50%;border:2px solid #e9c46a;box-shadow:0 0 10px 2px rgba(233,196,106,.4);pointer-events:none"></div>` : '';
-  const bdr = isStar ? '2.5px solid #e9c46a' : '2px solid rgba(255,255,255,.6)';
-  const glow = isStar ? 'box-shadow:0 2px 8px rgba(0,0,0,.4),0 0 14px 3px rgba(233,196,106,.35);' : 'box-shadow:0 2px 8px rgba(0,0,0,.4);';
+  const lb = esc(ev.name || '');   // full name; CSS truncates with an ellipsis at a fixed width
   const dt = ev.edition_state === 'dates-tba' ? esc('~' + (ev.month || '') + ' · TBA') : esc(ev.dates || '');
+  const cls = 'pinwrap' + (isIgn ? ' is-ign' : '') + (isStar ? ' is-star' : '');
   return L.divIcon({
     className: 'cm',
-    html: `<div style="position:relative;opacity:${op};text-align:center">${ring}<div style="width:36px;height:36px;border-radius:50%;background:${fill};border:${bdr};display:flex;align-items:center;justify-content:center;font-size:16px;${glow}cursor:pointer;position:relative;z-index:1">${em}</div><div style="font-size:8px;color:${isStar ? '#e9c46a' : '#ccc'};text-shadow:0 1px 3px #000,0 0 6px #000;margin-top:1px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;${isStar ? 'font-weight:600' : ''}">${lb}</div><div style="font-size:7px;color:${fill};text-shadow:0 1px 3px #000,0 0 6px #000;white-space:nowrap;pointer-events:none;opacity:.9">${dt}</div></div>`,
-    iconSize: [90, 68],
-    iconAnchor: [45, 44],
+    html: `<div class="${cls}" data-month="${esc(slot)}"><div class="pin">${em}</div><div class="pin-cap"><div class="pin-label">${lb}</div><div class="pin-date">${dt}</div></div></div>`,
+    iconSize: [100, 70],
+    iconAnchor: [50, 44],
     popupAnchor: [0, -46]
   });
 }
 
+const firstDayNum = ev => parseInt(String(ev.dates || '').match(/\d+/)?.[0] || 0); // sort key; 0 when no day
 function calcDuration(dates) {
-  const range = dates.match(/(\d+)\s*[–\-]\s*(?:[A-Za-z]+\s+)?(\d+)/);
+  const range = String(dates ?? '').match(/(\d+)\s*[–\-]\s*(?:[A-Za-z]+\s+)?(\d+)/);
   if (range) {
     const d = parseInt(range[2]) - parseInt(range[1]) + 1;
     if (d > 0 && d < 60) return d === 1 ? '1 day' : `${d} days`;
@@ -819,51 +1344,56 @@ function calcDuration(dates) {
   return '1 day';
 }
 
+const icon = id => `<svg class="ic" aria-hidden="true"><use href="#i-${id}"/></svg>`;
 function popupHtml(ev, idx) {
-  const c = ev.edition_state === 'dates-tba' ? '#6f9ceb' : (MC[ev.month] || '#888');
-  const img = safeImg(ev.image_url) ? `<img src="${safeImg(ev.image_url)}" alt="" style="width:100%;height:100px;object-fit:cover;border-radius:6px;margin-bottom:8px" onerror="this.style.display='none'">` : '';
-  const tags = (ev.tags || []).filter(t => t !== 'sold-out').map(t => {
-    const ic = TI[t] || '';
-    return `<span class="tag" style="background:${c}44;color:${c};border:1px solid ${c}66">${ic} ${esc(t)}</span>`;
+  const slot = esc(evSlot(ev));
+  const img = safeImg(ev.image_url) ? `<div class="pc-media"><img src="${safeImg(ev.image_url)}" alt="" loading="lazy" onerror="this.parentNode.style.display='none'"></div>` : '';
+  const tagList = (ev.tags || []).filter(t => t !== 'sold-out').map(t => {
+    const ic = tagIcon(t);
+    return `<span class="tag" data-month="${slot}">${ic} ${esc(t)}</span>`;
   }).join('');
-  const url = ev.url ? `<a href="${esc(evUrl(ev.url))}" target="_blank">${esc(ev.url)}</a>` : '';
-  const mapsLink = ev.is_online ? '' : `<a href="https://www.google.com/maps?q=${ev.lat},${ev.lng}" target="_blank" style="font-size:9px;color:#457b9d;margin-left:4px">open in maps</a>`;
-  const venue = ev.venue ? `<div class="venue">📍 ${esc(ev.venue)}</div>` : '';
+  const tags = tagList ? `<div class="pc-tags">${tagList}</div>` : '';
+  const host = String(ev.url || '').replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '');
+  const url = ev.url ? `<a class="pc-link" href="${esc(evUrl(ev.url))}" target="_blank" rel="noopener">${icon('ext')}<span>${esc(host)}</span></a>` : '';
+  const mapsLink = ev.is_online ? '' : `<a href="https://www.google.com/maps?q=${Number(ev.lat)},${Number(ev.lng)}" target="_blank" rel="noopener" class="maps-link">open in maps</a>`;
+  const venue = ev.venue ? `<div class="venue">${esc(ev.venue)}</div>` : '';
   const isStar = userStars.has(ev.id);
   const isIgn = ignored.has(idx);
-  const badge = `<span style="display:inline-block;font-size:9px;padding:2px 7px;border-radius:8px;background:${c};color:#fff;font-weight:600;margin-bottom:4px">${esc(ev.month)} ${selectedYear}</span>`;
-  const soldOut = (ev.tags || []).includes('sold-out') ? `<span style="display:inline-block;font-size:9px;padding:2px 7px;border-radius:8px;background:#e63946;color:#fff;font-weight:700;margin-bottom:4px;margin-left:4px">SOLD OUT</span>` : '';
+  const badge = `<span class="mo-badge" data-month="${slot}">${esc(ev.month)} ${esc(selectedYear)}</span>`;
+  const soldOut = (ev.tags || []).includes('sold-out') ? `<span class="soldout-badge">SOLD OUT</span>` : '';
   const duration = calcDuration(ev.dates);
-  const durBadge = `<span style="font-size:10px;color:#888;margin-left:6px">(${duration})</span>`;
+  const durBadge = `<span class="dur">${duration}</span>`;
   const isTBA = ev.edition_state === 'dates-tba';
   const datesLine = isTBA
-    ? `<div class="dates" style="color:#8ab4f8">🗓️ expected ~${esc(ev.month || '')} ${ev.year || selectedYear} · dates TBA</div>`
+    ? `<div class="dates tba">expected ~${esc(ev.month || '')} ${esc(ev.year || selectedYear)} · dates TBA</div>`
     : `<div class="dates">${esc(ev.dates)} ${durBadge}</div>`;
-  const knowBtn = isTBA ? `<button class="br" onclick="openKnowDates(${idx})" style="color:#8ab4f8;border-color:#8ab4f855">📅 Know the dates?</button>` : '';
+  const knowBtn = isTBA ? `<button class="br know" onclick="openKnowDates(${idx})">📅 Know the dates?</button>` : '';
 
   // Star count and stargazers
   const starData = starCounts.get(ev.id);
   const starCount = starData ? starData.count : 0;
   const stargazers = starData && starData.stargazers ? starData.stargazers.join(', ') : '';
   const beaconBanner = starCount > 1
-    ? `<div style="margin:8px 0;padding:8px 12px;background:#e9c46a11;border:1px solid #e9c46a33;border-radius:8px">
-        <div style="font-size:12px;color:#e9c46a;font-weight:600">✨ ${starCount} ${starCount === 1 ? 'person interested' : 'people interested'}</div>
-        ${stargazers ? `<div style="font-size:10px;color:#aaa;margin-top:3px">${esc(stargazers)}</div>` : ''}
+    ? `<div class="beacon-banner">
+        <div class="beacon-count">✨ ${starCount} ${starCount === 1 ? 'person interested' : 'people interested'}</div>
+        ${stargazers ? `<div class="beacon-names">${esc(stargazers)}</div>` : ''}
       </div>`
     : '';
+  const where = ev.location || mapsLink ? `<div class="loc">${icon('pin')}<span>${esc(ev.location)}</span>${mapsLink}</div>` : '';
+  const desc = ev.description ? `<div class="desc">${esc(ev.description)}</div>` : '';
 
-  return `${img}<div class="pi">${badge}${soldOut}<h3>${esc(ev.name)}</h3>${datesLine}<div class="loc">${esc(ev.location)} ${mapsLink}</div>${venue}<div class="desc">${esc(ev.description)}</div>${beaconBanner}${tags}${url ? '<br>' + url : ''}<div class="pa">${knowBtn}<button class="bs ${isStar ? 'on' : ''}" onclick="toggleStar(${idx})">${isStar ? '★ Interested' : '☆ Interested'}</button><button class="bi ${isIgn ? 'on' : ''}" onclick="toggleIgnore(${idx})">${isIgn ? '✓ Ignored' : '— Ignore'}</button><button class="br" onclick="reportIssue(${idx})">⚠ Report</button></div></div>`;
+  return `${img}<div class="pi"><div class="pc-badges">${badge}${soldOut}</div><h3>${esc(ev.name)}</h3>${datesLine}${where}${venue}${desc}${beaconBanner}${tags}${url}<div class="pa">${knowBtn}<button class="bs ${isStar ? 'on' : ''}" aria-pressed="${isStar}" onclick="toggleStar(${idx})">${icon('star')}Interested</button><button class="bi ${isIgn ? 'on' : ''}" aria-pressed="${isIgn}" onclick="toggleIgnore(${idx})">${icon('eye-off')}${isIgn ? 'Ignored' : 'Ignore'}</button><button class="br" onclick="reportIssue(${idx})" title="Report wrong dates, a broken link or missing info">${icon('flag')}Report</button></div></div>`;
 }
 
 function tipHtml(ev) {
-  const c = ev.edition_state === 'dates-tba' ? '#6f9ceb' : (MC[ev.month] || '#888');
-  const img = safeImg(ev.image_url) ? `<img class="ti" src="${safeImg(ev.image_url)}" alt="" onerror="this.style.display='none'">` : `<div class="tp" style="background:linear-gradient(135deg,${c}44,${c}22)">${gi(ev)}</div>`;
-  const tags = (ev.tags || []).map(t => `<span class="ttg">${TI[t] || ''} ${esc(t)}</span>`).join('');
+  const slot = esc(evSlot(ev));
+  const img = safeImg(ev.image_url) ? `<img class="ti" src="${safeImg(ev.image_url)}" alt="" onerror="this.style.display='none'">` : `<div class="tp" data-month="${slot}">${gi(ev)}</div>`;
+  const tags = (ev.tags || []).map(t => `<span class="ttg">${tagIcon(t)} ${esc(t)}</span>`).join('');
   
   // Show star count in tooltip
   const starData = starCounts.get(ev.id);
   const starCount = starData ? starData.count : 0;
-  const starDisplay = starCount > 1 ? `<div style="margin-top:4px;font-size:9px;color:#e9c46a;font-weight:600">⭐ ${starCount} interested</div>` : '';
+  const starDisplay = starCount > 1 ? `<div class="tt-stars">⭐ ${starCount} interested</div>` : '';
   
   return `${img}<div class="tb"><div class="tn">${esc(ev.name)}</div><div class="td">${esc(ev.dates)} · ${esc(ev.location)}</div><div class="tds">${esc(ev.description)}</div><div class="tt">${tags}</div>${starDisplay}</div>`;
 }
@@ -918,45 +1448,46 @@ function render() {
     showCoverageOnHover: false,
     zoomToBoundsOnClick: true,
     disableClusteringAtZoom: 7,
+    animate: !reduceMotion(), // prefers-reduced-motion: clusters split / merge without animation
     iconCreateFunction: function(cluster) {
       const children = cluster.getAllChildMarkers();
-      const colors = children.map(m => {
-        const ev = events[m._evIdx];
-        return MC[ev?.month] || '#888';
-      });
-      const size = Math.min(20 + children.length * 4, 50);
-      const dots = colors.slice(0, 8).map((c, i) => {
-        const angle = (i / Math.min(colors.length, 8)) * Math.PI * 2 - Math.PI / 2;
-        const r = size * 0.32;
+      const slots = children.map(m => monthSlot(events[m._evIdx]?.month));
+      const n = children.length;
+      const size = Math.min(32 + n * 3, 56);
+      const bucket = n < 10 ? 's' : n < 100 ? 'm' : 'l'; // markercluster's small / medium / large
+      const dots = slots.slice(0, 8).map((s, i) => {
+        const angle = (i / Math.min(slots.length, 8)) * Math.PI * 2 - Math.PI / 2;
+        const r = size * 0.315;
         const x = 50 + Math.cos(angle) * r / size * 100;
         const y = 50 + Math.sin(angle) * r / size * 100;
-        return `<circle cx="${x}%" cy="${y}%" r="4" fill="${c}" stroke="#1a1a2e" stroke-width="1"/>`;
+        return `<circle class="cl-dot" data-month="${esc(s)}" cx="${x}%" cy="${y}%" r="3.6"/>`;
       }).join('');
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="50%" cy="50%" r="45%" fill="rgba(26,26,46,0.85)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>${dots}<text x="50%" y="54%" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">${children.length}</text></svg>`;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" class="cl" data-size="${bucket}" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle class="cl-bg" cx="50%" cy="50%" r="44%"/><circle class="cl-in" cx="50%" cy="50%" r="19%"/>${dots}<text class="cl-num" x="50%" y="50%" dy=".35em" text-anchor="middle" font-size="${n < 100 ? 13 : 11}" font-weight="700">${n}</text></svg>`;
       return L.divIcon({ html: svg, className: 'cm', iconSize: [size, size], iconAnchor: [size/2, size/2] });
     }
   });
   
   const visible = getVisible();
   visible.forEach(({ ev, i, inRegion }) => {
-    const c = ev.edition_state === 'dates-tba' ? '#6f9ceb' : (MC[ev.month] || '#888');
-    const isGreyed = ignored.has(i) || !inRegion;
-    const icon = mkIcon(c, isGreyed, userStars.has(ev.id), ev);
-    const marker = L.marker([ev.lat, ev.lng], { icon })
-      .bindPopup(popupHtml(ev, i), { maxWidth: 360, minWidth: 260 })
-      .bindTooltip(tipHtml(ev), { className: 'et', direction: 'top', offset: [0, -40] });
-    marker._evIdx = i;
-    marker._evId = ev.id;
-    marker.on('popupopen', function() { this.unbindTooltip(); });
-    marker.on('popupclose', function() { this.bindTooltip(tipHtml(ev), { className: 'et', direction: 'top', offset: [0, -40] }); });
-    clusterGroup.addLayer(marker);
+    try { // one bad row (e.g. missing coordinates) is skipped, not fatal
+      const isGreyed = ignored.has(i) || !inRegion;
+      const icon = mkIcon(evSlot(ev), isGreyed, userStars.has(ev.id), ev);
+      const marker = L.marker([ev.lat, ev.lng], { icon, riseOnHover: true })
+        .bindPopup(popupHtml(ev, i), { maxWidth: 340, minWidth: 324 })
+        .bindTooltip(tipHtml(ev), { className: 'et', direction: 'top', offset: [0, -40] });
+      marker._evIdx = i;
+      marker._evId = ev.id;
+      marker.on('popupopen', function() { this.unbindTooltip(); });
+      marker.on('popupclose', function() { this.bindTooltip(tipHtml(ev), { className: 'et', direction: 'top', offset: [0, -40] }); });
+      clusterGroup.addLayer(marker);
+    } catch (e) { console.warn('Skipped event on the map:', ev && ev.id, e.message); }
   });
   
   map.addLayer(clusterGroup);
   renderTimeline(visible);
   updateBtns();
-  const op = document.getElementById('onlinePanel');
-  if (op && op.classList.contains('open')) renderOnlinePanel();
+  renderOnlinePanel(); // cheap; keeps the docked list and its count in sync
+  syncOnlineDock();
 }
 
 // === TIMELINE ===
@@ -968,7 +1499,7 @@ function renderTimeline(visible) {
   const tlVisible = visible.filter(({ ev, i, inRegion }) => !ignored.has(i) && inRegion);
   document.getElementById('tlCount').textContent = tlVisible.length;
 
-  const byMonth = {};
+  const byMonth = Object.create(null); // month values come from data: "constructor" must not hit Object.prototype
   tlVisible.forEach(({ ev }) => {
     const m = ev.month;
     if (!byMonth[m]) byMonth[m] = [];
@@ -979,26 +1510,18 @@ function renderTimeline(visible) {
     if (!byMonth[m]) return;
     const header = document.createElement('div');
     header.className = 'tl-month';
-    header.style.background = MC[m];
-    const mIdx = MO.indexOf(m);
-    const mSlot = mIdx - NOW_MONTH;
-    header.style.color = (mIdx < NOW_MONTH) ? '#999' : (LIGHT_TEXT_SLOTS.has(mSlot) ? '#1a1a2e' : '#fff');
+    header.dataset.month = monthSlot(m);
     header.textContent = m;
     scroll.appendChild(header);
     
-    byMonth[m].sort((a, b) => {
-      const da = parseInt(a.dates.match(/\d+/)?.[0] || 0);
-      const db = parseInt(b.dates.match(/\d+/)?.[0] || 0);
-      return da - db;
-    });
+    byMonth[m].sort((a, b) => firstDayNum(a) - firstDayNum(b));
     
-    byMonth[m].forEach(ev => {
+    byMonth[m].forEach(ev => { try {
       const isStar = userStars.has(ev.id);
       const isIgn = ignored.has(events.indexOf(ev));
-      const c = MC[m];
-      
       const item = document.createElement('div');
       item.className = `tl-event ${isStar ? 'starred-ev' : ''} ${isIgn ? 'ignored-ev' : ''}`;
+      item.dataset.month = monthSlot(m);
       
       const starData = starCounts.get(ev.id);
       const starCount = starData ? starData.count : 0;
@@ -1006,7 +1529,7 @@ function renderTimeline(visible) {
       
       const evIdx = events.indexOf(ev);
       item.innerHTML = `
-        <div class="tl-icon" style="background:${c};color:#1a1a2e">${gi(ev)}</div>
+        <div class="tl-icon" data-month="${monthSlot(m)}">${gi(ev)}</div>
         <div class="tl-info">
           <div class="tl-name">${esc(ev.name)}</div>
           <div class="tl-dates">${esc(ev.dates)}</div>
@@ -1014,14 +1537,14 @@ function renderTimeline(visible) {
           ${starText}
         </div>
         <div class="tl-actions">
-          <button class="${isStar ? 'active-star' : ''}" data-action="star" data-idx="${evIdx}" title="${isStar ? 'Remove star' : 'Star this event'}">${isStar ? '★' : '☆'}</button>
-          <button data-action="ignore" data-idx="${evIdx}" title="Ignore this event">—</button>
+          <button class="${isStar ? 'active-star' : ''}" data-action="star" data-idx="${evIdx}" title="${isStar ? 'Remove star' : 'Star this event'}" aria-label="${isStar ? 'Remove star' : 'Star this event'}" aria-pressed="${isStar}">${icon('star')}</button>
+          <button data-action="ignore" data-idx="${evIdx}" title="Ignore this event" aria-label="Ignore this event">${icon('eye-off')}</button>
         </div>
       `;
       
       item.addEventListener('click', (e) => {
         if (e.target.closest('.tl-actions')) return; // don't zoom if clicking action buttons
-        map.setView([ev.lat, ev.lng], 8);
+        mapView([ev.lat, ev.lng], 8);
         clusterGroup.getLayers().forEach(m => {
           if (m._evId === ev.id) m.openPopup();
         });
@@ -1042,7 +1565,7 @@ function renderTimeline(visible) {
       item.addEventListener('mouseleave', hideTlTip);
 
       scroll.appendChild(item);
-    });
+    } catch (e) { console.warn('Skipped event in the timeline:', ev && ev.id, e.message); } });
   });
   
   if (visible.length === 0) {
@@ -1056,9 +1579,9 @@ function renderTimeline(visible) {
 // === TIMELINE TOOLTIP ===
 function showTlTip(ev, e) {
   const tip = document.getElementById('tlTip');
-  const c = ev.edition_state === 'dates-tba' ? '#6f9ceb' : (MC[ev.month] || '#888');
+  const slot = esc(evSlot(ev));
   const img = safeImg(ev.image_url) ? `<img class="ttp-img" src="${safeImg(ev.image_url)}" onerror="this.style.display='none'">` : '';
-  const tags = (ev.tags || []).map(t => `<span class="ttp-tag" style="background:${c}44;color:${c};border:1px solid ${c}66">${TI[t] || ''} ${esc(t)}</span>`).join('');
+  const tags = (ev.tags || []).map(t => `<span class="ttp-tag" data-month="${slot}">${tagIcon(t)} ${esc(t)}</span>`).join('');
   const duration = calcDuration(ev.dates);
   const starData = starCounts.get(ev.id);
   const starCount = starData ? starData.count : 0;
@@ -1083,20 +1606,33 @@ function hideTlTip() {
 }
 
 // === BUTTON STATE ===
+// count badges: number + a 'zero' class (zero badges stay neutral)
+function setCount(id, n) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = n;
+  el.classList.toggle('zero', !n);
+}
 function updateBtns() {
-  document.getElementById('favsBtn').textContent = `Starred (${userStars.size})`;
-  document.getElementById('ignBtn').textContent = `Ignored (${ignored.size})`;
   const onlineN = getVisibleOnline().length;
-  const onlineBtn = document.getElementById('onlineBtn');
-  if (onlineBtn) onlineBtn.textContent = `🌐 Online (${onlineN})`;
-  const mmOnline = document.getElementById('mmOnlineCount');
-  if (mmOnline) mmOnline.textContent = onlineN;
-  if (issues.length > 0) {
-    document.getElementById('issuesBtn').style.display = 'inline-block';
-    document.getElementById('issuesBtn').textContent = `Issues (${issues.length})`;
-  } else {
-    document.getElementById('issuesBtn').style.display = 'none';
+  setCount('favsCount', userStars.size);
+  setCount('mmStarCount', userStars.size);
+  setCount('ignCount', ignored.size);
+  setCount('mmIgnCount', ignored.size);
+  setCount('onlineCount', onlineN);
+  setCount('mmOnlineCount', onlineN);
+  const odCount = document.getElementById('odCount');
+  if (odCount) odCount.textContent = onlineN;
+  // Types badge only while a type filter is active ("12/29")
+  const tc = document.getElementById('typesCount');
+  if (tc) {
+    const filtered = ALL_TAGS.length > 0 && activeTags.size < ALL_TAGS.length;
+    tc.hidden = !filtered;
+    tc.textContent = `${activeTags.size}/${ALL_TAGS.length}`;
   }
+  const issuesBtn = document.getElementById('issuesBtn');
+  issuesBtn.hidden = issues.length === 0;
+  setCount('issuesCount', issues.length);
 }
 
 // === STAR / UNSTAR (SOCIAL) ===
@@ -1127,7 +1663,7 @@ async function starEvent(eventId) {
     
     if (error && error.code !== '23505') {
       // 23505 is unique violation, meaning already starred
-      toast('Error starring event: ' + error.message, '#e63946');
+      toast('Error starring event: ' + error.message, 'error');
       return;
     }
     
@@ -1136,7 +1672,7 @@ async function starEvent(eventId) {
     render();
     toast(`Added to your resonance beacons!`);
   } catch (e) {
-    toast('Error starring event', '#e63946');
+    toast('Error starring event', 'error');
   }
 }
 
@@ -1149,7 +1685,7 @@ async function unstarEvent(eventId) {
       .eq('user_name', userName);
     
     if (error) {
-      toast('Error unstarring event: ' + error.message, '#e63946');
+      toast('Error unstarring event: ' + error.message, 'error');
       return;
     }
     
@@ -1158,7 +1694,7 @@ async function unstarEvent(eventId) {
     render();
     toast(`Removed from your resonance beacons`);
   } catch (e) {
-    toast('Error unstarring event', '#e63946');
+    toast('Error unstarring event', 'error');
   }
 }
 
@@ -1197,7 +1733,7 @@ function reportIssue(idx) {
       updateBtns();
       toast(`Issue reported!`);
     })
-    .catch(e => toast('Error saving issue: ' + e.message, '#e63946'));
+    .catch(e => toast('Error saving issue: ' + e.message, 'error'));
 }
 
 // === SEARCH ===
@@ -1205,17 +1741,42 @@ function onSearch() {
   searchQuery = document.getElementById('searchInput').value;
   render();
 }
+function clearSearch() {
+  const inp = document.getElementById('searchInput');
+  inp.value = '';
+  const m = document.getElementById('mobileSearchInput');
+  if (m) m.value = '';
+  onSearch();
+  inp.focus();
+}
+// "/" focuses search (desktop field, or the phone menu's field); Escape in the field clears it, then blurs
+document.addEventListener('keydown', e => {
+  if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target;
+  if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+  if (document.querySelector('.modal-overlay.open, .user-modal-overlay.show')) return;
+  e.preventDefault();
+  if (isMobile()) openMobileMenu(document.getElementById('mobileSearchInput'));
+  else { const inp = document.getElementById('searchInput'); inp.focus(); inp.select(); }
+});
+// An empty field just blurs and lets the global Escape handler close the topmost layer in the same press.
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (e.target.value) { e.preventDefault(); e.target.value = ''; onSearch(); } else e.target.blur();
+});
 
 // === FILTERS ===
 const filterBar = document.getElementById('filterBar');
+const monthPills = document.getElementById('monthPills');
 
 function initMonthFilters() {
   // Clear existing month filters
-  Array.from(filterBar.querySelectorAll('label')).forEach(el => el.remove());
+  monthPills.innerHTML = '';
   
   MO.forEach(m => {
     const label = document.createElement('label');
-    label.className = 'm-' + m.toLowerCase();
+    label.className = 'm-' + m.toLowerCase() + ' mlab'; // keep 'm-' first: toggleAll matches [class^="m-"]
+    label.dataset.month = monthSlot(m);
     const isActive = activeMonths.has(m);
     label.innerHTML = `<input type="checkbox" ${isActive ? 'checked' : ''} data-month="${m}"> ${m}`;
     if (!isActive) label.classList.add('off');
@@ -1230,7 +1791,7 @@ function initMonthFilters() {
       }
       render();
     });
-    filterBar.appendChild(label);
+    monthPills.appendChild(label);
   });
 }
 
@@ -1261,9 +1822,7 @@ function toggleShowPast() {
   const b = document.getElementById('pastToggle');
   if (b) {
     b.textContent = showPast ? 'Hide past' : 'Show past';
-    b.style.background = showPast ? '#2a9d8f22' : '#55555522';
-    b.style.color = showPast ? '#2a9d8f' : '#888';
-    b.style.borderColor = showPast ? '#2a9d8f55' : '#55555555';
+    b.classList.toggle('on', showPast);
   }
   render();
 }
@@ -1306,17 +1865,66 @@ function toggleAllRegions(on) {
 }
 
 // === TIMELINE TOGGLE ===
-function toggleTimeline() {
+// === DOCKED SIDE COLUMNS (desktop): Online on the left, Timeline on the right ===
+// Open/closed state is remembered per column (localStorage, SITE_CONFIG.storageKey prefix).
+const dockKey = name => SITE_CONFIG.storageKey + '-dock-' + name;
+const dockPref = name => { const v = lsGet(dockKey(name)); return v === 'open' || v === 'closed' ? v : null; }; // explicit choice or null
+function dockStored(name, dflt) { const v = dockPref(name); return v === null ? dflt : v === 'open'; }
+function dockRemember(name, open) { lsSet(dockKey(name), open ? 'open' : 'closed'); }
+let _dockResizeT = null;
+function dockResized() { // the map width changed: let Leaflet re-measure now, after the width transition, and as a fallback
+  map.invalidateSize();
+  clearTimeout(_dockResizeT);
+  _dockResizeT = setTimeout(() => map.invalidateSize(), 450);
+}
+['timeline', 'onlineDock'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('transitionend', e => { if (e.target === el && e.propertyName === 'width') map.invalidateSize(); });
+});
+function setTimelineOpen(open, remember) {
   const tl = document.getElementById('timeline');
-  const btn = document.getElementById('tlToggle');
+  tl.classList.toggle('hidden', !open);
+  document.getElementById('tlToggle').hidden = open;
   const topBtn = document.getElementById('tlToggleTop');
-  tl.classList.toggle('hidden');
-  const isHidden = tl.classList.contains('hidden');
-  btn.style.display = isHidden ? 'block' : 'none';
-  if (topBtn) {
-    topBtn.style.opacity = isHidden ? '0.5' : '1';
-  }
-  setTimeout(() => map.invalidateSize(), 300);
+  if (topBtn) topBtn.setAttribute('aria-pressed', String(open));
+  if (remember) dockRemember('timeline', open);
+  dockResized();
+}
+function toggleTimeline() {
+  setTimelineOpen(document.getElementById('timeline').classList.contains('hidden'), true);
+}
+function setOnlineDockOpen(open, remember) {
+  const dock = document.getElementById('onlineDock');
+  dock.classList.toggle('collapsed', !open);
+  document.getElementById('odToggle').hidden = open;
+  const b = document.getElementById('onlineBtn');
+  if (b) { b.setAttribute('aria-pressed', String(open)); b.classList.toggle('active', open); }
+  if (remember) dockRemember('online', open);
+  if (open) renderOnlinePanel();
+  dockResized();
+}
+const onlineDockOpen = () => !document.getElementById('onlineDock').classList.contains('collapsed');
+// Online column default (desktop): open from ONLINE_DOCK_MIN px up, but only while the current filters
+// leave something to list. A stored choice wins: 'closed' always; 'open' except when the list is empty
+// (it collapses then and comes back when events appear). The rule acts only when emptiness or the
+// wide/narrow side changes, so a click on the toggle is never undone by the next render.
+const ONLINE_DOCK_MIN = 1200;
+let _odAuto = null, _dataLoaded = false;
+function syncOnlineDock(force) {
+  if (isMobile()) return;
+  const empty = _dataLoaded && getVisibleOnline().length === 0; // unknown until the data is in: assume not empty
+  const wide = window.innerWidth >= ONLINE_DOCK_MIN;
+  if (!force && _odAuto && _odAuto.empty === empty && _odAuto.wide === wide) return;
+  _odAuto = { empty, wide };
+  const pref = dockPref('online');
+  const open = pref === 'closed' ? false : empty ? false : pref === 'open' ? true : wide;
+  // forced (init / layout switch): always apply, so the Online button's pressed state matches the dock from the start
+  if (force || open !== onlineDockOpen()) setOnlineDockOpen(open, false);
+}
+// Phones: the same Online list shows as a full-screen panel (like the other side panels)
+function setOnlineSheet(open) {
+  document.getElementById('onlineDock').classList.toggle('m-open', open);
+  if (open) renderOnlinePanel();
 }
 
 // === TYPE FILTERS ===
@@ -1326,17 +1934,14 @@ function initTypeFilters() {
   
   ALL_TAGS.forEach(tag => {
     const item = document.createElement('div');
-    item.style.padding = '8px 18px';
-    item.style.borderBottom = '1px solid #0f346033';
-    item.style.cursor = 'pointer';
-    item.style.userSelect = 'none';
-    
     const isActive = activeTags.has(tag);
-    item.style.background = isActive ? '#2a9d8f22' : 'transparent';
-    item.style.color = isActive ? '#2a9d8f' : '#888';
-    
-    const icon = TI[tag] || '';
-    item.innerHTML = `<span style="font-size:12px;font-weight:600">${icon} ${esc(tag)}</span>`;
+    item.className = 'type-item' + (isActive ? ' on' : '');
+    const tIcon = tagIcon(tag);
+    item.innerHTML = `<span class="ty-ic">${tIcon}</span><span class="ty-name">${esc(tag)}</span><span class="ty-check" aria-hidden="true">✓</span>`;
+    item.setAttribute('role', 'checkbox');
+    item.setAttribute('aria-checked', String(isActive));
+    item.tabIndex = 0;
+    item.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); item.click(); } });
     
     item.addEventListener('click', () => {
       if (activeTags.has(tag)) {
@@ -1344,8 +1949,10 @@ function initTypeFilters() {
       } else {
         activeTags.add(tag);
       }
+      const hadFocus = document.activeElement === item;
       initTypeFilters();
       render();
+      if (hadFocus) { const again = typesList.children[ALL_TAGS.indexOf(tag)]; if (again) again.focus(); }
     });
     
     typesList.appendChild(item);
@@ -1363,47 +1970,174 @@ function setAllTypes(on) {
 }
 
 // === SIDE PANELS ===
+const PANELS = { favs: 'favsPanel', issues: 'issuesPanel', types: 'typesPanel', about: 'aboutPanel', ignored: 'ignoredPanel' };
+// Focus bookkeeping: whatever opened a panel gets focus back when it closes (menus hand over their trigger button)
+let _panelOpener = null;
+function rememberOpener() {
+  let a = document.activeElement;
+  if (a && a.closest && a.closest('#moreMenu')) a = document.getElementById('moreBtn');
+  else if (a && a.closest && a.closest('#mobileMenu')) a = document.getElementById('hamburgerBtn');
+  _panelOpener = (a && a !== document.body) ? a : null;
+}
+const isShown = el => !!el && el.isConnected && el.getClientRects().length > 0 && !el.closest('[hidden]');
+function restoreFocus() {
+  const a = _panelOpener;
+  _panelOpener = null;
+  if (isShown(a)) a.focus({ preventScroll: true });
+}
+function closeSidePanels() {
+  document.querySelectorAll('.side-panel.open').forEach(p => p.classList.remove('open'));
+  restoreFocus();
+}
+// Move focus into an opened panel / sheet (its close button). Returns false if it is not open.
+function focusPanel(panel) {
+  let btn = null;
+  if (panel === 'online') {
+    const dock = document.getElementById('onlineDock');
+    if (isMobile() ? dock.classList.contains('m-open') : onlineDockOpen()) btn = dock.querySelector('.tl-close');
+  } else {
+    const el = document.getElementById(PANELS[panel]);
+    if (el && el.classList.contains('open')) btn = el.querySelector('.sp-close');
+  }
+  if (!btn) return false;
+  btn.focus({ preventScroll: true });
+  return true;
+}
 function togglePanel(panel) {
-  const panels = { favs: 'favsPanel', issues: 'issuesPanel', types: 'typesPanel', about: 'aboutPanel', ignored: 'ignoredPanel', online: 'onlinePanel' };
-  const el = document.getElementById(panels[panel]);
+  if (panel === 'online') { // docked column on desktop, full-screen panel on phones
+    if (isMobile()) {
+      const open = !document.getElementById('onlineDock').classList.contains('m-open');
+      if (open) {
+        if (!document.querySelector('.side-panel.open')) rememberOpener();
+        document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
+      }
+      const hadFocus = !open && document.getElementById('onlineDock').contains(document.activeElement);
+      setOnlineSheet(open);
+      if (hadFocus) restoreFocus();
+    } else {
+      setOnlineDockOpen(!onlineDockOpen(), true);
+    }
+    return;
+  }
+  const el = document.getElementById(PANELS[panel]);
   if (!el) return;
   
   if (el.classList.contains('open')) {
+    const hadFocus = el.contains(document.activeElement);
     el.classList.remove('open');
+    if (hadFocus) restoreFocus();
   } else {
     // Close other panels
+    if (!document.querySelector('.side-panel.open') && !document.getElementById('onlineDock').classList.contains('m-open')) rememberOpener();
     document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
+    setOnlineSheet(false);
     el.classList.add('open');
     
     if (panel === 'favs') renderFavsPanel();
     if (panel === 'ignored') renderIgnoredPanel();
     if (panel === 'issues') renderIssuesPanel();
-    if (panel === 'online') renderOnlinePanel();
   }
 }
 
+// Toggle buttons show their side panel's state (any code path that opens/closes a panel)
+const PANEL_BTNS = { typesPanel: 'typesBtn', favsPanel: 'favsBtn' };
+const _panelObs = new MutationObserver(() => {
+  Object.entries(PANEL_BTNS).forEach(([p, b]) => {
+    const btn = document.getElementById(b);
+    if (btn) btn.setAttribute('aria-pressed', String(document.getElementById(p).classList.contains('open')));
+  });
+});
+Object.keys(PANEL_BTNS).forEach(p => _panelObs.observe(document.getElementById(p), { attributes: true, attributeFilter: ['class'] }));
+
+// === MORE MENU (⋯) ===
+// WAI-ARIA menu: items are tabindex=-1 and reached with the arrow keys (theme options are
+// menuitemradio items in the same cycle); Enter/Space activates; Tab or Escape closes.
+const moreItems = () => Array.from(document.querySelectorAll('#moreMenu .mn-item:not([hidden]), #moreMenu [role="menuitemradio"]'));
+function setMoreMenu(open, focusBtn, focusFirst) {
+  const menu = document.getElementById('moreMenu');
+  const btn = document.getElementById('moreBtn');
+  menu.hidden = !open;
+  btn.setAttribute('aria-expanded', String(open));
+  if (open && focusFirst) { const first = moreItems()[0]; if (first) first.focus(); }
+  else if (!open && focusBtn) btn.focus();
+}
+// keyboard activation (detail 0) moves focus into the menu; a mouse click leaves it on the button
+function toggleMoreMenu(e) { setMoreMenu(document.getElementById('moreMenu').hidden, false, !e || e.detail === 0); }
+document.getElementById('moreBtn').addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    setMoreMenu(true, false, false);
+    const items = moreItems();
+    const target = e.key === 'ArrowDown' ? items[0] : items[items.length - 1];
+    if (target) target.focus();
+  }
+});
+// Menu actions open a panel: close the menu, open the panel, and put focus in the panel
+// (on its close button); if nothing opened, focus returns to the ⋯ button.
+function moreMenuAction(panel) {
+  setMoreMenu(false);
+  togglePanel(panel);
+  if (!focusPanel(panel)) document.getElementById('moreBtn').focus();
+}
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('moreWrap');
+  if (!document.getElementById('moreMenu').hidden && !wrap.contains(e.target)) setMoreMenu(false);
+});
+// pressing on the menu's label / separator / padding must not steal focus (or close the menu)
+document.getElementById('moreMenu').addEventListener('mousedown', e => {
+  if (!e.target.closest('button')) e.preventDefault();
+});
+document.getElementById('moreMenu').addEventListener('keydown', e => {
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setMoreMenu(false, true); return; }
+  if (e.key === 'Tab') { setMoreMenu(false, true); return; } // focus goes back to ⋯, then Tab moves on from there
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
+    const items = moreItems();
+    if (!items.length) return;
+    const i = items.indexOf(document.activeElement);
+    let n = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : i + (e.key === 'ArrowDown' ? 1 : -1);
+    n = (n + items.length) % items.length;
+    e.preventDefault();
+    items[n].focus();
+  }
+});
+// focus leaving the menu closes it; a null relatedTarget (window blur, click on a non-focusable spot) does not
+document.getElementById('moreWrap').addEventListener('focusout', e => {
+  if (e.relatedTarget && !document.getElementById('moreWrap').contains(e.relatedTarget)) setMoreMenu(false);
+});
+
+// === ESCAPE: close the topmost layer (menu > name modal > suggest modal > phone menu > side panel / online sheet / timeline sheet) ===
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || e.defaultPrevented) return;
+  if (!document.getElementById('moreMenu').hidden) { setMoreMenu(false, true); return; }
+  if (document.getElementById('userNameModal').classList.contains('show')) { e.preventDefault(); cancelUserName(); return; }
+  if (document.getElementById('addModal').classList.contains('open')) { e.preventDefault(); closeAddModal(); return; }
+  if (document.getElementById('mobileMenu').classList.contains('open')) { e.preventDefault(); closeMobileMenu(); return; }
+  const panel = document.querySelector('.side-panel.open');
+  if (panel) { e.preventDefault(); closeSidePanels(); return; }
+  if (document.getElementById('onlineDock').classList.contains('m-open')) { e.preventDefault(); setOnlineSheet(false); restoreFocus(); return; }
+  if (document.getElementById('timeline').classList.contains('sheet-open')) { e.preventDefault(); toggleMobileTimeline(); }
+});
+
 // === ONLINE PANEL ===
 let onlineOpenId = null;                              // event whose details are expanded
-const onlineGroupsOpen = { regular: false, tba: false }; // collapsed groups state
-const firstDayNum = ev => parseInt(String(ev.dates || '').match(/\d+/)?.[0] || 0);
-
+const onlineGroupsOpen = { regular: true, tba: true }; // groups start open in the docked column
 function onlineRowHtml(ev, i) {
   const isStar = userStars.has(ev.id);
   const isIgn = ignored.has(i);
   const isOpen = onlineOpenId === ev.id;
-  const icons = (ev.tags || []).filter(t => t !== 'sold-out' && TI[t]).map(t => `<span title="${esc(t)}">${TI[t]}</span>`).join(' ');
+  const icons = (ev.tags || []).filter(t => t !== 'sold-out' && tagIcon(t)).map(t => `<span title="${esc(t)}">${tagIcon(t)}</span>`).join(' ');
   let dt = ev.edition_state === 'dates-tba' ? `~${ev.month || ''} · dates TBA` : (ev.dates || '');
   if (ONLINE_REGULAR.has(ev.recurrence)) dt += (dt ? ' · ' : '') + ev.recurrence;
-  const link = ev.url ? `<a class="op-link" href="${esc(evUrl(ev.url))}" target="_blank" rel="noopener">🔗 ${esc(ev.url)}</a>` : '';
+  const link = ev.url ? `<a class="op-link" href="${esc(evUrl(ev.url))}" target="_blank" rel="noopener">${icon('ext')}<span>${esc(String(ev.url).replace(/^https?:\/\//i, '').replace(/^www\./i, ''))}</span></a>` : '';
   const row = `<div class="sp-item op-item${isIgn ? ' op-ign' : ''}${isOpen ? ' op-open' : ''}" data-idx="${i}">
     <div class="op-row">
       <div class="op-info">
         <div class="sin">${esc(ev.name)}</div>
         <div class="sid">${esc(dt)}</div>
-        <div class="sil">🌐 ${esc(ev.location || 'Online')}${icons ? ' · ' + icons : ''}</div>
+        <div class="sil">${esc(ev.location || 'Online')}${icons ? ' · ' + icons : ''}</div>
         ${link}
       </div>
-      <button class="op-star${isStar ? ' on' : ''}" data-action="star" data-idx="${i}" title="${isStar ? 'Remove star' : 'Star this event'}">${isStar ? '★' : '☆'}</button>
+      <button class="op-star${isStar ? ' on' : ''}" data-action="star" data-idx="${i}" title="${isStar ? 'Remove star' : 'Star this event'}" aria-label="${isStar ? 'Remove star' : 'Star this event'}" aria-pressed="${isStar}">${icon('star')}</button>
     </div>
   </div>`;
   return row + (isOpen ? `<div class="leaflet-popup-content op-detail">${popupHtml(ev, i)}</div>` : '');
@@ -1428,10 +2162,7 @@ function renderOnlinePanel() {
   main.forEach(({ ev, i }) => {
     if (ev.month !== curMonth) {
       curMonth = ev.month;
-      const mIdx = MO.indexOf(curMonth);
-      const slot = mIdx - NOW_MONTH;
-      const fg = (mIdx < NOW_MONTH) ? '#999' : (LIGHT_TEXT_SLOTS.has(slot) ? '#1a1a2e' : '#fff');
-      html += `<div class="tl-month" style="background:${MC[curMonth] || '#555'};color:${fg}">${esc(curMonth || '?')}</div>`;
+      html += `<div class="tl-month" data-month="${esc(monthSlot(curMonth))}">${esc(curMonth || '?')}</div>`;
     }
     html += onlineRowHtml(ev, i);
   });
@@ -1465,9 +2196,12 @@ function openOnlineEvent(id) {
   const g = onlineGroup(ev);
   if (g !== 'main') onlineGroupsOpen[g] = true;
   document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
-  document.getElementById('onlinePanel').classList.add('open');
+  if (isMobile()) setOnlineSheet(true);
+  else if (!onlineDockOpen()) setOnlineDockOpen(true, true);
   renderOnlinePanel();
-  if (!getVisibleOnline().some(v => v.ev.id === id)) toast('Hidden by filters - try Show past, or clear search / types', '#e89530');
+  const row = document.querySelector('#onlineList .op-item.op-open');
+  if (row) row.scrollIntoView({ block: 'nearest' });
+  if (!getVisibleOnline().some(v => v.ev.id === id)) toast('Hidden by filters - try Show past, or clear search / types', 'warn');
 }
 
 function renderFavsPanel() {
@@ -1487,9 +2221,7 @@ function renderFavsPanel() {
     const ma = MO.indexOf(a.month);
     const mb = MO.indexOf(b.month);
     if (ma !== mb) return ma - mb;
-    const da = parseInt(a.dates.match(/\d+/)?.[0] || 0);
-    const db = parseInt(b.dates.match(/\d+/)?.[0] || 0);
-    return da - db;
+    return firstDayNum(a) - firstDayNum(b);
   });
   
   starredEvents.forEach(ev => {
@@ -1502,7 +2234,7 @@ function renderFavsPanel() {
     `;
     item.addEventListener('click', () => {
       if (ev.is_online) { openOnlineEvent(ev.id); return; }
-      map.setView([ev.lat, ev.lng], 8);
+      mapView([ev.lat, ev.lng], 8);
       clusterGroup.getLayers().forEach(m => {
         if (m._evId === ev.id) m.openPopup();
       });
@@ -1526,7 +2258,7 @@ function renderIgnoredPanel() {
     item.innerHTML = `<button class="sir" onclick="event.stopPropagation();unIgnore(${idx})">↩</button><div class="sin">${esc(ev.name)}</div><div class="sid">${esc(ev.dates)}</div><div class="sil">${esc(ev.location)}</div>`;
     item.addEventListener('click', () => {
       if (ev.is_online) { openOnlineEvent(ev.id); return; }
-      map.setView([ev.lat, ev.lng], 8);
+      mapView([ev.lat, ev.lng], 8);
       togglePanel('ignored');
     });
     list.appendChild(item);
@@ -1565,7 +2297,7 @@ function renderIssuesPanel() {
     item.innerHTML = `
       <div class="sin">${esc(iss.event_name)}</div>
       <div class="sil">${esc(iss.issue_text)}</div>
-      <div style="font-size:9px;color:#666;margin-top:3px">by ${esc(iss.created_by)}</div>
+      <div class="si-by">by ${esc(iss.created_by)}</div>
       <button class="sir" onclick="removeIssue(${i})">×</button>
     `;
     list.appendChild(item);
@@ -1599,9 +2331,7 @@ function copyFavsList() {
     const ma = MO.indexOf(a.month);
     const mb = MO.indexOf(b.month);
     if (ma !== mb) return ma - mb;
-    const da = parseInt(a.dates.match(/\d+/)?.[0] || 0);
-    const db = parseInt(b.dates.match(/\d+/)?.[0] || 0);
-    return da - db;
+    return firstDayNum(a) - firstDayNum(b);
   });
   
   const text = starredEvents.map(e => `${e.name} - ${e.dates} in ${e.location}`).join('\n');
@@ -1610,6 +2340,7 @@ function copyFavsList() {
 
 // === EXPORT ICS ===
 function parseEventDates(dates, month) {
+  dates = String(dates ?? '');
   const monthIdx = MO.indexOf(month);
   const startMonthNum = monthIdx >= 0 ? monthIdx + 1 : 1;
   const startMatch = dates.match(/(\d+)/);
@@ -1648,9 +2379,24 @@ function parseEventDates(dates, month) {
   };
 }
 
+// RFC 5545: TEXT values escape backslash, semicolon, comma and newlines; URI values (URL) take no backslash escaping, so unsafe
+// characters are percent-encoded instead; every content line is folded at 75 octets (CRLF + space).
+const icsText = v => String(v ?? '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r\n|\r|\n/g, '\\n');
+const icsUri = u => String(u ?? '').trim().replace(/[\x00-\x20\x7f"<>\\^`{|}]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'));
+function icsFold(line) {
+  const enc = new TextEncoder();
+  let out = '', cur = '', bytes = 0, limit = 75;
+  for (const ch of line) { // code points, so a multi-byte character is never split
+    const n = enc.encode(ch).length;
+    if (bytes + n > limit) { out += cur + '\r\n '; cur = ''; bytes = 0; limit = 74; } // the leading space is the 75th octet
+    cur += ch; bytes += n;
+  }
+  return out + cur;
+}
+
 function exportICS() {
   if (userStars.size === 0) {
-    toast('Star some events first!', '#e63946');
+    toast('Star some events first!', 'error');
     return;
   }
 
@@ -1659,45 +2405,45 @@ function exportICS() {
     const ma = MO.indexOf(a.month);
     const mb = MO.indexOf(b.month);
     if (ma !== mb) return ma - mb;
-    const da = parseInt(a.dates.match(/\d+/)?.[0] || 0);
-    const db = parseInt(b.dates.match(/\d+/)?.[0] || 0);
-    return da - db;
+    return firstDayNum(a) - firstDayNum(b);
   });
 
-  let ics = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Regen Events Map ${selectedYear}//EN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-CALNAME:Regen Events ${selectedYear}\nX-WR-TIMEZONE:UTC\n`;
+  const L = [ // content lines; escaped + folded below
+    'BEGIN:VCALENDAR', 'VERSION:2.0', `PRODID:-//Regen Events Map ${selectedYear}//EN`, 'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH', `X-WR-CALNAME:Regen Events ${selectedYear}`, 'X-WR-TIMEZONE:UTC'
+  ];
 
   starredEvents.forEach((ev, idx) => {
     const { dtstart, dtend } = parseEventDates(ev.dates, ev.month);
     const uid = `${ev.id}-${idx}@regeneventsmap${selectedYear}`;
-    const emoji = gi(ev);
-    const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(ev.venue || ev.location)}`;
+    const emoji = gi(ev).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&'); // icons are stored HTML-escaped; ICS is plain text
+    const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(ev.venue || ev.location || '')}`;
     const eventUrl = evUrl(ev.url);
 
-    // Build description with URL + Google Maps link
-    let desc = ev.description || '';
-    if (eventUrl) desc += `\\n\\nEvent: ${eventUrl}`;
-    if (!ev.is_online) desc += `\\n\\nMap: ${mapsUrl}`;
-    // Escape special chars for ICS
-    desc = desc.replace(/,/g, '\\,').replace(/;/g, '\\;');
+    // Description with URL + Google Maps link (real newlines; icsText turns them into \n)
+    let desc = String(ev.description ?? '');
+    if (eventUrl) desc += `\n\nEvent: ${eventUrl}`;
+    if (!ev.is_online) desc += `\n\nMap: ${mapsUrl}`;
 
-    const summary = `${emoji} ${ev.name} — ${ev.location}${ev.edition_state === 'dates-tba' ? ' (dates TBA)' : ''}`;
+    const summary = `${emoji} ${ev.name ?? ''} — ${ev.location ?? ''}${ev.edition_state === 'dates-tba' ? ' (dates TBA)' : ''}`;
 
-    ics += `BEGIN:VEVENT\n`;
-    ics += `UID:${uid}\n`;
-    ics += `DTSTART;VALUE=DATE:${dtstart}\n`;
-    ics += `DTEND;VALUE=DATE:${dtend}\n`;
+    L.push('BEGIN:VEVENT');
+    L.push('UID:' + icsText(uid));
+    L.push(`DTSTART;VALUE=DATE:${dtstart}`);
+    L.push(`DTEND;VALUE=DATE:${dtend}`);
     const rrUntil = `;UNTIL=${typeof ev.year === 'number' ? ev.year : selectedYear}1231T235959Z`;
-    if (ev.recurrence === 'weekly') ics += `RRULE:FREQ=WEEKLY${rrUntil}\n`;
-    if (ev.recurrence === 'monthly') ics += `RRULE:FREQ=MONTHLY${rrUntil}\n`;
-    ics += `SUMMARY:${summary}\n`;
-    ics += `DESCRIPTION:${desc}\n`;
-    ics += `LOCATION:${ev.location}\n`;
-    if (eventUrl) ics += `URL:${eventUrl}\n`;
-    if (!ev.is_online) ics += `GEO:${ev.lat};${ev.lng}\n`;
-    ics += `END:VEVENT\n`;
+    if (ev.recurrence === 'weekly') L.push(`RRULE:FREQ=WEEKLY${rrUntil}`);
+    if (ev.recurrence === 'monthly') L.push(`RRULE:FREQ=MONTHLY${rrUntil}`);
+    L.push('SUMMARY:' + icsText(summary));
+    L.push('DESCRIPTION:' + icsText(desc));
+    L.push('LOCATION:' + icsText(ev.location));
+    if (eventUrl) L.push('URL:' + icsUri(eventUrl));
+    if (!ev.is_online && Number.isFinite(+ev.lat) && Number.isFinite(+ev.lng)) L.push(`GEO:${+ev.lat};${+ev.lng}`);
+    L.push('END:VEVENT');
   });
 
-  ics += `END:VCALENDAR`;
+  L.push('END:VCALENDAR');
+  const ics = L.map(icsFold).join('\r\n') + '\r\n';
 
   const blob = new Blob([ics], { type: 'text/calendar' });
   const a = document.createElement('a');
@@ -1709,15 +2455,19 @@ function exportICS() {
 }
 
 // === EXPORT KML ===
+// XML text: escape markup characters and drop characters XML 1.0 does not allow at all
+const xmlEsc = v => String(v ?? '').replace(/[^\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu, '')
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+const kmlNum = v => Number.isFinite(+v) ? +v : 0;
 function exportKML() {
   if (userStars.size === 0) {
-    toast('Star some events first!', '#e63946');
+    toast('Star some events first!', 'error');
     return;
   }
   
   const starredEvents = events.filter(e => userStars.has(e.id) && !e.is_online); // online events have no location
   if (starredEvents.length === 0) {
-    toast('No starred events with a location (online events are not exported to KML)', '#e63946');
+    toast('No starred events with a location (online events are not exported to KML)', 'error');
     return;
   }
   starredEvents.sort((a, b) => {
@@ -1733,14 +2483,15 @@ function exportKML() {
   // Route line
   kml += `<Placemark><name>Route</name><Style><LineStyle><color>ff2a9d8f</color><width>3</width></LineStyle></Style><LineString><tessellate>1</tessellate><coordinates>`;
   starredEvents.forEach(e => {
-    kml += `${e.lng},${e.lat},0 `;
+    kml += `${kmlNum(e.lng)},${kmlNum(e.lat)},0 `;
   });
   kml += `</coordinates></LineString></Placemark>\n`;
   
-  // Pins
+  // Pins. The description is HTML (Google My Maps / Earth render it): fields are HTML-escaped into it,
+  // then the whole HTML is XML-escaped as element text (no CDATA, so "]]>" in the data cannot break out).
   starredEvents.forEach((ev, n) => {
-    const desc = `${ev.dates}\n${ev.location}\n${ev.description}${ev.url ? '\n' + ev.url : ''}`;
-    kml += `<Placemark><name>${n + 1}. ${ev.name}</name><description><![CDATA[<b>${ev.dates}</b><br>${ev.location}<br>${ev.description}${ev.url ? '<br><a href="' + evUrl(ev.url) + '">' + ev.url + '</a>' : ''}]]></description><styleUrl>#eventPin</styleUrl><Point><coordinates>${ev.lng},${ev.lat},0</coordinates></Point></Placemark>\n`;
+    const html = `<b>${esc(ev.dates)}</b><br>${esc(ev.location)}<br>${esc(ev.description)}${ev.url ? '<br><a href="' + esc(evUrl(ev.url)) + '">' + esc(ev.url) + '</a>' : ''}`;
+    kml += `<Placemark><name>${n + 1}. ${xmlEsc(ev.name)}</name><description>${xmlEsc(html)}</description><styleUrl>#eventPin</styleUrl><Point><coordinates>${kmlNum(ev.lng)},${kmlNum(ev.lat)},0</coordinates></Point></Placemark>\n`;
   });
   
   kml += `</Document>\n</kml>`;
@@ -1757,21 +2508,19 @@ function exportKML() {
 // === ROUTE PAGE ===
 function openRoutePage() {
   if (userStars.size === 0) {
-    toast('Star some events first!', '#e63946');
+    toast('Star some events first!', 'error');
     return;
   }
   const starredEvents = events.filter(e => userStars.has(e.id) && !e.is_online); // online events have no place on a route
   if (starredEvents.length < 2) {
-    toast('Star at least 2 events with a location for a route!', '#e63946');
+    toast('Star at least 2 events with a location for a route!', 'error');
     return;
   }
   starredEvents.sort((a, b) => {
     const ma = MO.indexOf(a.month);
     const mb = MO.indexOf(b.month);
     if (ma !== mb) return ma - mb;
-    const da = parseInt(a.dates.match(/\d+/)?.[0] || 0);
-    const db = parseInt(b.dates.match(/\d+/)?.[0] || 0);
-    return da - db;
+    return firstDayNum(a) - firstDayNum(b);
   });
   
   const evs = starredEvents.map((e, n) => ({ ...e, num: n + 1, title: e.name }));
@@ -1781,31 +2530,36 @@ function openRoutePage() {
   let gmUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}`;
   if (wps) gmUrl += `&waypoints=${wps}`;
   
+  // The route page is a separate document, so it gets literal colors read from the current theme
+  const K = n => readToken(n);
+  const dotFixed = getComputedStyle(document.documentElement).getPropertyValue('--month-dot-text').trim() !== ''; // dark: one fixed number color
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Event Route ${selectedYear}</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:#1a1a2e;color:#e0e0e0;padding:24px;max-width:800px;margin:0 auto}h1{font-size:22px;color:#e9c46a;margin-bottom:4px}
-.sub{font-size:12px;color:#888;margin-bottom:20px}
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:${K('--bg')};color:${K('--text')};padding:24px;max-width:800px;margin:0 auto}h1{font-size:22px;color:${K('--accent-2')};margin-bottom:4px}
+.sub{font-size:12px;color:${K('--text-muted')};margin-bottom:20px}
 .stop{display:flex;gap:14px;margin-bottom:0;position:relative}
 .line{display:flex;flex-direction:column;align-items:center;width:36px;flex-shrink:0}
-.dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#1a1a2e;flex-shrink:0}
-.connector{flex:1;width:2px;background:#333;margin:4px 0}
+.dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${K('--on-accent-2')};flex-shrink:0}
+.connector{flex:1;width:2px;background:${K('--line')};margin:4px 0}
 .info{flex:1;padding-bottom:20px}
-.info h3{font-size:15px;color:#fff;margin-bottom:2px}
-.info .dates{font-size:12px;color:#e9c46a;font-weight:600}
-.info .loc{font-size:12px;color:#aaa;margin-top:1px}
-.info .desc{font-size:11px;color:#777;margin-top:4px}
-.info a{color:#2a9d8f;font-size:11px;text-decoration:none}
+.info h3{font-size:15px;color:${K('--text-strong')};margin-bottom:2px}
+.info .dates{font-size:12px;color:${K('--accent-2')};font-weight:600}
+.info .loc{font-size:12px;color:${K('--text-4')};margin-top:1px}
+.info .desc{font-size:11px;color:${K('--text-dim')};margin-top:4px}
+.info a{color:${K('--link')};font-size:11px;text-decoration:none}
 .info a:hover{text-decoration:underline}
 .actions{margin-top:24px;display:flex;gap:10px;flex-wrap:wrap}
 .actions a,.actions button{padding:10px 20px;border-radius:8px;font-size:13px;cursor:pointer;text-decoration:none;border:none;font-weight:600}
-.gm{background:#2a9d8f;color:#fff}.gm:hover{background:#238b7e}
-.back{background:#333;color:#ccc;border:1px solid #555}.back:hover{background:#444}
+.gm{background:${K('--accent')};color:${K('--on-accent')}}.gm:hover{background:${K('--accent-hover')}}
+.back{background:${K('--control')};color:${K('--text-2')};border:1px solid ${K('--text-faint')}}.back:hover{background:${K('--control-hover')}}
 </style></head><body>
 <h1>Your ${selectedYear} Event Route</h1>
 <div class="sub">${evs.length} starred events in chronological order</div>
 ${evs.map((e, i) => {
-  const c = MC[e.month] || '#888';
+  const slot = monthSlot(e.month);
+  const c = K('--month-' + slot);
+  const fg = dotFixed ? K('--month-dot-text') : K('--on-month-' + slot);
   const isLast = i === evs.length - 1;
-  return `<div class="stop"><div class="line"><div class="dot" style="background:${c}">${e.num}</div>${isLast ? '' : '<div class="connector"></div>'}</div><div class="info"><h3>${esc(e.title)}</h3><div class="dates">${esc(e.dates)}</div><div class="loc">${esc(e.location)}</div><div class="desc">${esc(e.description)}</div>${e.url ? '<a href="' + esc(evUrl(e.url)) + '" target="_blank">' + esc(e.url) + '</a>' : ''}</div></div>`;
+  return `<div class="stop"><div class="line"><div class="dot" style="background:${c};color:${fg}">${e.num}</div>${isLast ? '' : '<div class="connector"></div>'}</div><div class="info"><h3>${esc(e.title)}</h3><div class="dates">${esc(e.dates)}</div><div class="loc">${esc(e.location)}</div><div class="desc">${esc(e.description)}</div>${e.url ? '<a href="' + esc(evUrl(e.url)) + '" target="_blank">' + esc(e.url) + '</a>' : ''}</div></div>`;
 }).join('')}
 <div class="actions">
 <a class="gm" href="${gmUrl}" target="_blank">Open route in Google Maps</a>
@@ -1843,7 +2597,7 @@ function suggestEvent() {
   const notes = document.getElementById('ae-desc').value.trim();
 
   if (!url) {
-    toast('Please paste a link to the event.', '#e63946');
+    toast('Please paste a link to the event.', 'error');
     return;
   }
 
@@ -1865,38 +2619,46 @@ function suggestEvent() {
       document.getElementById('ae-name').value = '';
       document.getElementById('ae-desc').value = '';
     })
-    .catch(e => toast('Error submitting: ' + e.message, '#e63946'));
+    .catch(e => toast('Error submitting: ' + e.message, 'error'));
 }
 
 // === YEAR SWITCHING ===
+// PostgREST errors carry a code (e.g. 42703 = missing column); network failures and timeouts do not
+const isNetErr = err => !err || !err.code;
+// null = the database could not be reached (initData then shows the Retry message)
 async function fetchYears() {
   try {
     const { data, error } = await sb.from('events').select('year').eq('active', true).neq('scope', 'off-scope');
-    if (error || !data) return [selectedYear];
+    if (error) return isNetErr(error) ? null : [selectedYear];
+    if (!data) return [selectedYear];
     const ys = Array.from(new Set(data.map(r => r.year).filter(y => y != null))).sort((a, b) => a - b);
     return ys.length ? ys : [selectedYear];
-  } catch (e) { return [selectedYear]; }
+  } catch (e) { return null; }
 }
 
 function buildYearButtons(years) {
   const desk = document.getElementById('yearToggle');
   const mob = document.getElementById('mobileYearRow');
-  if (desk) desk.innerHTML = years.map(y => `<button class="btn yr-btn ${y === selectedYear ? 'active' : ''}" data-year="${y}" onclick="switchYear(${y})">${y}</button>`).join('');
-  if (mob) mob.innerHTML = years.map(y => `<button class="btn yr-btn ${y === selectedYear ? 'active' : ''}" data-year="${y}" onclick="mobileMenuAction(()=>switchYear(${y}))">${y}</button>`).join('');
+  const yb = (y, act) => `<button type="button" class="yr-btn ${y === selectedYear ? 'active' : ''}" data-year="${Number(y)}" aria-pressed="${y === selectedYear}" onclick="${act}(${Number(y)})">${Number(y)}</button>`;
+  if (desk) desk.innerHTML = years.map(y => yb(y, 'switchYear')).join('');
+  if (mob) mob.innerHTML = years.map(y => yb(y, 'mobileYear')).join('');
 }
 
+function mobileYear(year) { mobileMenuAction(() => switchYear(year)); }
 async function switchYear(year) {
   selectedYear = year;
   document.getElementById('yearDisplay').textContent = year;
-  document.title = `Events & Gatherings ${year} — Map`;
+  document.title = `${SITE_CONFIG.title} ${year} — Map`;
   document.querySelectorAll('.yr-btn').forEach(b => {
     b.classList.toggle('active', parseInt(b.dataset.year) === year);
+    b.setAttribute('aria-pressed', String(parseInt(b.dataset.year) === year));
   });
   // Re-fetch and re-render
+  hideLoadError();
   showSpinner();
-  const eventsData = await fetchEvents();
+  const eventsData = await withDeadline(fetchEvents());
+  if (eventsData === null) { events = []; render(); loadFailed(() => switchYear(year)); return; }
   events = eventsData;
-  await Promise.all([fetchStarCounts(), fetchTagIcons()]);
   const allTags = new Set();
   events.forEach(e => { if (e.tags && Array.isArray(e.tags)) e.tags.forEach(t => allTags.add(t)); });
   ALL_TAGS = Array.from(allTags).sort();
@@ -1907,9 +2669,13 @@ async function switchYear(year) {
   initTypeFilters();
   render();
   hideSpinner();
+  loadExtras();
 }
 
 // === FETCH DATA FROM SUPABASE ===
+// Optional fields may be null or malformed in a row: tags is always an array afterwards
+const normEvent = e => (e.tags == null || Array.isArray(e.tags)) ? e : Object.assign({}, e, { tags: [] });
+// Returns the year's events, or null when they could not be loaded (unreachable, timed out, server error)
 async function fetchEvents() {
   try {
     let query = sb
@@ -1930,20 +2696,31 @@ async function fetchEvents() {
       if (error.message && error.message.includes('year')) {
         console.warn('Year column not found, fetching all events');
         const fallback = await sb.from('events').select('*').order('month').order('dates');
-        return (fallback.data || []).filter(e => e.active !== false);
+        if (fallback.error) { console.error('Error fetching events:', fallback.error); return null; }
+        return (fallback.data || []).filter(e => e && e.active !== false).map(normEvent);
       }
       console.error('Error fetching events:', error);
-      toast('Failed to load events from Supabase', '#e63946');
-      return [];
+      return null;
     }
 
-    return (data || []).filter(e => e.active !== false);
+    return (data || []).filter(e => e && e.active !== false).map(normEvent);
   } catch (e) {
     console.error('Fetch error:', e);
-    toast('Failed to load events', '#e63946');
-    return [];
+    return null;
   }
 }
+
+// === LOAD FAILURE: friendly message + Retry (instead of an endless spinner) ===
+let _retryFn = null;
+function loadFailed(retry) {
+  _retryFn = retry;
+  hideSpinner();
+  const box = document.getElementById('loadError');
+  box.hidden = false;
+  if (!document.querySelector('.modal-overlay.open, .user-modal-overlay.show, .mobile-menu.open')) document.getElementById('loadRetry').focus({ preventScroll: true });
+}
+function hideLoadError() { document.getElementById('loadError').hidden = true; }
+function retryLoad() { const f = _retryFn || initData; _retryFn = null; f(); }
 
 async function fetchStarCounts() {
   try {
@@ -1974,19 +2751,20 @@ async function initData() {
   showSpinner();
 
   // Set initial year display
+  hideLoadError();
   document.getElementById('yearDisplay').textContent = selectedYear;
-  const years = await fetchYears();
+  const years = await withDeadline(fetchYears());
+  if (years === null) { loadFailed(initData); return; }
   if (!years.includes(selectedYear)) selectedYear = years.includes(new Date().getFullYear()) ? new Date().getFullYear() : years[0];
   document.getElementById('yearDisplay').textContent = selectedYear;
   buildYearButtons(years);
-  document.title = `Events & Gatherings ${selectedYear} — Map`;
+  document.title = `${SITE_CONFIG.title} ${selectedYear} — Map`;
 
   // Fetch events
-  const eventsData = await fetchEvents();
+  const eventsData = await withDeadline(fetchEvents());
+  if (eventsData === null) { loadFailed(initData); return; }
   events = eventsData;
-  
-  // Fetch star counts and tag icons
-  await Promise.all([fetchStarCounts(), fetchTagIcons()]);
+  _dataLoaded = true;
 
   // Collect all tags
   const allTags = new Set();
@@ -2006,25 +2784,68 @@ async function initData() {
   initRegionFilters();
   initTypeFilters();
   
-  // Initial render
+  // Initial render; star counts and tag icons follow
   render();
   
   hideSpinner();
+  loadExtras();
+}
+
+// Star counts and tag icons are optional extras: the map renders without them, then re-renders when they
+// arrive (or the deadline passes). A slow or failing request never holds the events back; each fetch logs
+// its own errors. The re-render keeps an open popup, the timeline scroll and an open Favorites panel.
+function loadExtras() {
+  withDeadline(Promise.all([fetchStarCounts(), fetchTagIcons()])).then(() => {
+    let openId = null;
+    if (clusterGroup) clusterGroup.getLayers().forEach(m => { if (m.isPopupOpen && m.isPopupOpen()) openId = m._evId; });
+    const tl = document.getElementById('tlScroll');
+    const top = tl.scrollTop, left = tl.scrollLeft;
+    render();
+    tl.scrollTop = top; tl.scrollLeft = left;
+    if (openId != null) clusterGroup.getLayers().forEach(m => { if (m._evId === openId && m._map) m.openPopup(); });
+    if (document.getElementById(PANELS.favs).classList.contains('open')) renderFavsPanel();
+  }).catch(e => console.warn('Refresh after star counts / tag icons failed:', e));
 }
 
 // === MOBILE ===
-const isMobile = () => window.innerWidth <= 768;
+// One breakpoint for CSS and JS: SITE_CONFIG.phoneMax (the CSS uses @media(max-width:900px) to match)
+const PHONE_MQ = window.matchMedia ? window.matchMedia(`(max-width: ${SITE_CONFIG.phoneMax}px)`) : null;
+const isMobile = () => PHONE_MQ ? PHONE_MQ.matches : window.innerWidth <= SITE_CONFIG.phoneMax;
 
+function openMobileMenu(focusEl) {
+  const mm = document.getElementById('mobileMenu');
+  mm.classList.add('open');
+  document.getElementById('hamburgerBtn').setAttribute('aria-expanded', 'true');
+  (focusEl || mm.querySelector('.mm-close')).focus({ preventScroll: true });
+}
+function closeMobileMenu(returnFocus = true) {
+  const mm = document.getElementById('mobileMenu');
+  const wasOpen = mm.classList.contains('open');
+  mm.classList.remove('open');
+  document.getElementById('hamburgerBtn').setAttribute('aria-expanded', 'false');
+  if (wasOpen && returnFocus) { const h = document.getElementById('hamburgerBtn'); if (isShown(h)) h.focus({ preventScroll: true }); }
+}
 function toggleMobileMenu() {
-  document.getElementById('mobileMenu').classList.toggle('open');
+  if (document.getElementById('mobileMenu').classList.contains('open')) closeMobileMenu(); else openMobileMenu();
 }
-function closeMobileMenu() {
-  document.getElementById('mobileMenu').classList.remove('open');
-}
+// Menu actions: the menu closes, the action runs, and focus goes to whatever opened (else back to ☰)
 function mobileMenuAction(fn) {
-  closeMobileMenu();
+  rememberOpener(); // = the hamburger, since focus is still inside the menu
+  closeMobileMenu(false);
   fn();
+  const layer = document.querySelector('.user-modal-overlay.show input, .modal-overlay.open input, .side-panel.open .sp-close, .online-dock.m-open .tl-close, .timeline.sheet-open .tl-close');
+  if (layer && isShown(layer)) layer.focus({ preventScroll: true });
+  else { _panelOpener = null; const h = document.getElementById('hamburgerBtn'); if (isShown(h)) h.focus({ preventScroll: true }); }
 }
+// simple focus trap while the full-screen menu is open
+document.getElementById('mobileMenu').addEventListener('keydown', e => {
+  if (e.key !== 'Tab') return;
+  const f = Array.from(e.currentTarget.querySelectorAll('button, input, [tabindex]:not([tabindex="-1"])')).filter(isShown);
+  if (!f.length) return;
+  const first = f[0], last = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
 function onMobileSearch() {
   const val = document.getElementById('mobileSearchInput').value;
   document.getElementById('searchInput').value = val;
@@ -2036,6 +2857,7 @@ function toggleMobileFilters() {
   const main = document.querySelector('.main');
   btn.classList.toggle('open');
   const isOpen = btn.classList.contains('open');
+  btn.setAttribute('aria-expanded', String(isOpen));
   filters.forEach(f => f.classList.toggle('mobile-open', isOpen));
   main.classList.toggle('filters-open', isOpen);
   setTimeout(() => map.invalidateSize(), 100);
@@ -2107,50 +2929,31 @@ toggleTimeline = function() {
   tl.addEventListener('touchend', onTouchEnd, { passive: true });
 })();
 
-// Update mobile menu badge counts
-function updateMobileBadges() {
-  const starEl = document.getElementById('mmStarCount');
-  const ignEl = document.getElementById('mmIgnCount');
-  if (starEl) starEl.textContent = userStars.size;
-  if (ignEl) ignEl.textContent = ignored.size;
-}
-
-// Patch render to update mobile badges
-const _origRender = typeof render === 'function' ? render : null;
-if (_origRender) {
-  const _patchedRender = render;
-  // We'll hook into it after initData runs
-}
-
-// Sync mobile year buttons with desktop
-const _origSwitchYear = switchYear;
-switchYear = async function(year) {
-  await _origSwitchYear(year);
-  // Sync mobile menu year buttons
-  document.querySelectorAll('.mm-year-row .yr-btn').forEach(b => {
-    b.classList.toggle('active', parseInt(b.dataset.year) === year);
-  });
-};
-
-// Hook to update mobile badges after renders
-const _mobObserver = new MutationObserver(() => {
-  const fBtn = document.getElementById('favsBtn');
-  if (fBtn) {
-    const m = fBtn.textContent.match(/\d+/);
-    const starEl = document.getElementById('mmStarCount');
-    if (starEl && m) starEl.textContent = m[0];
+// === LAYOUT: phone <-> desktop without a reload (resize, rotation) ===
+function applyLayout() {
+  if (isMobile()) {
+    // leaving desktop: the docks become a full-screen sheet / bottom sheet, both closed
+    document.getElementById('onlineDock').classList.remove('m-open');
+  } else {
+    // desktop docks: timeline open by default, online per syncOnlineDock; then whatever the visitor last chose
+    closeMobileMenu(false);
+    setOnlineSheet(false);
+    const tl = document.getElementById('timeline');
+    tl.classList.remove('sheet-open', 'sheet-peek');
+    document.getElementById('mobileTimelineBtn').classList.remove('active');
+    setTimelineOpen(dockStored('timeline', true), false);
+    syncOnlineDock(true);
   }
-  const iBtn = document.getElementById('ignBtn');
-  if (iBtn) {
-    const m = iBtn.textContent.match(/\d+/);
-    const ignEl = document.getElementById('mmIgnCount');
-    if (ignEl && m) ignEl.textContent = m[0];
-  }
-});
-_mobObserver.observe(document.getElementById('favsBtn'), { childList: true, characterData: true, subtree: true });
-_mobObserver.observe(document.getElementById('ignBtn'), { childList: true, characterData: true, subtree: true });
+  map.invalidateSize();
+}
+if (PHONE_MQ && PHONE_MQ.addEventListener) PHONE_MQ.addEventListener('change', applyLayout);
+let _resizeT = null;
+window.addEventListener('resize', () => { clearTimeout(_resizeT); _resizeT = setTimeout(() => syncOnlineDock(), 150); });
 
 // === INIT ===
+document.getElementById('siteTitle').textContent = SITE_CONFIG.title;
+document.getElementById('mmTitle').textContent = SITE_CONFIG.title;
+applyLayout();
 loadUserName();
 initData();
 </script>

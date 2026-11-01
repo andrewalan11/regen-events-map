@@ -1,0 +1,341 @@
+/* ==========================================================================
+   Events & Gatherings map - theme tokens (S28)
+   --------------------------------------------------------------------------
+   Layers
+   (a) primitives   - optional, per theme (e.g. --moss-900). App CSS never
+                      references these; only the theme block that owns them.
+   (b) semantic     - REQUIRED roles. All app CSS uses only these (+ c).
+   (c) component    - optional; defaults derive from semantic roles, a theme
+                      may override any of them.
+   A theme = one :root[data-theme="name"] block. The bootstrap script in the
+   page <head> sets data-theme before first paint. Tile presets per theme
+   live in window.SITE_CONFIG (index page), not here.
+   ========================================================================== */
+
+/* ---------- Base: fallbacks + derivations (no data-theme needed) ---------- */
+:root{
+  /* semantic fallbacks (= dark) so a page with no data-theme still renders */
+  --bg:#1a1a2e; --surface:#16213e; --surface-2:#1e1e3a; --surface-sunk:#0f0f2a;
+  --surface-rail:#12122a; --hover:#1a1a3a;
+  --border:#0f3460; --line:#333; --control:#333; --control-hover:#444; --control-border:#444;
+  --text:#e0e0e0; --text-muted:#888;
+  --accent:#2a9d8f; --on-accent:#fff; --accent-2:#e9c46a; --on-accent-2:#1a1a2e; --accent-3:#d4652a;
+  --warn:#e89530; --on-warn:#fff; --danger:#e63946; --on-danger:#fff; --success:#6bbe45; --info:#8ab4f8; --tba:#6f9ceb;
+  --link:var(--accent); --link-2:#457b9d; --focus:var(--accent);
+  --scrim:rgba(0,0,0,.5); --scrim-strong:rgba(0,0,0,.7); --shadow:#000;
+  --font-ui:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --font-display:var(--font-ui);
+  --urg-hot:#e63946; --urg-cold:#6a4c9c;
+
+  /* semantic, derived (a theme may set them explicitly) */
+  --text-strong:color-mix(in oklch, var(--text) 70%, white);
+  --text-2:color-mix(in oklch, var(--text) 85%, var(--text-muted));
+  --text-3:color-mix(in oklch, var(--text) 65%, var(--text-muted));
+  --text-4:color-mix(in oklch, var(--text) 45%, var(--text-muted));
+  --text-dim:color-mix(in oklch, var(--text-muted) 85%, var(--bg));
+  --text-faint:color-mix(in oklch, var(--text-muted) 60%, var(--bg));
+  --accent-hover:color-mix(in oklch, var(--accent) 85%, black);
+  --star:var(--accent-2);
+
+  /* month urgency gradient: 0 = current month (hottest) ... 11 = furthest.
+     A theme sets --urg-hot / --urg-cold; it may override any single stop. */
+  --month-0:var(--urg-hot);
+  --month-1:color-mix(in oklch, var(--urg-hot) 90.909%, var(--urg-cold));
+  --month-2:color-mix(in oklch, var(--urg-hot) 81.818%, var(--urg-cold));
+  --month-3:color-mix(in oklch, var(--urg-hot) 72.727%, var(--urg-cold));
+  --month-4:color-mix(in oklch, var(--urg-hot) 63.636%, var(--urg-cold));
+  --month-5:color-mix(in oklch, var(--urg-hot) 54.545%, var(--urg-cold));
+  --month-6:color-mix(in oklch, var(--urg-hot) 45.455%, var(--urg-cold));
+  --month-7:color-mix(in oklch, var(--urg-hot) 36.364%, var(--urg-cold));
+  --month-8:color-mix(in oklch, var(--urg-hot) 27.273%, var(--urg-cold));
+  --month-9:color-mix(in oklch, var(--urg-hot) 18.182%, var(--urg-cold));
+  --month-10:color-mix(in oklch, var(--urg-hot) 9.091%, var(--urg-cold));
+  --month-11:var(--urg-cold);
+  --month-past:var(--text-faint);      /* months before the current one */
+  --month-none:var(--text-muted);      /* event with no usable month */
+  /* text drawn ON a month color (filter pills, timeline headers, badges) */
+  --on-month:#fff;
+  --on-month-0:var(--on-month); --on-month-1:var(--on-month); --on-month-2:var(--on-month);
+  --on-month-3:var(--on-month); --on-month-4:var(--on-month); --on-month-5:var(--on-month);
+  --on-month-6:var(--on-month); --on-month-7:var(--on-month); --on-month-8:var(--on-month);
+  --on-month-9:var(--on-month); --on-month-10:var(--on-month); --on-month-11:var(--on-month);
+  --on-month-past:var(--text-muted); --on-month-tba:var(--on-month); --on-month-none:var(--on-month);
+  /* month color used AS TEXT on a dark ground: mix toward --text by this much */
+  --month-ink-lift:0%;
+  /* month tag chips: background alpha of the month color */
+  --month-chip-alpha:26.7%;
+
+  /* component tokens (defaults derived from semantic roles) */
+  --popup-bg:var(--surface-2); --popup-text:var(--text);
+  --timeline-bg:var(--surface-rail);
+  --input-border:var(--line);
+  --pin-ring:color-mix(in srgb, var(--text-strong) 60%, transparent);
+  --pin-ring-width:2px;
+  --pin-shadow:0 2px 8px color-mix(in srgb, var(--shadow) 40%, transparent);
+  --pin-label:var(--text-2);
+  --pin-label-shadow:var(--shadow);
+  --pin-muted:var(--month-past);
+  --cluster-bg:color-mix(in srgb, var(--bg) 85%, transparent);
+  --cluster-ring:color-mix(in srgb, var(--text-strong) 30%, transparent);
+  --cluster-text:var(--text-strong);
+  --cluster-dot-stroke:var(--bg);
+  --cluster-ring-width:1.5px;
+  --month-badge-text:initial;          /* unset = use the slot's --on-month-N */
+  --map-bg:var(--bg);
+  --map-filter:none;                   /* applied to the base-tile pane ONLY */
+  --map-tint:transparent;              /* overlay pane between base tiles and labels */
+  --map-tint-blend:normal;
+  --font-map:var(--font-ui);
+  --map-ctrl-bg:var(--surface-2); --map-ctrl-text:var(--text); --map-ctrl-hover:var(--hover);
+  --map-ctrl-border:var(--line);
+  --map-attr-bg:color-mix(in srgb, var(--surface) 80%, transparent);
+  --map-attr-text:var(--text-muted); --map-attr-link:var(--link);
+  --tooltip-arrow:var(--popup-bg);
+  /* layout chrome (S28 chunk 3). Defaults reproduce the plain solid look. */
+  --bar-bg:var(--surface);             /* header row (may be a gradient) */
+  --filter-bg:var(--surface);          /* filter row (may be a gradient) */
+  --header-edge:var(--border);         /* bottom line of header + filter row */
+  --title-text:var(--text);
+  --dock-bg:var(--timeline-bg);        /* docked columns: timeline (right), online (left) */
+  --dock-edge:var(--border);
+  --panel-bg-solid:var(--surface);     /* side panels, modals, more menu, dock tabs */
+  --panel-bg:var(--panel-bg-solid);    /* translucent variant, used only where backdrop-filter works */
+  --panel-backdrop:none;
+  --panel-edge:var(--border);
+  --popup-glass:var(--popup-bg);       /* map popup wrapper where backdrop-filter works */
+  --popup-border:none;
+  --glass-shadow:0 8px 32px color-mix(in srgb, var(--shadow) 50%, transparent);
+  --pill-on-bg:var(--accent); --pill-on-text:var(--on-accent); --pill-on-border:transparent;   /* region pills */
+  --pill-off-text:var(--accent); --pill-off-border:var(--accent);
+  /* timeline month bars: leave --tl-month-band / --tl-month-band-text / --tl-month-accent /
+     --tl-month-past-text UNSET to color every bar with its month color (the dark look) */
+  /* header + controls (S28 chunk 4). Defaults derive from semantic roles. */
+  --brand-mark:var(--title-text);      /* stroke of the inline nautilus mark */
+  --brand-glass:color-mix(in srgb, var(--accent) 20%, transparent);   /* its shell fill */
+  --tagline:var(--text-2);
+  --search-bg:var(--surface-sunk); --search-edge:var(--input-border); --search-edge-hover:var(--control-border);
+  --search-ring:color-mix(in srgb, var(--focus) 30%, transparent);     /* soft glow around the focus edge */
+  --placeholder:var(--text-muted);
+  --kbd-bg:color-mix(in srgb, var(--text-strong) 8%, transparent); --kbd-text:var(--text-muted);
+  --kbd-edge:color-mix(in srgb, var(--text-strong) 18%, transparent);
+  --tg-bg:var(--surface-sunk);         /* toggle-group track, icon buttons, segmented controls */
+  --tg-edge:var(--line);
+  --tg-text:var(--text-2); --tg-icon:var(--text-muted); --tg-hover:var(--hover);
+  --tg-on-bg:color-mix(in srgb, var(--accent) 24%, transparent);       /* pressed: panel/dock open */
+  --tg-on-edge:color-mix(in srgb, var(--accent) 60%, transparent);
+  --tg-on-text:var(--text-strong); --tg-on-icon:var(--accent);
+  --badge-bg:color-mix(in srgb, var(--text-strong) 12%, transparent); --badge-text:var(--text-2);
+  --badge-star-bg:var(--star); --badge-star-text:var(--on-accent-2);
+  --badge-info-bg:color-mix(in srgb, var(--info) 22%, transparent); --badge-info-text:var(--info);
+  --cta-bg:var(--accent); --cta-text:var(--on-accent); --cta-hover:var(--accent-hover);
+  --cta-glow:color-mix(in srgb, var(--accent) 35%, transparent);
+  --cta-sheen:color-mix(in srgb, var(--text-strong) 22%, transparent);
+  --menu-icon:var(--text-muted);
+  /* pins, clusters, popups (chunk 4) */
+  --pin-gloss:linear-gradient(transparent, transparent);   /* layer over the month color; none = flat */
+  --pin-shadow-hover:var(--pin-shadow);
+  --pin-label-bg:transparent;          /* a theme may set a translucent pill behind pin captions */
+  --pin-label-hover:var(--text-strong);
+  --pin-star-badge-bg:var(--star); --pin-star-badge-text:var(--on-accent-2); --pin-star-badge-edge:var(--bg);
+  --cluster-ring-inner:color-mix(in srgb, var(--cluster-ring) 45%, transparent);
+  --cluster-ring-hover:var(--focus);
+  --cluster-shadow:color-mix(in srgb, var(--shadow) 55%, transparent);
+  --popup-close-bg:color-mix(in srgb, var(--surface-sunk) 70%, transparent); --popup-close-text:var(--text-strong);
+  --row-sep:color-mix(in srgb, var(--text-strong) 6%, transparent);   /* list row separators */
+}
+
+/* ---------- Dark: the pre-S28 look, value for value ---------- */
+:root[data-theme="dark"]{
+  color-scheme:dark;   /* S28 chunk 5: rendered UI unchanged (checked by pixel diff); native scrollbars / form widgets go dark */
+  --bg:#1a1a2e; --surface:#16213e; --surface-2:#1e1e3a; --surface-sunk:#0f0f2a;
+  --surface-rail:#12122a; --hover:#1a1a3a;
+  --border:#0f3460; --line:#333; --control:#333; --control-hover:#444; --control-border:#444;
+  --text-strong:#fff; --text:#e0e0e0; --text-2:#ccc; --text-3:#bbb; --text-4:#aaa;
+  --text-muted:#888; --text-dim:#777; --text-faint:#555;
+  --accent:#2a9d8f; --accent-hover:#238b7e; --on-accent:#fff;
+  --accent-2:#e9c46a; --on-accent-2:#1a1a2e; --accent-3:#d4652a; --star:#e9c46a;
+  --warn:#e89530; --on-warn:#fff; --danger:#e63946; --on-danger:#fff; --success:#6bbe45;
+  --info:#8ab4f8; --tba:#6f9ceb; --link:#2a9d8f; --link-2:#457b9d; --focus:#2a9d8f;
+  --scrim:rgba(0,0,0,.5); --scrim-strong:rgba(0,0,0,.7); --shadow:#000;
+  --font-ui:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --font-display:var(--font-ui);
+  --urg-hot:#e63946; --urg-cold:#6a4c9c;
+  /* the original 10-step heat gradient; slots 10-11 reuse the last step */
+  --month-0:#e63946; --month-1:#e8613a; --month-2:#e89530; --month-3:#e9c46a;
+  --month-4:#a8d430; --month-5:#4a9e4a; --month-6:#2a9d8f; --month-7:#457b9d;
+  --month-8:#3a5fa0; --month-9:#6a4c9c; --month-10:#6a4c9c; --month-11:#6a4c9c;
+  --month-past:#555; --month-none:#888;
+  --on-month:#fff; --on-month-3:#1a1a2e; --on-month-4:#1a1a2e; --on-month-past:#999;
+  --month-badge-text:#fff; --month-dot-text:#1a1a2e;   /* fixed text on popup badges / route-page dots */
+  --month-ink-lift:0%;
+  --popup-bg:#1e1e3a; --timeline-bg:#12122a; --input-border:#333;
+  --pin-ring:rgba(255,255,255,.6); --pin-ring-width:2px;
+  --pin-shadow:0 2px 8px rgba(0,0,0,.4);
+  --pin-label:#ccc; --pin-label-shadow:#000; --pin-muted:#555;
+  --cluster-bg:rgba(26,26,46,.85); --cluster-ring:rgba(255,255,255,.3);
+  --cluster-text:#fff; --cluster-dot-stroke:#1a1a2e;
+  /* Leaflet's own defaults, kept so the dark theme is unchanged */
+  --map-bg:#ddd; --map-filter:none; --map-tint:transparent; --map-tint-blend:normal;
+  --font-map:"Helvetica Neue",Arial,Helvetica,sans-serif;
+  --map-ctrl-bg:#fff; --map-ctrl-text:#000; --map-ctrl-hover:#f4f4f4; --map-ctrl-border:#ccc;
+  --map-attr-bg:rgba(255,255,255,.8); --map-attr-text:#333; --map-attr-link:#0078A8;
+  --tooltip-arrow:#fff;
+  /* chunk 4: dark-blue ink on the solid turquoise CTA (white on #2a9d8f is only 3.3:1) */
+  --cta-text:#1a1a2e;
+}
+
+/* ---------- Earthy: moss ground, turquoise glass, gold filament, rust ---------- */
+:root[data-theme="earthy"]{
+  color-scheme:dark;
+  /* (a) primitives - only referenced inside this block */
+  --moss-950:#0e1710; --moss-900:#131d15; --moss-875:#152118; --moss-850:#182619;
+  --moss-800:#1d3024; --moss-750:#22382a; --moss-700:#243a2c; --moss-650:#2e4836;
+  --cream-50:#fbf6ea; --cream-100:#efe6d2; --cream-200:#e3d9c2; --cream-300:#d2c9b3;
+  --myc-200:#bccbcf; --myc-300:#a8bbc1; --myc-400:#92a5ab; --myc-500:#8a9da3;
+  --glass-300:#6fd5c5; --glass-400:#48c8b5; --glass-line:#7fcfc1; --teal-900:#0b1a15;
+  /* deep turquoise glass (panel surfaces), hue ~173 */
+  --glass-950:#081b1a; --glass-900:#0b2321; --glass-875:#0e2826; --glass-850:#102d2a;
+  --glass-800:#143430; --glass-750:#1a3e39; --glass-700:#1e4640; --glass-650:#275249;
+  --moss-band:#24402c;                                     /* timeline month band (left end) */
+  --olive-tint:#313f1f;                                    /* map tint: lifts land to deep olive */
+  --gold-300:#ecc96f; --gold-400:#d9b35e; --gold-ink:#1a1608;
+  --rust-400:#d27b48; --amber-400:#e3a440; --ember-400:#ef775f; --lichen-400:#9cc76f;
+  --myc-blue-300:#9fc6d9; --myc-blue-400:#86a9c8; --myc-blue-450:#8fbad0;
+  --ink-dark:#0c120c;
+
+  /* (b) semantic */
+  --bg:var(--moss-900); --surface:var(--glass-850); --surface-2:var(--glass-800);
+  --surface-sunk:var(--glass-950); --surface-rail:var(--glass-875); --hover:var(--glass-750);
+  --border:color-mix(in srgb, var(--gold-400) 30%, transparent);           /* gold filament */
+  --line:color-mix(in srgb, var(--glass-line) 30%, transparent);           /* teal hairline */
+  --control:var(--glass-700); --control-hover:var(--glass-650);
+  --control-border:color-mix(in srgb, var(--gold-400) 38%, transparent);
+  --text-strong:var(--cream-50); --text:var(--cream-100); --text-2:var(--cream-200);
+  --text-3:var(--cream-300); --text-4:var(--myc-200);
+  --text-muted:var(--myc-300); --text-dim:var(--myc-400); --text-faint:var(--myc-500);
+  --accent:var(--glass-400); --accent-hover:var(--glass-300); --on-accent:var(--teal-900);
+  --accent-2:var(--gold-400); --on-accent-2:var(--gold-ink); --star:var(--gold-400);
+  --accent-3:var(--rust-400);
+  --warn:var(--amber-400); --on-warn:var(--ink-dark); --danger:var(--ember-400); --on-danger:var(--ink-dark);
+  --success:var(--lichen-400); --info:var(--myc-blue-300); --tba:var(--myc-blue-400);
+  --link:var(--glass-300); --link-2:var(--myc-blue-450); --focus:var(--gold-300);
+  --scrim:rgba(5,10,6,.6); --scrim-strong:rgba(5,10,6,.78); --shadow:#030604;
+  --font-ui:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Noto Sans",sans-serif;
+  --font-display:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Noto Serif",serif;
+
+  /* month gradient: ember (soonest) -> deep teal (furthest); oklch lightness
+     falls monotonically 0.745 -> 0.507. Stops 8 and 9 are nudged so label
+     text keeps >= 4.5:1 (dark ink on 0-8, cream on 9-11); order is kept.
+     Between the nudged stops the base CSS mixes the two endpoints in oklch. */
+  --urg-hot:#f38f54; --urg-cold:#1c727a;
+  --month-8:#3c8c6a; --month-9:#207e6c;
+  --month-past:#5a685c; --month-none:#6f7f74;
+  --on-month:var(--ink-dark);
+  --on-month-9:var(--cream-50); --on-month-10:var(--cream-50); --on-month-11:var(--cream-50);
+  --on-month-past:#e3e6dc; --on-month-tba:var(--ink-dark); --on-month-none:var(--cream-50);
+  --month-ink-lift:45%; --month-chip-alpha:11%;
+
+  /* (c) component */
+  --popup-bg:var(--glass-800); --timeline-bg:var(--glass-875);
+  --input-border:color-mix(in srgb, var(--glass-line) 52%, transparent);
+  --pin-ring:color-mix(in srgb, #f6e7bf 88%, transparent); --pin-ring-width:2px;
+  --pin-shadow:0 1px 2px rgba(3,6,4,.55),0 3px 10px rgba(3,6,4,.5);
+  --pin-label:var(--cream-200); --pin-label-shadow:#030604; --pin-muted:#5a685c;
+  --cluster-bg:color-mix(in srgb, #12352f 94%, transparent);              /* deep teal glass */
+  --cluster-ring:color-mix(in srgb, var(--gold-400) 85%, transparent); --cluster-ring-width:2px;
+  --cluster-text:var(--cream-50); --cluster-dot-stroke:var(--moss-900);
+  /* map: CARTO dark_nolabels has bluish water (44,53,60) and near-black land (14,14,14).
+     hue-rotate turns the water green, saturate+brightness make it lush; the 60% olive tint
+     (normal blend) is an offset that lifts the land to deep olive. Result: sea ~ (33,77,49)
+     moss green, land ~ (37,46,27) olive. Labels sit above, unfiltered. */
+  --map-bg:#214d31;
+  --map-filter:hue-rotate(-50deg) saturate(4) brightness(1.5);
+  --map-tint:color-mix(in srgb, var(--olive-tint) 60%, transparent);
+  --map-tint-blend:normal;
+  --font-map:var(--font-ui);
+  --map-ctrl-bg:color-mix(in srgb, var(--glass-800) 90%, transparent); --map-ctrl-text:var(--cream-100); --map-ctrl-hover:var(--glass-650);
+  --map-ctrl-border:color-mix(in srgb, var(--gold-400) 30%, transparent);
+  --map-attr-bg:color-mix(in srgb, var(--moss-900) 80%, transparent);
+  --map-attr-text:var(--myc-300); --map-attr-link:var(--glass-300);
+  --tooltip-arrow:var(--glass-800);
+  /* layout chrome: turquoise glass panels with gold filament edges */
+  --bar-bg:linear-gradient(180deg, var(--glass-800), var(--glass-850));
+  --filter-bg:var(--glass-850);
+  --header-edge:color-mix(in srgb, var(--gold-400) 34%, transparent);
+  --title-text:var(--gold-300);
+  --dock-bg:linear-gradient(180deg, var(--glass-850), var(--glass-900));
+  --dock-edge:color-mix(in srgb, var(--gold-400) 28%, transparent);
+  --panel-bg-solid:var(--glass-850);
+  --panel-bg:color-mix(in srgb, var(--glass-850) 92%, transparent);
+  --panel-backdrop:blur(14px) saturate(1.3);
+  --panel-edge:color-mix(in srgb, var(--gold-400) 32%, transparent);
+  --popup-glass:color-mix(in srgb, var(--glass-800) 93%, transparent);
+  --popup-border:1px solid color-mix(in srgb, var(--gold-400) 32%, transparent);
+  --glass-shadow:0 10px 36px rgba(3,6,4,.6), inset 0 1px 0 color-mix(in srgb, var(--glass-line) 10%, transparent);
+  --pill-on-bg:color-mix(in srgb, var(--glass-400) 22%, transparent); --pill-on-text:var(--glass-300);
+  --pill-on-border:color-mix(in srgb, var(--glass-400) 60%, transparent);
+  --pill-off-text:var(--myc-400); --pill-off-border:color-mix(in srgb, var(--myc-400) 40%, transparent);
+  --tl-month-band:linear-gradient(90deg, var(--moss-band), var(--glass-800) 75%);
+  --tl-month-band-text:var(--gold-400);
+  --tl-month-accent:4px;                                   /* urgency edge in the month color */
+  --tl-month-past-text:var(--myc-300);
+  /* header + controls (chunk 4): sunk glass track, gold filament edges, solid turquoise CTA */
+  --brand-glass:color-mix(in srgb, var(--glass-400) 24%, transparent); --tagline:var(--myc-300);
+  --search-edge:color-mix(in srgb, var(--glass-line) 66%, transparent);   /* >= 3:1 against the bar */
+  --search-bg:var(--glass-950); --placeholder:var(--myc-500);
+  --search-edge-hover:color-mix(in srgb, var(--gold-400) 45%, transparent);
+  --search-ring:color-mix(in srgb, var(--gold-300) 26%, transparent);
+  --kbd-bg:color-mix(in srgb, var(--cream-100) 7%, transparent); --kbd-text:var(--myc-300);
+  --kbd-edge:color-mix(in srgb, var(--gold-400) 30%, transparent);
+  --tg-bg:var(--glass-900);
+  --tg-edge:color-mix(in srgb, var(--gold-400) 24%, transparent);
+  --tg-text:var(--cream-200); --tg-icon:var(--myc-300); --tg-hover:var(--glass-750);
+  --tg-on-bg:color-mix(in srgb, var(--glass-400) 22%, transparent);
+  --tg-on-edge:color-mix(in srgb, var(--glass-400) 58%, transparent);
+  --tg-on-text:var(--cream-50); --tg-on-icon:var(--glass-300);
+  --badge-bg:color-mix(in srgb, var(--cream-100) 12%, transparent); --badge-text:var(--cream-200);
+  --badge-info-bg:color-mix(in srgb, var(--myc-blue-300) 20%, transparent); --badge-info-text:var(--myc-blue-300);
+  --cta-bg:var(--glass-400); --cta-text:var(--teal-900); --cta-hover:var(--glass-300);
+  --cta-glow:color-mix(in srgb, var(--glass-400) 32%, transparent);
+  --cta-sheen:color-mix(in srgb, var(--cream-50) 35%, transparent);
+  /* pins: luminous orbs (highlight top-left, shade bottom), cream-gold ring, caption on a moss pill */
+  --pin-gloss:radial-gradient(circle at 34% 28%, rgba(255,250,232,.42), rgba(255,250,232,0) 52%), radial-gradient(circle at 50% 115%, rgba(3,6,4,.30), rgba(3,6,4,0) 62%);
+  --pin-shadow-hover:0 2px 4px rgba(3,6,4,.5),0 8px 18px rgba(3,6,4,.55);
+  --pin-label-bg:color-mix(in srgb, var(--moss-950) 66%, transparent);
+  --pin-star-badge-edge:var(--moss-900);
+  --cluster-ring-inner:color-mix(in srgb, var(--gold-400) 34%, transparent);
+  --cluster-shadow:rgba(3,6,4,.55);
+  --popup-close-bg:color-mix(in srgb, var(--glass-950) 72%, transparent); --popup-close-text:var(--cream-50);
+  --row-sep:color-mix(in srgb, var(--glass-line) 9%, transparent);
+}
+
+/* ---------- Month plumbing: data-month="0..11|past|tba|none" -> --c / --c-on ---------- */
+[data-month="0"]{--c:var(--month-0);--c-on:var(--on-month-0)}
+[data-month="1"]{--c:var(--month-1);--c-on:var(--on-month-1)}
+[data-month="2"]{--c:var(--month-2);--c-on:var(--on-month-2)}
+[data-month="3"]{--c:var(--month-3);--c-on:var(--on-month-3)}
+[data-month="4"]{--c:var(--month-4);--c-on:var(--on-month-4)}
+[data-month="5"]{--c:var(--month-5);--c-on:var(--on-month-5)}
+[data-month="6"]{--c:var(--month-6);--c-on:var(--on-month-6)}
+[data-month="7"]{--c:var(--month-7);--c-on:var(--on-month-7)}
+[data-month="8"]{--c:var(--month-8);--c-on:var(--on-month-8)}
+[data-month="9"]{--c:var(--month-9);--c-on:var(--on-month-9)}
+[data-month="10"]{--c:var(--month-10);--c-on:var(--on-month-10)}
+[data-month="11"]{--c:var(--month-11);--c-on:var(--on-month-11)}
+[data-month="past"]{--c:var(--month-past);--c-on:var(--on-month-past)}
+[data-month="tba"]{--c:var(--tba);--c-on:var(--on-month-tba)}
+[data-month="none"]{--c:var(--month-none);--c-on:var(--on-month-none)}
+/* --c-ink: the month color when it is used as text on a dark ground */
+[data-month]{--c-ink:color-mix(in oklch, var(--c), var(--text) var(--month-ink-lift))}
+/* dark keeps the raw month color for text (no oklch round-trip) */
+:root[data-theme="dark"] [data-month]{--c-ink:var(--c)}
+
+/* ---------- Lite tiles (data-tiles="lite": phones, tablets, touch screens) ----------
+   SITE_CONFIG swaps earthy to ONE dark_all layer there (labels baked in) and the costly
+   base-pane filter is dropped. Only the plain alpha tint remains (cheap to composite);
+   it lifts the near-black land to olive and greens the sea, and keeps labels legible. */
+:root[data-theme="earthy"][data-tiles="lite"]{
+  --map-filter:none;
+  --map-tint:color-mix(in srgb, #4e6c30 38%, transparent);   /* land ~#26321b, sea ~#394937 */
+  --map-bg:#28371c;
+}
