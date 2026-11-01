@@ -1,0 +1,245 @@
+/* ==========================================================================
+   Starter theme template - Events & Gatherings map
+   --------------------------------------------------------------------------
+   This file is a copy of the "earthy" theme with every token it sets, one
+   per line, each with a short comment. Use it as the starting point for
+   your own theme. Full guide: THEMING.md in the repo root.
+
+   How to use it
+   1. Pick a short name, lower case, no spaces (e.g. "forest").
+      Replace every "mytheme" below with that name.
+   2. Change the values. Start with section (a) primitives - most other
+      tokens point at them - then fine-tune (b) and (c).
+   3. Put the theme on the page, ONE of these ways:
+      a) Paste both blocks into theme.css, after the earthy block and
+         before the "Month plumbing" section. Then bump the cache-buster
+         in index.html: change theme.css?v= from the current value
+         (s28 at the time of writing) to any new value, e.g. s29.
+      b) Or keep this file separate. Copy it to themes/forest.css and add
+         this line in index.html, right AFTER the theme.css link:
+           <link rel="stylesheet" href="themes/forest.css?v=1">
+         Bump its ?v= on every change too.
+   4. Add the theme to window.SITE_CONFIG.themes at the top of index.html.
+      Put a comma after the entry above yours: the shipped dark entry has no
+      trailing comma, and a missing comma breaks the whole page.
+           forest: { label: 'Forest', tiles: 'cartoDarkSplit', tilesLite: 'cartoDark' },
+      The key ("forest") must match the data-theme name exactly.
+   5. Open the page with ?theme=forest to try it.
+
+   Rules
+   - Colours live here, never in JavaScript.
+   - System font stacks only. No web fonts (no Google Fonts, no CDNs).
+   - Tokens you do not set fall back to the base :root block in theme.css,
+     which derives most of them from the semantic roles. So you may delete
+     any line in section (c) and still get a sensible result.
+   - Keep --bg, --text, --accent and the other (b) colours as plain colours
+     (no gradients): the route page reads them as literal values.
+   ========================================================================== */
+
+:root[data-theme="mytheme"]{
+  color-scheme:dark;                                       /* native scrollbars and form widgets; use light for a light theme */
+
+  /* ---------- (a) primitives: your palette. Only this block may use them. ---------- */
+  --moss-950:#0e1710;                                      /* darkest moss, pin caption pill */
+  --moss-900:#131d15;                                      /* page ground */
+  --moss-875:#152118;                                      /* moss step (spare) */
+  --moss-850:#182619;                                      /* moss step (spare) */
+  --moss-800:#1d3024;                                      /* moss step (spare) */
+  --moss-750:#22382a;                                      /* moss step (spare) */
+  --moss-700:#243a2c;                                      /* moss step (spare) */
+  --moss-650:#2e4836;                                      /* moss step (spare) */
+  --cream-50:#fbf6ea;                                      /* brightest text */
+  --cream-100:#efe6d2;                                     /* body text */
+  --cream-200:#e3d9c2;                                     /* secondary text */
+  --cream-300:#d2c9b3;                                     /* tertiary text */
+  --myc-200:#bccbcf;                                       /* mycelium grey, quaternary text */
+  --myc-300:#a8bbc1;                                       /* muted text */
+  --myc-400:#92a5ab;                                       /* dim text */
+  --myc-500:#8a9da3;                                       /* faint text, placeholder */
+  --glass-300:#6fd5c5;                                     /* light turquoise: links, hover accent */
+  --glass-400:#48c8b5;                                     /* turquoise: main accent */
+  --glass-line:#7fcfc1;                                    /* turquoise hairline base */
+  --teal-900:#0b1a15;                                      /* dark ink on the accent */
+  --glass-950:#081b1a;                                     /* deepest panel glass, sunk fields */
+  --glass-900:#0b2321;                                     /* toggle-group track */
+  --glass-875:#0e2826;                                     /* timeline rail */
+  --glass-850:#102d2a;                                     /* main surface */
+  --glass-800:#143430;                                     /* raised surface, popups */
+  --glass-750:#1a3e39;                                     /* hover */
+  --glass-700:#1e4640;                                     /* controls */
+  --glass-650:#275249;                                     /* control hover */
+  --moss-band:#24402c;                                     /* timeline month band, left end */
+  --olive-tint:#313f1f;                                    /* map tint colour */
+  --gold-300:#ecc96f;                                      /* light gold: focus, title */
+  --gold-400:#d9b35e;                                      /* gold: filament edges, star */
+  --gold-ink:#1a1608;                                      /* dark ink on gold */
+  --rust-400:#d27b48;                                      /* rust: third accent */
+  --amber-400:#e3a440;                                     /* amber: warnings */
+  --ember-400:#ef775f;                                     /* ember: danger */
+  --lichen-400:#9cc76f;                                    /* lichen: success */
+  --myc-blue-300:#9fc6d9;                                  /* pale blue: info */
+  --myc-blue-400:#86a9c8;                                  /* blue: TBA dates */
+  --myc-blue-450:#8fbad0;                                  /* blue: secondary links */
+  --ink-dark:#0c120c;                                      /* near-black ink on bright fills */
+
+  /* ---------- (b) semantic roles ---------- */
+  --bg:var(--moss-900);                                    /* page ground behind everything */
+  --surface:var(--glass-850);                              /* main panel surface */
+  --surface-2:var(--glass-800);                            /* raised surface (cards, popups) */
+  --surface-sunk:var(--glass-950);                         /* sunk fields (search, inputs) */
+  --surface-rail:var(--glass-875);                         /* side rails */
+  --hover:var(--glass-750);                                /* hover background */
+  --border:color-mix(in srgb, var(--gold-400) 30%, transparent);           /* panel borders */
+  --line:color-mix(in srgb, var(--glass-line) 30%, transparent);           /* hairlines and dividers */
+  --control:var(--glass-700);                              /* button / control fill */
+  --control-hover:var(--glass-650);                        /* control fill on hover */
+  --control-border:color-mix(in srgb, var(--gold-400) 38%, transparent);   /* control outline */
+  --text-strong:var(--cream-50);                           /* headings, emphasis */
+  --text:var(--cream-100);                                 /* body text */
+  --text-2:var(--cream-200);                               /* secondary text */
+  --text-3:var(--cream-300);                               /* tertiary text */
+  --text-4:var(--myc-200);                                 /* quaternary text (locations) */
+  --text-muted:var(--myc-300);                             /* muted labels */
+  --text-dim:var(--myc-400);                               /* dimmer still */
+  --text-faint:var(--myc-500);                             /* faintest text */
+  --accent:var(--glass-400);                               /* main accent */
+  --accent-hover:var(--glass-300);                         /* accent on hover */
+  --on-accent:var(--teal-900);                             /* text on the accent */
+  --accent-2:var(--gold-400);                              /* second accent */
+  --on-accent-2:var(--gold-ink);                           /* text on the second accent */
+  --star:var(--gold-400);                                  /* starred events */
+  --accent-3:var(--rust-400);                              /* third accent */
+  --warn:var(--amber-400);                                 /* warning fill */
+  --on-warn:var(--ink-dark);                               /* text on warning */
+  --danger:var(--ember-400);                               /* danger / error fill */
+  --on-danger:var(--ink-dark);                             /* text on danger */
+  --success:var(--lichen-400);                             /* success */
+  --info:var(--myc-blue-300);                              /* info */
+  --tba:var(--myc-blue-400);                               /* events with dates TBA */
+  --link:var(--glass-300);                                 /* links */
+  --link-2:var(--myc-blue-450);                            /* secondary links */
+  --focus:var(--gold-300);                                 /* keyboard focus ring */
+  --scrim:rgba(5,10,6,.6);                                 /* modal backdrop */
+  --scrim-strong:rgba(5,10,6,.78);                         /* heavier modal backdrop */
+  --shadow:#030604;                                        /* base shadow colour */
+  --font-ui:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Noto Sans",sans-serif;          /* UI font stack (system fonts only) */
+  --font-display:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Noto Serif",serif;   /* headings font stack (system fonts only) */
+
+  /* ---------- month urgency gradient ----------
+     Set the two ends; theme.css mixes months 1-10 between them in oklch.
+     You may pin any single month stop to fix contrast, as earthy does for 8 and 9. */
+  --urg-hot:#f38f54;                                       /* current month (soonest) */
+  --urg-cold:#1c727a;                                      /* furthest month */
+  --month-8:#3c8c6a;                                       /* pinned stop: keeps label contrast */
+  --month-9:#207e6c;                                       /* pinned stop: keeps label contrast */
+  --month-past:#5a685c;                                    /* months already over */
+  --month-none:#6f7f74;                                    /* events with no usable month */
+  --on-month:var(--ink-dark);                              /* default text on a month colour */
+  --on-month-9:var(--cream-50);                            /* text on month 9 */
+  --on-month-10:var(--cream-50);                           /* text on month 10 */
+  --on-month-11:var(--cream-50);                           /* text on month 11 */
+  --on-month-past:#e3e6dc;                                 /* text on past months */
+  --on-month-tba:var(--ink-dark);                          /* text on TBA */
+  --on-month-none:var(--cream-50);                         /* text on no-month */
+  --month-ink-lift:45%;                                    /* mix month colour toward text when used AS text */
+  --month-chip-alpha:11%;                                  /* opacity of month tag chips */
+
+  /* ---------- (c) component tokens (all optional) ---------- */
+  --popup-bg:var(--glass-800);                             /* map popup background */
+  --timeline-bg:var(--glass-875);                          /* timeline column */
+  --input-border:color-mix(in srgb, var(--glass-line) 52%, transparent);  /* input outlines */
+  --pin-ring:color-mix(in srgb, #f6e7bf 88%, transparent); /* ring round each pin */
+  --pin-ring-width:2px;                                    /* pin ring width */
+  --pin-shadow:0 1px 2px rgba(3,6,4,.55),0 3px 10px rgba(3,6,4,.5);       /* pin drop shadow */
+  --pin-label:var(--cream-200);                            /* pin caption text */
+  --pin-label-shadow:#030604;                              /* pin caption text shadow */
+  --pin-muted:#5a685c;                                     /* pins of past events */
+  --cluster-bg:color-mix(in srgb, #12352f 94%, transparent);              /* cluster bubble fill */
+  --cluster-ring:color-mix(in srgb, var(--gold-400) 85%, transparent);    /* cluster outer ring */
+  --cluster-ring-width:2px;                                /* cluster ring width */
+  --cluster-text:var(--cream-50);                          /* cluster count text */
+  --cluster-dot-stroke:var(--moss-900);                    /* outline of month dots on clusters */
+  --map-bg:#214d31;                                        /* map ground before tiles load */
+  --map-filter:hue-rotate(-50deg) saturate(4) brightness(1.5);            /* CSS filter on base tiles only (costly) */
+  --map-tint:color-mix(in srgb, var(--olive-tint) 60%, transparent);      /* colour layer between base tiles and labels */
+  --map-tint-blend:normal;                                 /* mix-blend-mode of the tint layer */
+  --font-map:var(--font-ui);                               /* font of map controls */
+  --map-ctrl-bg:color-mix(in srgb, var(--glass-800) 90%, transparent);    /* zoom buttons background */
+  --map-ctrl-text:var(--cream-100);                        /* zoom buttons text */
+  --map-ctrl-hover:var(--glass-650);                       /* zoom buttons hover */
+  --map-ctrl-border:color-mix(in srgb, var(--gold-400) 30%, transparent); /* zoom buttons border */
+  --map-attr-bg:color-mix(in srgb, var(--moss-900) 80%, transparent);     /* attribution strip background */
+  --map-attr-text:var(--myc-300);                          /* attribution text (keep it readable) */
+  --map-attr-link:var(--glass-300);                        /* attribution links */
+  --tooltip-arrow:var(--glass-800);                        /* popup / tooltip arrow */
+  --bar-bg:linear-gradient(180deg, var(--glass-800), var(--glass-850));   /* header row (gradient allowed) */
+  --filter-bg:var(--glass-850);                            /* filter row (gradient allowed) */
+  --header-edge:color-mix(in srgb, var(--gold-400) 34%, transparent);     /* line under header and filters */
+  --title-text:var(--gold-300);                            /* site title */
+  --dock-bg:linear-gradient(180deg, var(--glass-850), var(--glass-900));  /* docked columns (gradient allowed) */
+  --dock-edge:color-mix(in srgb, var(--gold-400) 28%, transparent);       /* docked column edge */
+  --panel-bg-solid:var(--glass-850);                       /* side panels, modals, menus */
+  --panel-bg:color-mix(in srgb, var(--glass-850) 92%, transparent);       /* translucent panels (with backdrop blur) */
+  --panel-backdrop:blur(14px) saturate(1.3);               /* backdrop-filter for panels; none = off */
+  --panel-edge:color-mix(in srgb, var(--gold-400) 32%, transparent);      /* panel border */
+  --popup-glass:color-mix(in srgb, var(--glass-800) 93%, transparent);    /* translucent popup wrapper */
+  --popup-border:1px solid color-mix(in srgb, var(--gold-400) 32%, transparent);   /* popup border (full shorthand) */
+  --glass-shadow:0 10px 36px rgba(3,6,4,.6), inset 0 1px 0 color-mix(in srgb, var(--glass-line) 10%, transparent);   /* panel and popup shadow */
+  --pill-on-bg:color-mix(in srgb, var(--glass-400) 22%, transparent);     /* region pill, selected: fill */
+  --pill-on-text:var(--glass-300);                         /* region pill, selected: text */
+  --pill-on-border:color-mix(in srgb, var(--glass-400) 60%, transparent); /* region pill, selected: border */
+  --pill-off-text:var(--myc-400);                          /* region pill, off: text */
+  --pill-off-border:color-mix(in srgb, var(--myc-400) 40%, transparent);  /* region pill, off: border */
+  --tl-month-band:linear-gradient(90deg, var(--moss-band), var(--glass-800) 75%);   /* timeline month bar; delete = month colour */
+  --tl-month-band-text:var(--gold-400);                    /* timeline month bar text; delete = on-month colour */
+  --tl-month-accent:4px;                                   /* width of the month-colour edge on the bar */
+  --tl-month-past-text:var(--myc-300);                     /* timeline bar text for past months */
+  --brand-glass:color-mix(in srgb, var(--glass-400) 24%, transparent);    /* fill of the logo mark */
+  --tagline:var(--myc-300);                                /* tagline under the title */
+  --search-edge:color-mix(in srgb, var(--glass-line) 66%, transparent);   /* search box border (aim for 3:1) */
+  --search-bg:var(--glass-950);                            /* search box fill */
+  --placeholder:var(--myc-500);                            /* placeholder text */
+  --search-edge-hover:color-mix(in srgb, var(--gold-400) 45%, transparent);   /* search border on hover */
+  --search-ring:color-mix(in srgb, var(--gold-300) 26%, transparent);     /* glow round focused search */
+  --kbd-bg:color-mix(in srgb, var(--cream-100) 7%, transparent);          /* keyboard hint fill */
+  --kbd-text:var(--myc-300);                               /* keyboard hint text */
+  --kbd-edge:color-mix(in srgb, var(--gold-400) 30%, transparent);        /* keyboard hint border */
+  --tg-bg:var(--glass-900);                                /* toggle group / icon button track */
+  --tg-edge:color-mix(in srgb, var(--gold-400) 24%, transparent);         /* toggle group border */
+  --tg-text:var(--cream-200);                              /* toggle text */
+  --tg-icon:var(--myc-300);                                /* toggle icon */
+  --tg-hover:var(--glass-750);                             /* toggle hover */
+  --tg-on-bg:color-mix(in srgb, var(--glass-400) 22%, transparent);       /* pressed toggle fill */
+  --tg-on-edge:color-mix(in srgb, var(--glass-400) 58%, transparent);     /* pressed toggle border */
+  --tg-on-text:var(--cream-50);                            /* pressed toggle text */
+  --tg-on-icon:var(--glass-300);                           /* pressed toggle icon */
+  --badge-bg:color-mix(in srgb, var(--cream-100) 12%, transparent);       /* count badge fill */
+  --badge-text:var(--cream-200);                           /* count badge text */
+  --badge-info-bg:color-mix(in srgb, var(--myc-blue-300) 20%, transparent);   /* info badge fill */
+  --badge-info-text:var(--myc-blue-300);                   /* info badge text */
+  --cta-bg:var(--glass-400);                               /* main call-to-action button */
+  --cta-text:var(--teal-900);                              /* CTA text */
+  --cta-hover:var(--glass-300);                            /* CTA hover */
+  --cta-glow:color-mix(in srgb, var(--glass-400) 32%, transparent);       /* CTA glow */
+  --cta-sheen:color-mix(in srgb, var(--cream-50) 35%, transparent);       /* CTA highlight sheen */
+  --pin-gloss:radial-gradient(circle at 34% 28%, rgba(255,250,232,.42), rgba(255,250,232,0) 52%), radial-gradient(circle at 50% 115%, rgba(3,6,4,.30), rgba(3,6,4,0) 62%);   /* gloss over pins; linear-gradient(transparent, transparent) = flat */
+  --pin-shadow-hover:0 2px 4px rgba(3,6,4,.5),0 8px 18px rgba(3,6,4,.55);  /* pin shadow on hover */
+  --pin-label-bg:color-mix(in srgb, var(--moss-950) 66%, transparent);    /* pill behind pin captions */
+  --pin-star-badge-edge:var(--moss-900);                   /* outline of the star badge on pins */
+  --cluster-ring-inner:color-mix(in srgb, var(--gold-400) 34%, transparent);  /* cluster inner ring */
+  --cluster-shadow:rgba(3,6,4,.55);                        /* cluster shadow */
+  --popup-close-bg:color-mix(in srgb, var(--glass-950) 72%, transparent); /* popup close button fill */
+  --popup-close-text:var(--cream-50);                      /* popup close button icon */
+  --row-sep:color-mix(in srgb, var(--glass-line) 9%, transparent);        /* list row separators */
+}
+
+/* ---------- Lite tiles: phones, tablets, touch screens ----------
+   On these devices index.html sets data-tiles="lite" and loads the theme's
+   tilesLite preset (for earthy: one layer with labels baked in). Drop the
+   costly filter here; a plain tint is cheap. Delete this block if your
+   theme uses no filter. */
+:root[data-theme="mytheme"][data-tiles="lite"]{
+  --map-filter:none;                                       /* no filter on lite devices (it would also hit labels) */
+  --map-tint:color-mix(in srgb, #4e6c30 38%, transparent); /* lighter tint, safe over baked-in labels */
+  --map-bg:#28371c;                                        /* map ground before tiles load */
+}
