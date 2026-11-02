@@ -896,7 +896,7 @@
         async function bulkApproveSuggestions() {
             const ids = [...sugSelected];
             if (!ids.length) { toast('Select suggestions first', true); return; }
-            let ok = 0; const skipped = [];
+            let ok = 0; const skipped = []; const noEnd = [];
             for (const id of ids) {
                 const s = suggestions.find(x => x.id === id);
                 if (!s || s.status !== 'enriched') continue;
@@ -907,10 +907,12 @@
                 if (inserted && inserted[0]) existingEvents.push(inserted[0]); // keep duplicate detection current
                 await sb.from('suggestions').update({ status: 'approved' }).eq('id', id);
                 s.status = 'approved'; ok++;
+                if (!ev.end_date && !isTbaDates(ev.dates)) noEnd.push(`${ev.name} (${ev.dates})`);
             }
             sugSelected.clear();
             renderList(); renderStats(); renderFilters();
-            toast(`Approved ${ok}${skipped.length ? `, skipped ${skipped.length} (missing fields or error): ${skipped.join(', ')}` : ''}`, skipped.length > 0);
+            if (noEnd.length) console.log('Approved without an end date (weekly rollover will skip):', noEnd);
+            toast(`Approved ${ok}${skipped.length ? `, skipped ${skipped.length} (missing fields or error): ${skipped.join(', ')}` : ''}${noEnd.length ? `; ${noEnd.length} without an end date (see console)` : ''}`, skipped.length > 0 || noEnd.length > 0);
         }
 
         function renderCard(s) {
@@ -1133,6 +1135,74 @@
             return m ? parseInt(m[1], 10) : null;
         }
 
+        // End date from free-text dates ("Mar 13-14, 2027", "Nov 28 - Dec 2", "Sep 5"); returns YYYY-MM-DD or null.
+        // Conservative: a wrong end date is worse than null (null makes approveEvent ask). Day-first text ("15-17 July",
+        // "29 August - 4 September", "5 Oct 2026") is read only when the WHOLE text is one of those shapes. Returns null for
+        // recurring/open-ended wording, more than one date, times that could be read as days, end before start, or spans > 60 days.
+        // Year: a year right after the end day ("Mar 13-14, 2027") wins, then one right after the start day
+        // ("Dec 30, 2026 - Jan 3"), else the year argument; a Dec -> Jan range rolls into the next year.
+        // Optional third argument: an object that receives crossesYear (true when the range runs Dec -> Jan).
+        function deriveEndDate(datesText, year, info) {
+            const t = String(datesText || '').trim();
+            if (!t) return null;
+            if (/\b(every|weekly|bi-?weekly|fortnightly|monthly|daily|from|starting|onwards|since|until further)\b/i.test(t)) return null;
+            if (/\b(mon|tues|wednes|thurs|fri|satur|sun)days\b/i.test(t)) return null; // e.g. Sundays in May, (Fridays)
+            if (/'\d{2}\b/.test(t)) return null; // 2-digit years are not parsed
+            const MON = '\\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|mai|june?|juni|july?|juli|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|okt(?:ober)?|nov(?:ember)?|dec(?:ember)?|dez(?:ember)?)\\b\\.?';
+            const DAY = '(\\d{1,2})(?:st|nd|rd|th|\\.)?(?![:.]\\d|\\d|\\s*(?:am|pm|h|uhr)\\b)';
+            const SEP = '(?:\\s*[-\\u2013\\u2014]\\s*|\\s+to\\s+)';
+            const YR = '(?:,?\\s*(20\\d{2})\\b)?';
+            const monthNum = w => ({ jan: 1, feb: 2, mar: 3, apr: 4, may: 5, mai: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, okt: 10, nov: 11, dec: 12, dez: 12 })[w.slice(0, 3).toLowerCase()];
+            let m, sm, sd, em, ed, startYear = null, endYear = null;
+            if (new RegExp('\\b\\d{1,2}\\.?\\s+' + MON, 'i').test(t)) {
+                // Day-first: only whole-text (anchored) shapes, so times or extra words are never read as days
+                const yOf = v => (v ? +v : null);
+                if ((m = t.match(new RegExp('^' + DAY + SEP + DAY + '\\s+' + MON + YR + '$', 'i')))) {
+                    sd = +m[1]; ed = +m[2]; sm = em = monthNum(m[3]); endYear = yOf(m[4]);                  // 15-17 July [2026]
+                } else if ((m = t.match(new RegExp('^' + DAY + '\\s+' + MON + YR + SEP + DAY + '\\s+' + MON + YR + '$', 'i')))) {
+                    sd = +m[1]; sm = monthNum(m[2]); startYear = yOf(m[3]); ed = +m[4]; em = monthNum(m[5]); endYear = yOf(m[6]); // 29 Aug - 4 Sep [2026]
+                } else if ((m = t.match(new RegExp('^' + DAY + '\\s+' + MON + YR + '$', 'i')))) {
+                    sd = ed = +m[1]; sm = em = monthNum(m[2]); endYear = yOf(m[3]);                            // 5 Oct [2026]
+                } else return null;
+            } else {
+                // Every standalone day number in the text (not years, not times like 18:00 / 19.00 / 7pm / 10 am)
+                const dayCount = (t.match(/(?<![:.\d])\b\d{1,2}(?:st|nd|rd|th)?\b(?![:.]\d|\s*(?:am|pm|h|uhr)\b)/gi) || []).length;
+                let need;
+                if ((m = t.match(new RegExp(MON + '\\s+' + DAY + YR + SEP + MON + '\\s+' + DAY, 'i')))) {
+                    sm = monthNum(m[1]); sd = +m[2]; startYear = m[3] ? +m[3] : null; em = monthNum(m[4]); ed = +m[5]; need = 2;
+                } else if ((m = t.match(new RegExp(MON + '\\s+' + DAY + SEP + DAY, 'i')))) {
+                    sm = em = monthNum(m[1]); sd = +m[2]; ed = +m[3]; need = 2;
+                } else if ((m = t.match(new RegExp(MON + '\\s+' + DAY, 'i')))) {
+                    sm = em = monthNum(m[1]); sd = ed = +m[2]; need = 1;
+                } else return null;
+                if (dayCount !== need) return null; // day lists ("Sep 5 & 6", "Mar 6, 13, 20") or extra ranges
+                const after = t.slice(m.index + m[0].length).match(/^,?\s*(20\d{2})\b/);
+                if (after) endYear = +after[1];
+            }
+            const crosses = em < sm;
+            if (info) info.crossesYear = crosses;
+            const yArg = parseInt(year, 10);
+            let ey;
+            if (endYear) ey = endYear;
+            else if (startYear) ey = startYear + (crosses ? 1 : 0);
+            else if (yArg >= 2000 && yArg <= 2100) ey = yArg + (crosses ? 1 : 0);
+            else return null;
+            const sy = ey - (crosses ? 1 : 0);
+            if (startYear && startYear !== sy) return null;
+            const mk = (y, mo, d) => { const x = new Date(Date.UTC(y, mo - 1, d)); return (x.getUTCFullYear() === y && x.getUTCMonth() === mo - 1 && x.getUTCDate() === d) ? x : null; };
+            const start = mk(sy, sm, sd), end = mk(ey, em, ed);
+            if (!start || !end) return null;                       // no Feb 30
+            const spanDays = (end - start) / 86400000;
+            if (spanDays < 0 || spanDays > 60) return null;        // end before start, or implausibly long
+            if (yArg >= 2000 && yArg <= 2100 && (ey < yArg || ey > yArg + 1)) return null; // > ~13 months from the year argument
+            return ey + '-' + String(em).padStart(2, '0') + '-' + String(ed).padStart(2, '0');
+        }
+
+        // Dates text that is openly unknown (TBA/TBD/TBC/"to be announced") - no end date expected
+        function isTbaDates(datesText) {
+            return /\b(tba|tbd|tbc|to be (announced|confirmed|determined))\b/i.test(String(datesText || ''));
+        }
+
         // Online events need no lat/lng/location: lat=0, lng=0, location defaults to "Online".
         function buildEventFromSuggestion(s) {
             const ed = s.enriched_data || {};
@@ -1154,10 +1224,19 @@
                 image_url: ed.image_url || '',
                 created_by: s.submitted_by || 'suggestion'
             };
-            const year = suggestionYear(ed);
-            if (year) ev.year = year;
+            // No year known: use the current year explicitly (same as the DB default), so end_date can be derived and matches ev.year
+            const year = suggestionYear(ed) || new Date().getFullYear();
+            ev.year = year;
             if (VALID_SCOPE.includes(ed.scope)) ev.scope = ed.scope;
             if (/^\d{4}-\d{2}-\d{2}$/.test(String(ed.end_date || ''))) ev.end_date = ed.end_date;
+            else if (ed.recurrence !== 'weekly' && ed.recurrence !== 'monthly') {
+                const info = {};
+                const derived = deriveEndDate(ed.dates, year, info);
+                // Drop a derived end date whose year disagrees with ev.year, unless it is a Dec -> Jan range
+                const dy = derived ? parseInt(derived.slice(0, 4), 10) : null;
+                const crossesNewYear = derived && info.crossesYear && dy === year + 1;
+                if (derived && (!year || dy === year || crossesNewYear)) ev.end_date = derived;
+            }
             if (VALID_RECURRENCE.includes(ed.recurrence)) ev.recurrence = ed.recurrence;
             return ev;
         }
@@ -1169,6 +1248,8 @@
                 toast('Fill in name, dates, month, lat, lng, and location before approving (online events need only name, dates, month)', true);
                 return;
             }
+            if (!newEvent.end_date && !isTbaDates(newEvent.dates) &&
+                !confirm(`No end date could be read from "${newEvent.dates}" - the weekly rollover will skip this event. Approve anyway?`)) return;
 
             const { data, error } = await sb.from('events').insert(newEvent).select();
             if (error) { toast('Error adding event: ' + error.message, true); return; }
